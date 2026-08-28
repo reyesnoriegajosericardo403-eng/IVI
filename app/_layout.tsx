@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import { registerConfiguredLLMProvider } from '@/providers/llm/registerConfiguredProvider';
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { useProfileReconciliation, usePushProfileOnChange } from '@/services/auth/useProfileReconciliation';
 import { useSyncEngine } from '@/services/sync/useSyncEngine';
@@ -36,6 +37,13 @@ function RootStack() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [hasHydrated]);
+
+  // Carga la IA que el usuario haya conectado (Claude/ChatGPT/Gemini/Grok
+  // con su propia clave) — si no hay ninguna, se queda con el copiloto
+  // local basado en reglas.
+  useEffect(() => {
+    registerConfiguredLLMProvider();
+  }, []);
 
   // Registra un snapshot diario del patrimonio neto real del usuario para
   // poder construir tendencias históricas honestas (nunca inventadas).

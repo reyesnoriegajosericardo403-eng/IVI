@@ -12,6 +12,8 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 // un proyecto Supabase real (spec sección 20: "la interfaz no debe
 // romperse si no existe integración directa").
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const supabaseProjectUrl = supabaseUrl;
+export const supabaseAnonPublicKey = supabaseAnonKey;
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl as string, supabaseAnonKey as string, {

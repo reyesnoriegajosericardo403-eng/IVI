@@ -27,3 +27,17 @@ Cada archivo en `migrations/` es una migración versionada (spec sección 72): t
 4. Copia tu **Project URL** y tu **anon public key** (Settings → API) — la app los necesita para conectarse.
 
 No hace falta usar la terminal ni instalar nada para este paso — todo se hace desde el navegador.
+
+## Función `ai-relay` (necesaria solo para usar tu propia IA desde la versión web)
+
+`functions/ai-relay/index.ts` es un relevo sin estado: reenvía la llamada del navegador al proveedor de IA que el usuario eligió (Claude, ChatGPT, Gemini o Grok), usando la clave que el propio usuario pegó en la app. **No guarda, ve ni factura nada** — solo existe porque los navegadores bloquean por seguridad las llamadas directas a esos proveedores. En la app nativa (iPhone/iPad) no hace falta: ahí la llamada va directo.
+
+Para desplegarla necesitas el CLI de Supabase (esta es la única parte de todo el proyecto que sí requiere terminal — te guío cuando llegue el momento):
+
+```bash
+npx supabase login
+npx supabase link --project-ref <tu-project-ref>
+npx supabase functions deploy ai-relay
+```
+
+Sin desplegar esta función, la app sigue funcionando normal: en nativo tu IA funciona igual, y en web usa el copiloto local basado en reglas hasta que la despliegues.

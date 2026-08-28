@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassCard } from '@/components/GlassCard';
 import type { Currency, UserProfile } from '@/data/types';
+import { getLLMProviderConfig } from '@/providers/llm/secureConfig';
+import { LLM_PROVIDER_LABELS, type LLMProviderId } from '@/providers/llm/types';
 import { signOut } from '@/services/auth/actions';
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { runSync } from '@/services/sync/SyncEngine';
@@ -33,6 +35,13 @@ export default function Settings() {
   const lastSyncedAt = useAppStore((s) => s.lastSyncedAt);
   const { userId, email } = useAuthSession();
   const [syncing, setSyncing] = useState(false);
+  const [aiProvider, setAiProvider] = useState<LLMProviderId | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      getLLMProviderConfig().then((config) => setAiProvider(config?.provider ?? null));
+    }, [])
+  );
 
   const handleSyncNow = async () => {
     setSyncing(true);
@@ -97,6 +106,24 @@ export default function Settings() {
               </Pressable>
             )}
           </GlassCard>
+        </View>
+
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>COPILOTO IA</Text>
+          <Pressable onPress={() => router.push('/ai-settings')}>
+            <GlassCard style={styles.row}>
+              <Ionicons name="sparkles-outline" size={18} color={colors.accentFrom} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Text style={[typography.body, { color: colors.textPrimary }]}>
+                  {aiProvider ? LLM_PROVIDER_LABELS[aiProvider] : 'Copiloto local (basado en reglas)'}
+                </Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                  {aiProvider ? 'Conectado con tu propia clave' : 'Conecta Claude, ChatGPT, Gemini o Grok'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </GlassCard>
+          </Pressable>
         </View>
 
         <View style={{ gap: spacing.sm }}>

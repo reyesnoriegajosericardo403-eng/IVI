@@ -10,6 +10,8 @@ Copiloto financiero personal: registro de movimientos por voz/texto en segundos,
 
 **Fase 2 (arquitectura a prueba de futuro)**: el modelo de datos, el backend y la sincronización ya están construidos siguiendo los principios de compatibilidad futura y protección de datos — pensados para que la app pueda tener más usuarios algún día sin que un usuario nuevo necesite instalar nada extra ni crear cuentas en otro lado. Todo eso pasa detrás de escenas.
 
+**Fase 3, adelantada (IA "trae tu propia cuenta")**: cada usuario conecta la IA que ya tiene o quiere (Claude, ChatGPT, Gemini o Grok) con su propia clave — el uso de IA lo paga esa cuenta, nunca VALU. Esto ya funciona hoy.
+
 Nada de lo mostrado en la app es inventado: donde falta una fuente real (precios de mercado, tipo de cambio en vivo), lo dice explícitamente en vez de simular un dato.
 
 ### Incluido en la Fase 1 (producto)
@@ -37,11 +39,18 @@ Nada de lo mostrado en la app es inventado: donde falta una fuente real (precios
 - **Autenticación real con Supabase Auth** (correo + contraseña, dentro de la propia app) con modo local automático si todavía no conectaste un proyecto de Supabase — la app nunca se rompe por falta de configuración.
 - Todo pensado para que agregar Android, una app de escritorio, u otro dispositivo en el futuro reutilice exactamente el mismo backend, sin reconstruir nada ni perder el historial financiero del usuario.
 
+### Incluido en la Fase 3 adelantada (IA propia del usuario — BYOK)
+
+- **Ajustes → Copiloto IA → Conectar tu IA**: elegir Claude, ChatGPT, Gemini o Grok, pegar tu propia API key, probar la conexión y guardar.
+- Tu clave **nunca sale de tu dispositivo ni se sincroniza** con Supabase ni con nadie — se guarda cifrada (Keychain/Keystore en iPhone/Android; localStorage en navegador, con esa salvedad indicada en la propia pantalla).
+- El copiloto y la interpretación de voz/texto usan automáticamente la IA conectada, con un prompt que solo le permite responder con tus datos reales — nunca inventa cifras. Si el usuario no conecta ninguna, la app sigue funcionando con el copiloto local basado en reglas (nunca se rompe).
+- **En la app nativa (iPhone/iPad)** la llamada va directo de tu teléfono al proveedor — cero intermediarios, cero costo para nosotros.
+- **En la versión web**, los navegadores bloquean por seguridad las llamadas directas a Claude/ChatGPT/Grok (Gemini si las permite, pero por simplicidad se usa el mismo camino para los cuatro). Por eso en web se necesita el pequeño relevo `supabase/functions/ai-relay` — reenvía la llamada sin verla, guardarla ni cobrarla; solo existe para saltar esa restricción del navegador. Ver `supabase/README.md`.
+
 ### Pendiente para fases siguientes
 
-- Conectar tu proyecto Supabase real (ver abajo) para activar sincronización en la nube.
+- Conectar tu proyecto Supabase real (ver abajo) para activar sincronización en la nube, y desplegar `ai-relay` para que el BYOK funcione también en la versión web.
 - Reconocimiento de voz real en iPhone/iPad (hoy solo funciona en navegadores con Web Speech API, o por texto).
-- Conexión a Claude (Anthropic) para lenguaje natural completo en el copiloto y la clasificación.
 - Precios de mercado en vivo para inversiones (hoy se guarda el monto invertido, no el valor de mercado).
 - Integración con brokers (GBM primero, solo lectura, APIs oficiales).
 - Alertas inteligentes automáticas, notificaciones push, recordatorios.
@@ -88,7 +97,7 @@ npx expo start          # muestra un código QR para abrir con la app "Expo Go" 
 - **Backend**: Supabase (Postgres con RLS, autenticación, funciones y triggers de auditoría) — ver `supabase/migrations/`.
 - **Sincronización**: `src/services/sync/` — cola de cambios pendientes + fusión por "más reciente gana".
 - **Capa de proveedores**: `src/providers/` — contratos intercambiables para IA, copiloto, tipo de cambio, precios de mercado y voz.
-- **IA (Fase 3)**: Claude (Anthropic) se conectará implementando esos mismos contratos, sin tocar la UI.
+- **IA "trae tu propia cuenta"**: `src/providers/llm/` — clientes para Claude, ChatGPT, Gemini y Grok detrás de un contrato común; clave guardada solo en el dispositivo (`expo-secure-store`); relevo sin estado para web en `supabase/functions/ai-relay`.
 - **Datos de mercado (Fase 4)**: API financiera legítima (precios) + API de tipo de cambio — nunca simulados.
 - **Estructura**: `app/` (pantallas y navegación), `src/data/` (tipos de dominio, categorías, catálogo), `src/store/` (estado local/caché), `src/services/` (Supabase, sincronización, autenticación), `src/providers/` (proveedores intercambiables), `src/ai/` (implementaciones locales de interpretación y copiloto), `src/theme/` (sistema de diseño), `src/components/` (UI reutilizable).
 
