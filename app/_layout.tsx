@@ -1,22 +1,33 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import { useAuthSession } from '@/services/auth/useAuthSession';
+import { useProfileReconciliation, usePushProfileOnChange } from '@/services/auth/useProfileReconciliation';
+import { useSyncEngine } from '@/services/sync/useSyncEngine';
 import { useAppStore } from '@/store/useAppStore';
+import { selectActiveAccounts, selectActiveInvestments, selectActiveLiabilities } from '@/store/selectors';
 import { computeNetWorth } from '@/utils/finance';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootStack() {
   const { colors, scheme } = useTheme();
+  const { userId } = useAuthSession();
+  useSyncEngine();
+  useProfileReconciliation(userId);
+  usePushProfileOnChange(userId);
   const hasHydrated = useAppStore((s) => s.hasHydrated);
-  const accounts = useAppStore((s) => s.accounts);
-  const investments = useAppStore((s) => s.investments);
-  const liabilities = useAppStore((s) => s.liabilities);
+  const rawAccounts = useAppStore((s) => s.accounts);
+  const rawInvestments = useAppStore((s) => s.investments);
+  const rawLiabilities = useAppStore((s) => s.liabilities);
+  const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
+  const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
+  const liabilities = useMemo(() => selectActiveLiabilities(rawLiabilities), [rawLiabilities]);
   const baseCurrency = useAppStore((s) => s.profile.primaryCurrency);
   const recordNetWorthSnapshot = useAppStore((s) => s.recordNetWorthSnapshot);
 
@@ -54,6 +65,7 @@ function RootStack() {
         }}
       >
         <Stack.Screen name="index" />
+        <Stack.Screen name="auth" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen

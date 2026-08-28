@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassCard } from '@/components/GlassCard';
 import type { Currency, UserProfile } from '@/data/types';
+import { signOut } from '@/services/auth/actions';
+import { useAuthSession } from '@/services/auth/useAuthSession';
+import { runSync } from '@/services/sync/SyncEngine';
+import { isSupabaseConfigured } from '@/services/supabase/client';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -25,6 +29,21 @@ export default function Settings() {
   const demoDataLoaded = useAppStore((s) => s.demoDataLoaded);
   const loadDemoData = useAppStore((s) => s.loadDemoData);
   const clearDemoData = useAppStore((s) => s.clearDemoData);
+  const pendingSyncCount = useAppStore((s) => s.pendingSync.length);
+  const lastSyncedAt = useAppStore((s) => s.lastSyncedAt);
+  const { userId, email } = useAuthSession();
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    await runSync();
+    setSyncing(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/auth');
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
@@ -36,6 +55,50 @@ export default function Settings() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>CUENTA Y SINCRONIZACIÓN</Text>
+          <GlassCard style={{ gap: spacing.sm }}>
+            {!isSupabaseConfigured ? (
+              <Text style={[typography.body, { color: colors.textSecondary }]}>
+                Modo local: tus datos viven solo en este dispositivo. Aún no se conectó una cuenta en la nube.
+              </Text>
+            ) : userId ? (
+              <>
+                <Text style={[typography.body, { color: colors.textPrimary }]}>{email}</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                  {pendingSyncCount > 0
+                    ? `${pendingSyncCount} cambio(s) por sincronizar`
+                    : lastSyncedAt
+                      ? `Sincronizado por última vez: ${new Date(lastSyncedAt).toLocaleString('es-MX')}`
+                      : 'Aún sin sincronizar'}
+                </Text>
+                <View style={styles.rowGap}>
+                  <Pressable
+                    onPress={handleSyncNow}
+                    disabled={syncing}
+                    style={[styles.secondaryBtn, { borderRadius: radius.pill, borderColor: colors.accentFrom }]}
+                  >
+                    <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>{syncing ? 'Sincronizando...' : 'Sincronizar ahora'}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleSignOut}
+                    style={[styles.secondaryBtn, { borderRadius: radius.pill, borderColor: colors.danger }]}
+                  >
+                    <Text style={{ color: colors.danger, fontWeight: '700' }}>Cerrar sesión</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <Pressable
+                onPress={() => router.push('/auth')}
+                style={[styles.demoBtn, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Iniciar sesión / Crear cuenta</Text>
+              </Pressable>
+            )}
+          </GlassCard>
+        </View>
+
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>TEMA</Text>
           <GlassCard style={{ gap: spacing.xs }} padded={false}>
@@ -101,4 +164,6 @@ export default function Settings() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   demoBtn: { paddingVertical: 12, alignItems: 'center' },
+  rowGap: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  secondaryBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderWidth: 1 },
 });

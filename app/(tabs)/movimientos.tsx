@@ -9,6 +9,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { findCategory, findSubcategory } from '@/data/categories';
 import type { Transaction } from '@/data/types';
+import { selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatCurrency, formatRelativeDay } from '@/utils/format';
@@ -32,7 +33,8 @@ function groupByDay(transactions: Transaction[]): Section[] {
 
 export default function Movimientos() {
   const { colors, typography, spacing, radius } = useTheme();
-  const transactions = useAppStore((s) => s.transactions);
+  const rawTransactions = useAppStore((s) => s.transactions);
+  const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
 
   const sections = useMemo(() => groupByDay(transactions), [transactions]);
   const flatData = useMemo(() => sections.flatMap((s) => [{ type: 'header' as const, title: s.title }, ...s.data.map((t) => ({ type: 'tx' as const, tx: t }))]), [sections]);

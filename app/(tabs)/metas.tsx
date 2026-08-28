@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import type { Goal } from '@/data/types';
+import { selectActiveGoals } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatCurrency } from '@/utils/format';
@@ -14,7 +14,7 @@ import { formatCurrency } from '@/utils/format';
 export default function Metas() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
-  const goals = useAppStore((s) => s.goals);
+  const rawGoals = useAppStore((s) => s.goals);
   const addGoal = useAppStore((s) => s.addGoal);
   const contributeToGoal = useAppStore((s) => s.contributeToGoal);
   const deleteGoal = useAppStore((s) => s.deleteGoal);
@@ -25,18 +25,17 @@ export default function Metas() {
   const [contributingId, setContributingId] = useState<string | null>(null);
   const [contributeAmount, setContributeAmount] = useState('');
 
+  const goals = useMemo(() => selectActiveGoals(rawGoals), [rawGoals]);
+
   const handleCreate = () => {
     const value = parseFloat(target.replace(',', '.'));
     if (!name.trim() || Number.isNaN(value) || value <= 0) return;
-    const goal: Goal = {
-      id: `goal_${Date.now()}`,
+    addGoal({
       name: name.trim(),
       targetAmount: value,
       currentAmount: 0,
       currency: profile.primaryCurrency,
-      createdAt: new Date().toISOString(),
-    };
-    addGoal(goal);
+    });
     setShowForm(false);
     setName('');
     setTarget('');

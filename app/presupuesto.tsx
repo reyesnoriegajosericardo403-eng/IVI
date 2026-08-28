@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,7 +8,7 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { DEFAULT_CATEGORIES } from '@/data/categories';
-import type { Budget } from '@/data/types';
+import { selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { buildBudgetLines, type BudgetStatus } from '@/utils/finance';
@@ -26,14 +26,17 @@ const EXPENSE_CATEGORY_IDS = DEFAULT_CATEGORIES.filter((c) => c.id !== 'income')
 export default function Presupuesto() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
-  const budgets = useAppStore((s) => s.budgets);
-  const transactions = useAppStore((s) => s.transactions);
+  const rawBudgets = useAppStore((s) => s.budgets);
+  const rawTransactions = useAppStore((s) => s.transactions);
   const setBudget = useAppStore((s) => s.setBudget);
   const deleteBudget = useAppStore((s) => s.deleteBudget);
 
   const [showForm, setShowForm] = useState(false);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
+
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
+  const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
 
   const lines = buildBudgetLines(budgets, transactions, profile.budgetThresholds);
   const availableCategories = EXPENSE_CATEGORY_IDS.filter((id) => !budgets.some((b) => b.categoryId === id));
@@ -42,14 +45,12 @@ export default function Presupuesto() {
     if (!categoryId || !amount) return;
     const value = parseFloat(amount.replace(',', '.'));
     if (Number.isNaN(value) || value <= 0) return;
-    const budget: Budget = {
-      id: `bud_${categoryId}`,
+    setBudget({
       categoryId,
       monthlyAmount: value,
       currency: profile.primaryCurrency,
       thresholds: profile.budgetThresholds,
-    };
-    setBudget(budget);
+    });
     setShowForm(false);
     setCategoryId(null);
     setAmount('');
@@ -83,7 +84,7 @@ export default function Presupuesto() {
                   {line.categoryName}
                 </Text>
               </View>
-              <Pressable onPress={() => deleteBudget(`bud_${line.categoryId}`)}>
+              <Pressable onPress={() => deleteBudget(line.budgetId)}>
                 <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
               </Pressable>
             </View>

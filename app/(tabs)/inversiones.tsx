@@ -1,24 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassCard } from '@/components/GlassCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ASSET_CLASSES, ASSET_CLASS_LABELS } from '@/data/investmentMeta';
-import type { AssetClass, Currency, InvestmentPosition } from '@/data/types';
+import type { AssetClass, Currency, InvestmentPosition, SyncMeta } from '@/data/types';
+import { selectActiveInvestments } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatCurrency } from '@/utils/format';
 
+type Draft<T> = Omit<T, keyof SyncMeta>;
+
 export default function Inversiones() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
-  const investments = useAppStore((s) => s.investments);
+  const rawInvestments = useAppStore((s) => s.investments);
   const addInvestment = useAppStore((s) => s.addInvestment);
   const deleteInvestment = useAppStore((s) => s.deleteInvestment);
 
   const [showForm, setShowForm] = useState(false);
+  const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
 
   const totalInvested = investments.reduce((sum, i) => sum + i.amountInvested, 0);
 
@@ -90,7 +94,7 @@ function InvestmentForm({
   onCancel,
   defaultCurrency,
 }: {
-  onSave: (i: InvestmentPosition) => void;
+  onSave: (i: Draft<InvestmentPosition>) => void;
   onCancel: () => void;
   defaultCurrency: Currency;
 }) {
@@ -116,7 +120,6 @@ function InvestmentForm({
     const price = parseFloat(avgPrice.replace(',', '.'));
     if (Number.isNaN(amount) || Number.isNaN(price) || price <= 0) return;
     onSave({
-      id: `inv_${Date.now()}`,
       ticker: ticker.trim().toUpperCase(),
       name: name.trim() || ticker.trim().toUpperCase(),
       assetClass,

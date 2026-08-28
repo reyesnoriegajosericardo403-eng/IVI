@@ -81,6 +81,7 @@ export function spendByCategory(transactions: Transaction[], ref = new Date()): 
 export type BudgetStatus = 'normal' | 'attention' | 'warning' | 'exceeded';
 
 export interface BudgetLine {
+  budgetId: string;
   categoryId: string;
   categoryName: string;
   budgeted: number;
@@ -111,6 +112,7 @@ export function buildBudgetLines(
     const percentUsed = b.monthlyAmount > 0 ? Math.round((actual / b.monthlyAmount) * 100) : 0;
     const category = DEFAULT_CATEGORIES.find((c) => c.id === b.categoryId);
     return {
+      budgetId: b.id,
       categoryId: b.categoryId,
       categoryName: category?.name ?? b.categoryId,
       budgeted: b.monthlyAmount,

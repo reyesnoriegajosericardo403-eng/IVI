@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId } from '@/data/categories';
-import type { Currency, Transaction, TransactionType } from '@/data/types';
+import type { Currency, TransactionType } from '@/data/types';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -42,8 +42,7 @@ export default function NewTransaction() {
   const handleSave = () => {
     const value = parseFloat(amount.replace(',', '.'));
     if (Number.isNaN(value) || value <= 0) return;
-    const tx: Transaction = {
-      id: `tx_${Date.now()}`,
+    addTransaction({
       type,
       amount: value,
       currency,
@@ -52,9 +51,7 @@ export default function NewTransaction() {
       merchant: merchant.trim() || undefined,
       date: new Date().toISOString(),
       origin: 'manual',
-      createdAt: new Date().toISOString(),
-    };
-    addTransaction(tx);
+    });
     router.back();
   };
 

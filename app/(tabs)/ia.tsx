@@ -1,10 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { answerQuestion, SUGGESTED_QUESTIONS } from '@/ai/localCopilot';
+import { SUGGESTED_QUESTIONS } from '@/ai/localCopilot';
 import { ValuMark } from '@/components/ValuMark';
+import { providers } from '@/providers/registry';
+import {
+  selectActiveAccounts,
+  selectActiveBudgets,
+  selectActiveGoals,
+  selectActiveInvestments,
+  selectActiveLiabilities,
+  selectActiveTransactions,
+} from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -17,12 +26,19 @@ interface Message {
 export default function Ia() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
-  const transactions = useAppStore((s) => s.transactions);
-  const accounts = useAppStore((s) => s.accounts);
-  const investments = useAppStore((s) => s.investments);
-  const liabilities = useAppStore((s) => s.liabilities);
-  const budgets = useAppStore((s) => s.budgets);
-  const goals = useAppStore((s) => s.goals);
+  const rawTransactions = useAppStore((s) => s.transactions);
+  const rawAccounts = useAppStore((s) => s.accounts);
+  const rawInvestments = useAppStore((s) => s.investments);
+  const rawLiabilities = useAppStore((s) => s.liabilities);
+  const rawBudgets = useAppStore((s) => s.budgets);
+  const rawGoals = useAppStore((s) => s.goals);
+
+  const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
+  const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
+  const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
+  const liabilities = useMemo(() => selectActiveLiabilities(rawLiabilities), [rawLiabilities]);
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
+  const goals = useMemo(() => selectActiveGoals(rawGoals), [rawGoals]);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -33,13 +49,22 @@ export default function Ia() {
   ]);
   const [input, setInput] = useState('');
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     if (!text.trim()) return;
     const userMsg: Message = { id: `u_${Date.now()}`, role: 'user', text };
-    const answer = answerQuestion(text, { profile, transactions, accounts, investments, liabilities, budgets, goals });
-    const botMsg: Message = { id: `a_${Date.now()}`, role: 'assistant', text: answer };
-    setMessages((prev) => [...prev, userMsg, botMsg]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    const answer = await providers.copilot.answerQuestion(text, {
+      profile,
+      transactions,
+      accounts,
+      investments,
+      liabilities,
+      budgets,
+      goals,
+    });
+    const botMsg: Message = { id: `a_${Date.now()}`, role: 'assistant', text: answer };
+    setMessages((prev) => [...prev, botMsg]);
   };
 
   return (

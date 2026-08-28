@@ -4,12 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { isWebSpeechAvailable, startWebSpeechListening } from '@/ai/webSpeech';
-import { parseCaptureText, type ParsedCapture } from '@/ai/localParser';
+import type { ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { ValuMark } from '@/components/ValuMark';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
-import type { Transaction } from '@/data/types';
+import { providers } from '@/providers/registry';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatCurrency } from '@/utils/format';
@@ -40,8 +39,8 @@ export default function Capture() {
 
   const runParse = (raw: string) => {
     setStage('processing');
-    setTimeout(() => {
-      const result = parseCaptureText(raw);
+    setTimeout(async () => {
+      const result = await providers.ai.parseCaptureText(raw);
       resolveParsed(result);
     }, 380);
   };
@@ -62,8 +61,7 @@ export default function Capture() {
   const finalize = (result: ParsedCapture) => {
     const categoryId = result.categoryId ?? 'miscellaneous';
     const subcategoryId = result.subcategoryId ?? fallbackSubcategoryId(categoryId);
-    const tx: Transaction = {
-      id: `tx_${Date.now()}`,
+    addTransaction({
       type: result.type,
       amount: result.amount ?? 0,
       currency: result.currency,
@@ -72,18 +70,16 @@ export default function Capture() {
       merchant: result.merchant,
       date: new Date().toISOString(),
       origin: 'voice',
-      createdAt: new Date().toISOString(),
-    };
-    addTransaction(tx);
+    });
     setParsed({ ...result, categoryId, subcategoryId });
     setStage('confirm');
     closeTimerRef.current = setTimeout(() => router.back(), 1600);
   };
 
   const handleMicPress = () => {
-    if (isWebSpeechAvailable()) {
+    if (providers.speech.isAvailable()) {
       setStage('listening');
-      const stop = startWebSpeechListening({
+      const stop = providers.speech.startListening({
         onResult: (transcript) => {
           setText(transcript);
           runParse(transcript);

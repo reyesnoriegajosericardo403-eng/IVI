@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,7 +7,8 @@ import { GlassCard } from '@/components/GlassCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS, LIABILITY_TYPE_LABELS } from '@/data/accountMeta';
-import type { Account, AccountType, Currency, Liability, LiabilityType } from '@/data/types';
+import type { Account, AccountType, Currency, Liability, LiabilityType, SyncMeta } from '@/data/types';
+import { selectActiveAccounts, selectActiveInvestments, selectActiveLiabilities, selectActiveNetWorthHistory } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatCurrency, formatPercent } from '@/utils/format';
@@ -16,17 +17,24 @@ import { computeNetWorth, getNetWorthTrend } from '@/utils/finance';
 const ACCOUNT_TYPES: AccountType[] = ['cash', 'bank', 'savings', 'credit_card'];
 const LIABILITY_TYPES: LiabilityType[] = ['credit_card', 'student_loan', 'personal_loan', 'mortgage', 'other'];
 
+type Draft<T> = Omit<T, keyof SyncMeta>;
+
 export default function Patrimonio() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
-  const accounts = useAppStore((s) => s.accounts);
-  const investments = useAppStore((s) => s.investments);
-  const liabilities = useAppStore((s) => s.liabilities);
-  const netWorthHistory = useAppStore((s) => s.netWorthHistory);
+  const rawAccounts = useAppStore((s) => s.accounts);
+  const rawInvestments = useAppStore((s) => s.investments);
+  const rawLiabilities = useAppStore((s) => s.liabilities);
+  const rawNetWorthHistory = useAppStore((s) => s.netWorthHistory);
   const addAccount = useAppStore((s) => s.addAccount);
   const deleteAccount = useAppStore((s) => s.deleteAccount);
   const addLiability = useAppStore((s) => s.addLiability);
   const deleteLiability = useAppStore((s) => s.deleteLiability);
+
+  const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
+  const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
+  const liabilities = useMemo(() => selectActiveLiabilities(rawLiabilities), [rawLiabilities]);
+  const netWorthHistory = useMemo(() => selectActiveNetWorthHistory(rawNetWorthHistory), [rawNetWorthHistory]);
 
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [showLiabilityForm, setShowLiabilityForm] = useState(false);
@@ -196,7 +204,7 @@ function AccountForm({
   onCancel,
   defaultCurrency,
 }: {
-  onSave: (a: Account) => void;
+  onSave: (a: Draft<Account>) => void;
   onCancel: () => void;
   defaultCurrency: Currency;
 }) {
@@ -248,13 +256,11 @@ function AccountForm({
           disabled={!canSave}
           onPress={() =>
             onSave({
-              id: `acc_${Date.now()}`,
               name: name.trim(),
               type,
               currency: defaultCurrency,
               balance: parseFloat(balance),
               isLiability: type === 'credit_card',
-              lastUpdated: new Date().toISOString(),
             })
           }
           style={[styles.formSave, { backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.pill }]}
@@ -271,7 +277,7 @@ function LiabilityForm({
   onCancel,
   defaultCurrency,
 }: {
-  onSave: (l: Liability) => void;
+  onSave: (l: Draft<Liability>) => void;
   onCancel: () => void;
   defaultCurrency: Currency;
 }) {
@@ -323,7 +329,6 @@ function LiabilityForm({
           disabled={!canSave}
           onPress={() =>
             onSave({
-              id: `liab_${Date.now()}`,
               type,
               institution: institution.trim(),
               balance: parseFloat(balance),

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,14 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
 import { StatCard } from '@/components/StatCard';
+import {
+  selectActiveAccounts,
+  selectActiveBudgets,
+  selectActiveInvestments,
+  selectActiveLiabilities,
+  selectActiveNetWorthHistory,
+  selectActiveTransactions,
+} from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatCurrency, formatPercent } from '@/utils/format';
@@ -25,13 +33,20 @@ import {
 export default function Dashboard() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
-  const accounts = useAppStore((s) => s.accounts);
-  const investments = useAppStore((s) => s.investments);
-  const liabilities = useAppStore((s) => s.liabilities);
-  const transactions = useAppStore((s) => s.transactions);
-  const budgets = useAppStore((s) => s.budgets);
-  const netWorthHistory = useAppStore((s) => s.netWorthHistory);
+  const rawAccounts = useAppStore((s) => s.accounts);
+  const rawInvestments = useAppStore((s) => s.investments);
+  const rawLiabilities = useAppStore((s) => s.liabilities);
+  const rawTransactions = useAppStore((s) => s.transactions);
+  const rawBudgets = useAppStore((s) => s.budgets);
+  const rawNetWorthHistory = useAppStore((s) => s.netWorthHistory);
   const demoDataLoaded = useAppStore((s) => s.demoDataLoaded);
+
+  const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
+  const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
+  const liabilities = useMemo(() => selectActiveLiabilities(rawLiabilities), [rawLiabilities]);
+  const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
+  const netWorthHistory = useMemo(() => selectActiveNetWorthHistory(rawNetWorthHistory), [rawNetWorthHistory]);
 
   const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency);
   const monthTrend = getNetWorthTrend(netWorthHistory, 30);
