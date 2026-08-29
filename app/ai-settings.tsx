@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassCard } from '@/components/GlassCard';
@@ -11,7 +11,7 @@ import {
   LLM_PROVIDER_COST_NOTE,
   LLM_PROVIDER_DEFAULT_MODEL,
   LLM_PROVIDER_HAS_FREE_TIER,
-  LLM_PROVIDER_KEY_HELP,
+  LLM_PROVIDER_KEY_GUIDE,
   LLM_PROVIDER_LABELS,
   type LLMProviderId,
 } from '@/providers/llm/types';
@@ -132,7 +132,35 @@ export default function AiSettings() {
 
         {provider && (
           <GlassCard style={{ gap: spacing.md }}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>{LLM_PROVIDER_KEY_HELP[provider]}</Text>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>1. Consigue tu clave</Text>
+
+            {LLM_PROVIDER_KEY_GUIDE[provider].steps.map((step, i) => (
+              <View key={i} style={styles.stepRow}>
+                <View style={[styles.stepBadge, { backgroundColor: colors.accentSoft, borderRadius: 10 }]}>
+                  <Text style={{ color: colors.accentFrom, fontWeight: '700', fontSize: 12 }}>{i + 1}</Text>
+                </View>
+                <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}>{step}</Text>
+              </View>
+            ))}
+
+            <Pressable
+              onPress={() => Linking.openURL(LLM_PROVIDER_KEY_GUIDE[provider].url)}
+              style={[styles.linkBtn, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}
+            >
+              <Ionicons name="open-outline" size={16} color="#FFFFFF" />
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', marginLeft: 8 }}>
+                Abrir {LLM_PROVIDER_KEY_GUIDE[provider].urlLabel}
+              </Text>
+            </Pressable>
+
+            {LLM_PROVIDER_KEY_GUIDE[provider].warning && (
+              <View style={{ flexDirection: 'row', borderWidth: 1, borderColor: colors.danger, borderRadius: radius.md, padding: spacing.sm }}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.danger} style={{ marginTop: 1 }} />
+                <Text style={[typography.caption, { color: colors.danger, marginLeft: spacing.sm, flex: 1 }]}>
+                  {LLM_PROVIDER_KEY_GUIDE[provider].warning}
+                </Text>
+              </View>
+            )}
 
             <View
               style={{
@@ -152,6 +180,8 @@ export default function AiSettings() {
                 {LLM_PROVIDER_COST_NOTE[provider]}
               </Text>
             </View>
+
+            <Text style={[typography.headline, { color: colors.textPrimary, marginTop: spacing.sm }]}>2. Pégala aquí</Text>
 
             <TextInput
               value={apiKey}
@@ -232,4 +262,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   rowGap: { flexDirection: 'row', gap: 10, marginTop: 4 },
   secondaryBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderWidth: 1 },
+  stepRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  stepBadge: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  linkBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
 });
