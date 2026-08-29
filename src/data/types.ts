@@ -100,6 +100,10 @@ export interface InvestmentPosition extends SyncMeta {
   broker?: string;
   fees?: number;
   dividendsReceived?: number;
+  // Ganancia o pérdida ya realizada al vender parte de la posición —
+  // calculada solo con datos reales del usuario (precio de venta vs.
+  // costo promedio), nunca con precios de mercado inventados.
+  realizedPnL?: number;
   notes?: string;
   isDemo?: boolean;
 }

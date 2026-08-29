@@ -170,6 +170,53 @@ export interface HealthFactor {
   suggestion?: string;
 }
 
+export interface InvestmentTxInput {
+  operation: 'buy' | 'sell';
+  quantity: number;
+  price: number;
+  commission: number;
+}
+
+export interface InvestmentTxResult {
+  quantity: number;
+  avgCostPrice: number;
+  amountInvested: number;
+  realizedPnL: number;
+}
+
+// Aplica una compra o venta a una posición existente, usando solo los
+// números que el propio usuario captura (nunca un precio de mercado
+// inventado). En una venta, el costo promedio de las acciones que
+// quedan no cambia — solo se retira, a costo promedio, la parte
+// vendida, y la diferencia contra el precio de venta se vuelve
+// ganancia o pérdida realizada.
+export function applyInvestmentTransaction(
+  position: { quantity: number; avgCostPrice: number; amountInvested: number; realizedPnL?: number },
+  tx: InvestmentTxInput
+): InvestmentTxResult {
+  if (tx.operation === 'buy') {
+    const quantity = position.quantity + tx.quantity;
+    const amountInvested = position.amountInvested + tx.quantity * tx.price + tx.commission;
+    return {
+      quantity,
+      avgCostPrice: quantity > 0 ? amountInvested / quantity : 0,
+      amountInvested,
+      realizedPnL: position.realizedPnL ?? 0,
+    };
+  }
+
+  const sellQty = Math.min(tx.quantity, position.quantity);
+  const quantity = Math.max(0, position.quantity - sellQty);
+  const costBasisRemoved = sellQty * position.avgCostPrice;
+  const proceeds = sellQty * tx.price - tx.commission;
+  return {
+    quantity,
+    avgCostPrice: position.avgCostPrice,
+    amountInvested: Math.max(0, position.amountInvested - costBasisRemoved),
+    realizedPnL: (position.realizedPnL ?? 0) + (proceeds - costBasisRemoved),
+  };
+}
+
 export interface FinancialHealth {
   score: number;
   label: string;
