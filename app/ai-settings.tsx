@@ -8,7 +8,9 @@ import { GlassCard } from '@/components/GlassCard';
 import { createLLMClient } from '@/providers/llm/createClient';
 import { clearLLMProviderConfig, getLLMProviderConfig, isSecureStorageNative, setLLMProviderConfig } from '@/providers/llm/secureConfig';
 import {
+  LLM_PROVIDER_COST_NOTE,
   LLM_PROVIDER_DEFAULT_MODEL,
+  LLM_PROVIDER_HAS_FREE_TIER,
   LLM_PROVIDER_KEY_HELP,
   LLM_PROVIDER_LABELS,
   type LLMProviderId,
@@ -131,6 +133,25 @@ export default function AiSettings() {
         {provider && (
           <GlassCard style={{ gap: spacing.md }}>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>{LLM_PROVIDER_KEY_HELP[provider]}</Text>
+
+            <View
+              style={{
+                flexDirection: 'row',
+                backgroundColor: colors.accentSoft,
+                borderRadius: radius.md,
+                padding: spacing.sm,
+              }}
+            >
+              <Ionicons
+                name={LLM_PROVIDER_HAS_FREE_TIER[provider] ? 'gift-outline' : 'cash-outline'}
+                size={16}
+                color={colors.accentFrom}
+                style={{ marginTop: 1 }}
+              />
+              <Text style={[typography.caption, { color: colors.accentFrom, marginLeft: spacing.sm, flex: 1 }]}>
+                {LLM_PROVIDER_COST_NOTE[provider]}
+              </Text>
+            </View>
 
             <TextInput
               value={apiKey}

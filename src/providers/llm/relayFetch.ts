@@ -26,6 +26,11 @@ export async function providerFetch(url: string, headers: Record<string, string>
       },
       body: JSON.stringify({ url, headers, body }),
     });
+    if (res.status === 404) {
+      throw new Error(
+        'La función de relevo (ai-relay) todavía no está desplegada en tu proyecto de Supabase. Sin ella, la IA no puede responder en la versión web (funciona ya en la app nativa). Pide que se despliegue desde Supabase → Edge Functions.'
+      );
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`El relevo respondió con error (${res.status}): ${text.slice(0, 200)}`);
