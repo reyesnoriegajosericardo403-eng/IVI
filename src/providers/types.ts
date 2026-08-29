@@ -49,7 +49,13 @@ export interface SpeechToTextProvider {
   name: string;
   isAvailable(): boolean;
   startListening(handlers: {
+    // Texto final acumulado hasta ahora (crece conforme el usuario habla
+    // varias frases seguidas en una sola grabación).
     onResult: (transcript: string) => void;
+    // Texto parcial de la frase actual, para reflejarlo en pantalla en
+    // vivo mientras el usuario todavía está hablando (spec: "que mientras
+    // se vaya hablando se vaya reflejando en la pantalla").
+    onInterim?: (transcript: string) => void;
     onError: (message: string) => void;
     onEnd: () => void;
   }): (() => void) | null;

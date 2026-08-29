@@ -118,6 +118,20 @@ function extractCategory(text: string): { categoryId: string | null; subcategory
   return { categoryId: null, subcategoryId: null };
 }
 
+// Divide una sola grabación/nota en varios movimientos cuando el usuario
+// dijo/escribió más de uno de golpe (spec: "necesito anotar 3 cosas a la
+// vez"). Heurística simple por conectores comunes en español — cada
+// segmento se parsea por separado con el proveedor de IA configurado.
+const SEGMENT_SPLIT_REGEX = /\n+|,+|;+|\s+y también\s+|\s+y además\s+|\s+también\s+|\s+además\s+|\s+y\s+/gi;
+
+export function splitCaptureSegments(rawText: string): string[] {
+  const segments = rawText
+    .split(SEGMENT_SPLIT_REGEX)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 1);
+  return segments.length > 0 ? segments : [rawText.trim()];
+}
+
 export function parseCaptureText(rawText: string): ParsedCapture {
   const type = extractType(rawText);
   const amount = extractAmount(rawText);
