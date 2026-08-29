@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DualLineChart } from '@/components/DualLineChart';
 import { GlassCard } from '@/components/GlassCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
@@ -41,6 +42,8 @@ export default function Patrimonio() {
 
   const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency);
   const sparkData = netWorthHistory.map((h) => h.netWorth);
+  const assetsHistory = netWorthHistory.map((h) => h.assets);
+  const liabilitiesHistory = netWorthHistory.map((h) => h.liabilities);
 
   const trends = [
     { label: '1 día', value: getNetWorthTrend(netWorthHistory, 1) },
@@ -97,6 +100,32 @@ export default function Patrimonio() {
             </Text>
           </GlassCard>
         </View>
+
+        {assetsHistory.length >= 2 && (
+          <GlassCard style={{ gap: spacing.sm }}>
+            <View style={styles.rowBetween}>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>Activos y pasivos en el tiempo</Text>
+              <View style={styles.rowGap}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+                  <Text style={[typography.micro, { color: colors.textTertiary }]}>Activos</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
+                  <Text style={[typography.micro, { color: colors.textTertiary }]}>Pasivos</Text>
+                </View>
+              </View>
+            </View>
+            <DualLineChart
+              seriesA={assetsHistory}
+              seriesB={liabilitiesHistory}
+              colorA={colors.success}
+              colorB={colors.danger}
+              width={300}
+              height={100}
+            />
+          </GlassCard>
+        )}
 
         {investmentTotal > 0 && (
           <Text style={[typography.caption, { color: colors.textTertiary }]}>
@@ -346,6 +375,9 @@ function LiabilityForm({
 
 const styles = StyleSheet.create({
   rowGap: { flexDirection: 'row', gap: 12 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
   trendRow: { flexDirection: 'row', justifyContent: 'space-between' },
   trendItem: { alignItems: 'flex-start' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
