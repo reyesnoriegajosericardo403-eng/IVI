@@ -39,6 +39,10 @@ export default function Patrimonio() {
 
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [showLiabilityForm, setShowLiabilityForm] = useState(false);
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [editingLiabilityId, setEditingLiabilityId] = useState<string | null>(null);
+  const updateAccount = useAppStore((s) => s.updateAccount);
+  const updateLiability = useAppStore((s) => s.updateLiability);
 
   const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency);
   const sparkData = netWorthHistory.map((h) => h.netWorth);
@@ -155,21 +159,41 @@ export default function Patrimonio() {
           <Text style={[typography.caption, { color: colors.textTertiary }]}>Aún no tienes cuentas registradas.</Text>
         )}
 
-        {accounts.map((a) => (
-          <GlassCard key={a.id} style={styles.listRow}>
-            <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={18} color={colors.accentFrom} />
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>{ACCOUNT_TYPE_LABELS[a.type]}</Text>
-            </View>
-            <Text style={[typography.headline, { color: a.isLiability ? colors.danger : colors.textPrimary, marginRight: spacing.sm }]}>
-              {formatCurrency(a.balance, a.currency)}
-            </Text>
-            <Pressable onPress={() => deleteAccount(a.id)}>
-              <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
-            </Pressable>
-          </GlassCard>
-        ))}
+        {accounts.map((a) =>
+          editingAccountId === a.id ? (
+            <AccountForm
+              key={a.id}
+              initial={a}
+              onCancel={() => setEditingAccountId(null)}
+              onSave={(patch) => {
+                updateAccount(a.id, patch);
+                setEditingAccountId(null);
+              }}
+              defaultCurrency={profile.primaryCurrency}
+            />
+          ) : (
+            <GlassCard key={a.id} style={styles.listRow}>
+              <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={18} color={colors.accentFrom} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>{ACCOUNT_TYPE_LABELS[a.type]}</Text>
+              </View>
+              <Text style={[typography.headline, { color: a.isLiability ? colors.danger : colors.textPrimary, marginRight: spacing.sm }]}>
+                {formatCurrency(a.balance, a.currency)}
+              </Text>
+              <Pressable
+                accessibilityLabel={`Editar ${a.name}`}
+                onPress={() => setEditingAccountId(a.id)}
+                style={{ marginRight: spacing.sm }}
+              >
+                <Ionicons name="pencil-outline" size={18} color={colors.textTertiary} />
+              </Pressable>
+              <Pressable accessibilityLabel={`Eliminar ${a.name}`} onPress={() => deleteAccount(a.id)}>
+                <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+              </Pressable>
+            </GlassCard>
+          )
+        )}
 
         <SectionHeader
           title="Deudas"
@@ -193,24 +217,50 @@ export default function Patrimonio() {
           <Text style={[typography.caption, { color: colors.textTertiary }]}>Sin deudas registradas.</Text>
         )}
 
-        {liabilities.map((l) => (
-          <GlassCard key={l.id} style={styles.listRow}>
-            <Ionicons name="card-outline" size={18} color={colors.danger} />
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text style={[typography.headline, { color: colors.textPrimary }]}>{l.institution}</Text>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                {LIABILITY_TYPE_LABELS[l.type]}
-                {l.interestRate ? ` · ${l.interestRate}% anual` : ''}
-              </Text>
-            </View>
-            <Text style={[typography.headline, { color: colors.danger, marginRight: spacing.sm }]}>
-              {formatCurrency(l.balance, l.currency)}
-            </Text>
-            <Pressable onPress={() => deleteLiability(l.id)}>
-              <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
-            </Pressable>
-          </GlassCard>
-        ))}
+        {liabilities.map((l) =>
+          editingLiabilityId === l.id ? (
+            <LiabilityForm
+              key={l.id}
+              initial={l}
+              onCancel={() => setEditingLiabilityId(null)}
+              onSave={(patch) => {
+                updateLiability(l.id, patch);
+                setEditingLiabilityId(null);
+              }}
+              defaultCurrency={profile.primaryCurrency}
+            />
+          ) : (
+            <GlassCard key={l.id} style={{ gap: spacing.xs }}>
+              <View style={styles.listRow}>
+                <Ionicons name="card-outline" size={18} color={colors.danger} />
+                <View style={{ flex: 1, marginLeft: spacing.md }}>
+                  <Text style={[typography.headline, { color: colors.textPrimary }]}>{l.institution}</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                    {LIABILITY_TYPE_LABELS[l.type]}
+                    {l.interestRate ? ` · ${l.interestRate}% anual` : ''}
+                    {l.dueDate ? ` · vence ${l.dueDate}` : ''}
+                  </Text>
+                </View>
+                <Text style={[typography.headline, { color: colors.danger, marginRight: spacing.sm }]}>
+                  {formatCurrency(l.balance, l.currency)}
+                </Text>
+                <Pressable
+                  accessibilityLabel={`Editar ${l.institution}`}
+                  onPress={() => setEditingLiabilityId(l.id)}
+                  style={{ marginRight: spacing.sm }}
+                >
+                  <Ionicons name="pencil-outline" size={18} color={colors.textTertiary} />
+                </Pressable>
+                <Pressable accessibilityLabel={`Eliminar ${l.institution}`} onPress={() => deleteLiability(l.id)}>
+                  <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+                </Pressable>
+              </View>
+              {l.notes && (
+                <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 30 }]}>{l.notes}</Text>
+              )}
+            </GlassCard>
+          )
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -232,17 +282,28 @@ function AccountForm({
   onSave,
   onCancel,
   defaultCurrency,
+  initial,
 }: {
   onSave: (a: Draft<Account>) => void;
   onCancel: () => void;
   defaultCurrency: Currency;
+  initial?: Account;
 }) {
   const { colors, typography, spacing, radius } = useTheme();
-  const [name, setName] = useState('');
-  const [type, setType] = useState<AccountType>('bank');
-  const [balance, setBalance] = useState('');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [type, setType] = useState<AccountType>(initial?.type ?? 'bank');
+  const [balance, setBalance] = useState(initial ? String(initial.balance) : '');
+  const [adjustAmount, setAdjustAmount] = useState('');
 
   const canSave = name.trim().length > 0 && balance.length > 0 && !Number.isNaN(parseFloat(balance));
+
+  const applyAdjust = (sign: 1 | -1) => {
+    const delta = parseFloat(adjustAmount.replace(',', '.'));
+    if (Number.isNaN(delta) || delta <= 0) return;
+    const current = parseFloat(balance) || 0;
+    setBalance(String(current + sign * delta));
+    setAdjustAmount('');
+  };
 
   return (
     <GlassCard style={{ gap: spacing.md }}>
@@ -277,6 +338,32 @@ function AccountForm({
         placeholderTextColor={colors.textTertiary}
         style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />
+      {initial && (
+        <View style={styles.adjustRow}>
+          <TextInput
+            value={adjustAmount}
+            onChangeText={setAdjustAmount}
+            keyboardType="decimal-pad"
+            placeholder="Sumar o restar al saldo"
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+          />
+          <Pressable
+            accessibilityLabel="Sumar al saldo"
+            onPress={() => applyAdjust(1)}
+            style={[styles.adjustBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+          >
+            <Ionicons name="add" size={18} color={colors.success} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Restar al saldo"
+            onPress={() => applyAdjust(-1)}
+            style={[styles.adjustBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+          >
+            <Ionicons name="remove" size={18} color={colors.danger} />
+          </Pressable>
+        </View>
+      )}
       <View style={styles.formActions}>
         <Pressable onPress={onCancel} style={styles.formCancel}>
           <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
@@ -305,17 +392,30 @@ function LiabilityForm({
   onSave,
   onCancel,
   defaultCurrency,
+  initial,
 }: {
   onSave: (l: Draft<Liability>) => void;
   onCancel: () => void;
   defaultCurrency: Currency;
+  initial?: Liability;
 }) {
   const { colors, spacing, radius } = useTheme();
-  const [institution, setInstitution] = useState('');
-  const [type, setType] = useState<LiabilityType>('credit_card');
-  const [balance, setBalance] = useState('');
+  const [institution, setInstitution] = useState(initial?.institution ?? '');
+  const [type, setType] = useState<LiabilityType>(initial?.type ?? 'credit_card');
+  const [balance, setBalance] = useState(initial ? String(initial.balance) : '');
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? '');
+  const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [adjustAmount, setAdjustAmount] = useState('');
 
   const canSave = institution.trim().length > 0 && balance.length > 0 && !Number.isNaN(parseFloat(balance));
+
+  const applyAdjust = (sign: 1 | -1) => {
+    const delta = parseFloat(adjustAmount.replace(',', '.'));
+    if (Number.isNaN(delta) || delta <= 0) return;
+    const current = parseFloat(balance) || 0;
+    setBalance(String(current + sign * delta));
+    setAdjustAmount('');
+  };
 
   return (
     <GlassCard style={{ gap: spacing.md }}>
@@ -350,6 +450,47 @@ function LiabilityForm({
         placeholderTextColor={colors.textTertiary}
         style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />
+      {initial && (
+        <View style={styles.adjustRow}>
+          <TextInput
+            value={adjustAmount}
+            onChangeText={setAdjustAmount}
+            keyboardType="decimal-pad"
+            placeholder="Sumar o restar al saldo"
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+          />
+          <Pressable
+            accessibilityLabel="Sumar al saldo"
+            onPress={() => applyAdjust(1)}
+            style={[styles.adjustBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+          >
+            <Ionicons name="add" size={18} color={colors.success} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Restar al saldo"
+            onPress={() => applyAdjust(-1)}
+            style={[styles.adjustBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+          >
+            <Ionicons name="remove" size={18} color={colors.danger} />
+          </Pressable>
+        </View>
+      )}
+      <TextInput
+        value={dueDate}
+        onChangeText={setDueDate}
+        placeholder="Fecha de pago (AAAA-MM-DD)"
+        placeholderTextColor={colors.textTertiary}
+        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+      />
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        placeholder="Nota o recordatorio (opcional)"
+        placeholderTextColor={colors.textTertiary}
+        multiline
+        style={[styles.input, styles.notesInput, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+      />
       <View style={styles.formActions}>
         <Pressable onPress={onCancel} style={styles.formCancel}>
           <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
@@ -362,6 +503,8 @@ function LiabilityForm({
               institution: institution.trim(),
               balance: parseFloat(balance),
               currency: defaultCurrency,
+              dueDate: dueDate.trim() || undefined,
+              notes: notes.trim() || undefined,
             })
           }
           style={[styles.formSave, { backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.pill }]}
@@ -384,7 +527,10 @@ const styles = StyleSheet.create({
   addLink: { flexDirection: 'row', alignItems: 'center' },
   listRow: { flexDirection: 'row', alignItems: 'center' },
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
+  notesInput: { minHeight: 60, textAlignVertical: 'top' },
   typeChip: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
+  adjustRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  adjustBtn: { width: 40, height: 40, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, alignItems: 'center' },
   formCancel: { paddingVertical: 10, paddingHorizontal: 8 },
   formSave: { paddingVertical: 10, paddingHorizontal: 20 },

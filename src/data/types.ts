@@ -117,6 +117,7 @@ export interface Liability extends SyncMeta {
   startDate?: string;
   estimatedPayoffDate?: string;
   currency: Currency;
+  notes?: string;
   isDemo?: boolean;
 }
 
