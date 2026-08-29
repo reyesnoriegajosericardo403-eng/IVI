@@ -153,14 +153,19 @@ export default function Dashboard() {
           </Pressable>
         </View>
 
-        <GlassCard style={{ gap: spacing.sm }}>
-          <View style={styles.spaceBetween}>
-            <Text style={[typography.headline, { color: colors.textPrimary }]}>Salud financiera</Text>
-            <Text style={[typography.headline, { color: colors.accentFrom }]}>{health.score}/100</Text>
-          </View>
-          <ProgressBar percent={health.score} status={health.score >= 60 ? 'normal' : health.score >= 40 ? 'attention' : 'exceeded'} />
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>{health.label}</Text>
-        </GlassCard>
+        <Pressable onPress={() => router.push('/salud-financiera')}>
+          <GlassCard style={{ gap: spacing.sm }}>
+            <View style={styles.spaceBetween}>
+              <Text style={[typography.headline, { color: colors.textPrimary }]}>Salud financiera</Text>
+              <Text style={[typography.headline, { color: colors.accentFrom }]}>{health.score}/100</Text>
+            </View>
+            <ProgressBar percent={health.score} status={health.score >= 60 ? 'normal' : health.score >= 40 ? 'attention' : 'exceeded'} />
+            <View style={styles.spaceBetween}>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>{health.label}</Text>
+              <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>Ver desglose →</Text>
+            </View>
+          </GlassCard>
+        </Pressable>
 
         <View>
           <View style={[styles.spaceBetween, { marginBottom: spacing.sm }]}>

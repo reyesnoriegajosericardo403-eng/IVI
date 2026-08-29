@@ -158,15 +158,30 @@ export function previousMonthSpend(transactions: Transaction[]): number {
   return spendInPeriod(transactions, ref);
 }
 
+export type HealthFactorStatus = 'positive' | 'attention' | 'negative';
+
+export interface HealthFactor {
+  key: string;
+  title: string;
+  status: HealthFactorStatus;
+  points: number;
+  maxPoints: number;
+  detail: string;
+  suggestion?: string;
+}
+
 export interface FinancialHealth {
   score: number;
   label: string;
   factors: string[];
   suggestions: string[];
+  baseScore: number;
+  breakdown: HealthFactor[];
 }
 
 // Heurística simple y transparente — no es un diagnóstico financiero
-// profesional (spec sección 23).
+// profesional (spec sección 23). Todo el puntaje se puede explicar con
+// el desglose que se devuelve en `breakdown`.
 export function computeFinancialHealth(params: {
   netWorth: NetWorthBreakdown;
   emergencyFundBalance: number;
@@ -174,28 +189,73 @@ export function computeFinancialHealth(params: {
   budgetLines: BudgetLine[];
 }): FinancialHealth {
   const { netWorth, emergencyFundBalance, monthlySpend, budgetLines } = params;
-  let score = 50;
+  const baseScore = 50;
+  let score = baseScore;
   const factors: string[] = [];
   const suggestions: string[] = [];
+  const breakdown: HealthFactor[] = [];
 
   if (netWorth.netWorth > 0) {
     score += 15;
     factors.push('Patrimonio neto positivo');
+    breakdown.push({
+      key: 'netWorth',
+      title: 'Patrimonio neto',
+      status: 'positive',
+      points: 15,
+      maxPoints: 15,
+      detail: 'Tus activos valen más que tus deudas.',
+    });
   } else {
     factors.push('Patrimonio neto negativo');
     suggestions.push('Trabaja en reducir tus pasivos para tener patrimonio positivo.');
+    breakdown.push({
+      key: 'netWorth',
+      title: 'Patrimonio neto',
+      status: 'negative',
+      points: 0,
+      maxPoints: 15,
+      detail: 'Tus deudas superan el valor de tus activos.',
+      suggestion: 'Trabaja en reducir tus pasivos para tener patrimonio positivo.',
+    });
   }
 
   const monthsCovered = monthlySpend > 0 ? emergencyFundBalance / monthlySpend : 0;
   if (monthsCovered >= 3) {
     score += 20;
     factors.push('Fondo de emergencia cubre 3+ meses');
+    breakdown.push({
+      key: 'emergencyFund',
+      title: 'Fondo de emergencia',
+      status: 'positive',
+      points: 20,
+      maxPoints: 20,
+      detail: `Cubre ${monthsCovered.toFixed(1)} meses de tu gasto — cumple el mínimo recomendado de 3.`,
+    });
   } else if (monthsCovered > 0) {
     score += 8;
     factors.push(`Fondo de emergencia cubre ${monthsCovered.toFixed(1)} meses`);
     suggestions.push('Aumenta tu fondo de emergencia hasta cubrir al menos 3 meses de gasto.');
+    breakdown.push({
+      key: 'emergencyFund',
+      title: 'Fondo de emergencia',
+      status: 'attention',
+      points: 8,
+      maxPoints: 20,
+      detail: `Cubre ${monthsCovered.toFixed(1)} de los 3 meses recomendados.`,
+      suggestion: 'Aumenta tu fondo de emergencia hasta cubrir al menos 3 meses de gasto.',
+    });
   } else {
     suggestions.push('Empieza un fondo de emergencia, aunque sea con aportaciones pequeñas.');
+    breakdown.push({
+      key: 'emergencyFund',
+      title: 'Fondo de emergencia',
+      status: 'negative',
+      points: 0,
+      maxPoints: 20,
+      detail: 'Aún no tienes ahorro identificado como fondo de emergencia.',
+      suggestion: 'Empieza un fondo de emergencia, aunque sea con aportaciones pequeñas.',
+    });
   }
 
   const exceededCount = budgetLines.filter((b) => b.status === 'exceeded').length;
@@ -203,10 +263,37 @@ export function computeFinancialHealth(params: {
     if (exceededCount === 0) {
       score += 15;
       factors.push('Presupuesto bajo control');
+      breakdown.push({
+        key: 'budget',
+        title: 'Presupuesto',
+        status: 'positive',
+        points: 15,
+        maxPoints: 15,
+        detail: 'Ninguna categoría con presupuesto está excedida este mes.',
+      });
     } else {
       factors.push(`${exceededCount} categoría(s) excedida(s)`);
       suggestions.push('Revisa las categorías que excedieron su presupuesto este mes.');
+      breakdown.push({
+        key: 'budget',
+        title: 'Presupuesto',
+        status: 'negative',
+        points: 0,
+        maxPoints: 15,
+        detail: `${exceededCount} categoría(s) excedieron su presupuesto este mes.`,
+        suggestion: 'Revisa las categorías que excedieron su presupuesto este mes.',
+      });
     }
+  } else {
+    breakdown.push({
+      key: 'budget',
+      title: 'Presupuesto',
+      status: 'attention',
+      points: 0,
+      maxPoints: 15,
+      detail: 'Aún no has definido presupuestos por categoría, así que no suma ni resta puntos.',
+      suggestion: 'Define presupuestos por categoría para que este factor cuente en tu puntaje.',
+    });
   }
 
   score = Math.max(0, Math.min(100, score));
@@ -216,5 +303,5 @@ export function computeFinancialHealth(params: {
   else if (score >= 60) label = 'Buena salud financiera';
   else if (score >= 40) label = 'Salud financiera moderada';
 
-  return { score, label, factors, suggestions };
+  return { score, label, factors, suggestions, baseScore, breakdown };
 }
