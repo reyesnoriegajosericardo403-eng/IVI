@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CalendarPicker } from '@/components/CalendarPicker';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { GlassCard } from '@/components/GlassCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -12,6 +13,7 @@ import type { Transaction } from '@/data/types';
 import { selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { formatDateDMY, todayISO } from '@/utils/date';
 import { formatCurrency, formatRelativeDay } from '@/utils/format';
 
 interface Section {
@@ -36,20 +38,65 @@ export default function Movimientos() {
   const rawTransactions = useAppStore((s) => s.transactions);
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
 
-  const sections = useMemo(() => groupByDay(transactions), [transactions]);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [monthIso, setMonthIso] = useState(todayISO());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  const markedIsoDates = useMemo(() => new Set(transactions.map((t) => t.date.slice(0, 10))), [transactions]);
+
+  const visibleTransactions = useMemo(
+    () => (selectedDay ? transactions.filter((t) => t.date.slice(0, 10) === selectedDay) : transactions),
+    [transactions, selectedDay]
+  );
+
+  const sections = useMemo(() => groupByDay(visibleTransactions), [visibleTransactions]);
   const flatData = useMemo(() => sections.flatMap((s) => [{ type: 'header' as const, title: s.title }, ...s.data.map((t) => ({ type: 'tx' as const, tx: t }))]), [sections]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-        <ScreenHeader title="Movimientos" subtitle={`${transactions.length} registrados`} />
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <ScreenHeader title="Movimientos" subtitle={`${visibleTransactions.length} registrados`} />
+          </View>
+          <Pressable
+            accessibilityLabel={showCalendar ? 'Ocultar calendario' : 'Ver calendario'}
+            onPress={() => setShowCalendar((v) => !v)}
+            style={[styles.calendarBtn, { backgroundColor: showCalendar ? colors.accentSoft : colors.surfaceSolid, borderRadius: radius.md }]}
+          >
+            <Ionicons name="calendar-outline" size={20} color={colors.accentFrom} />
+          </Pressable>
+        </View>
+
+        {showCalendar && (
+          <GlassCard style={{ marginTop: spacing.md }}>
+            <CalendarPicker
+              monthIso={monthIso}
+              selectedIso={selectedDay ?? undefined}
+              onChangeMonth={setMonthIso}
+              onSelectDay={(iso) => setSelectedDay((current) => (current === iso ? null : iso))}
+              markedIsoDates={markedIsoDates}
+            />
+          </GlassCard>
+        )}
+
+        {selectedDay && (
+          <Pressable onPress={() => setSelectedDay(null)} style={[styles.filterChip, { borderColor: colors.accentFrom, borderRadius: radius.pill }]}>
+            <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>
+              {formatDateDMY(selectedDay)}
+            </Text>
+            <Ionicons name="close" size={14} color={colors.accentFrom} style={{ marginLeft: 6 }} />
+          </Pressable>
+        )}
       </View>
 
-      {transactions.length === 0 ? (
+      {visibleTransactions.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="mic-outline" size={40} color={colors.textTertiary} />
+          <Ionicons name={selectedDay ? 'calendar-outline' : 'mic-outline'} size={40} color={colors.textTertiary} />
           <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center', marginTop: spacing.md }]}>
-            Toca el botón de voz para registrar tu primer movimiento en segundos.
+            {selectedDay
+              ? 'No hay movimientos registrados ese día.'
+              : 'Toca el botón de voz para registrar tu primer movimiento en segundos.'}
           </Text>
         </View>
       ) : (
@@ -111,6 +158,9 @@ export default function Movimientos() {
 }
 
 const styles = StyleSheet.create({
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  calendarBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  filterChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   txCard: { flexDirection: 'row', alignItems: 'center' },
   addBtn: {

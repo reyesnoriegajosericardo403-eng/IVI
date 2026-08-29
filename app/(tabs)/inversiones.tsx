@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -12,14 +13,11 @@ import type { AssetClass, Currency, InvestmentPosition, SyncMeta } from '@/data/
 import { selectActiveInvestments } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { todayISO } from '@/utils/date';
 import { applyInvestmentTransaction } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
 
 type Draft<T> = Omit<T, keyof SyncMeta>;
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function round4(n: number): number {
   return Math.round(n * 10000) / 10000;
@@ -354,13 +352,7 @@ function InvestmentForm({
         placeholderTextColor={colors.textTertiary}
         style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />
-      <TextInput
-        value={date}
-        onChangeText={setDate}
-        placeholder="Fecha (AAAA-MM-DD)"
-        placeholderTextColor={colors.textTertiary}
-        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      />
+      <DateField value={date} onChange={setDate} placeholder="Fecha de la operación" />
       <TextInput
         value={notes}
         onChangeText={setNotes}
@@ -482,13 +474,7 @@ function TransactionForm({
         placeholderTextColor={colors.textTertiary}
         style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />
-      <TextInput
-        value={date}
-        onChangeText={setDate}
-        placeholder="Fecha (AAAA-MM-DD)"
-        placeholderTextColor={colors.textTertiary}
-        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      />
+      <DateField value={date} onChange={setDate} placeholder="Fecha de la operación" />
       <TextInput
         value={notes}
         onChangeText={setNotes}

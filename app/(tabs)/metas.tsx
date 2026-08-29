@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -10,6 +11,7 @@ import type { Currency, Goal, SyncMeta } from '@/data/types';
 import { selectActiveGoals } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { parseISODate } from '@/utils/date';
 import { formatCurrency } from '@/utils/format';
 
 type Draft<T> = Omit<T, keyof SyncMeta>;
@@ -25,7 +27,7 @@ function milestoneMessage(percent: number): string {
 function pacingMessage(remaining: number, targetDate: string | undefined, currency: Currency): string | null {
   if (!targetDate || remaining <= 0) return null;
   const today = new Date();
-  const target = new Date(targetDate);
+  const target = parseISODate(targetDate);
   const daysLeft = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   if (daysLeft <= 0) return null;
   const weeksLeft = Math.max(1, Math.ceil(daysLeft / 7));
@@ -138,13 +140,7 @@ export default function Metas() {
               placeholderTextColor={colors.textTertiary}
               style={[styles.smallInput, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
             />
-            <TextInput
-              value={targetDate}
-              onChangeText={setTargetDate}
-              placeholder="Fecha objetivo (opcional, AAAA-MM-DD)"
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.smallInput, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-            />
+            <DateField value={targetDate} onChange={setTargetDate} placeholder="Fecha objetivo (opcional)" />
             <View style={styles.rowEnd}>
               <Pressable onPress={() => setShowForm(false)}>
                 <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
@@ -299,13 +295,7 @@ function GoalEditForm({
         placeholderTextColor={colors.textTertiary}
         style={[styles.smallInput, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />
-      <TextInput
-        value={targetDate}
-        onChangeText={setTargetDate}
-        placeholder="Fecha objetivo (opcional, AAAA-MM-DD)"
-        placeholderTextColor={colors.textTertiary}
-        style={[styles.smallInput, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      />
+      <DateField value={targetDate} onChange={setTargetDate} placeholder="Fecha objetivo (opcional)" />
       <View style={styles.rowEnd}>
         <Pressable onPress={onCancel}>
           <Text style={{ color: colors.textSecondary }}>Cancelar</Text>

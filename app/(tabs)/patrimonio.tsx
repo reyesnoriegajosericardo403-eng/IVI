@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DualLineChart } from '@/components/DualLineChart';
+import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
@@ -12,6 +13,7 @@ import type { Account, AccountType, Currency, Liability, LiabilityType, SyncMeta
 import { selectActiveAccounts, selectActiveInvestments, selectActiveLiabilities, selectActiveNetWorthHistory } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { formatDateDMY } from '@/utils/date';
 import { formatCurrency, formatPercent } from '@/utils/format';
 import { computeNetWorth, getNetWorthTrend } from '@/utils/finance';
 
@@ -238,7 +240,7 @@ export default function Patrimonio() {
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
                     {LIABILITY_TYPE_LABELS[l.type]}
                     {l.interestRate ? ` · ${l.interestRate}% anual` : ''}
-                    {l.dueDate ? ` · vence ${l.dueDate}` : ''}
+                    {l.dueDate ? ` · vence ${formatDateDMY(l.dueDate)}` : ''}
                   </Text>
                 </View>
                 <Text style={[typography.headline, { color: colors.danger, marginRight: spacing.sm }]}>
@@ -476,13 +478,7 @@ function LiabilityForm({
           </Pressable>
         </View>
       )}
-      <TextInput
-        value={dueDate}
-        onChangeText={setDueDate}
-        placeholder="Fecha de pago (AAAA-MM-DD)"
-        placeholderTextColor={colors.textTertiary}
-        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      />
+      <DateField value={dueDate} onChange={setDueDate} placeholder="Fecha de pago" />
       <TextInput
         value={notes}
         onChangeText={setNotes}
