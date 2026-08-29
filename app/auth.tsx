@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet } from 'react-native';
@@ -14,13 +15,25 @@ export default function Auth() {
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setError('');
+    setConfirmPassword('');
+  };
 
   const handleSubmit = async () => {
     setError('');
     if (!email.includes('@') || password.length < 6) {
       setError('Escribe un correo válido y una contraseña de al menos 6 caracteres.');
+      return;
+    }
+    if (mode === 'signUp' && password !== confirmPassword) {
+      setError('Las contraseñas no coinciden. Revísalas e intenta de nuevo.');
       return;
     }
     setLoading(true);
@@ -32,7 +45,7 @@ export default function Auth() {
     }
     if (mode === 'signUp') {
       setError('Cuenta creada. Revisa tu correo si te pedimos confirmarlo, luego inicia sesión.');
-      setMode('signIn');
+      switchMode('signIn');
       return;
     }
     router.replace('/');
@@ -65,17 +78,44 @@ export default function Auth() {
                 { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md, backgroundColor: colors.surfaceSolid },
               ]}
             />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Contraseña"
-              placeholderTextColor={colors.textTertiary}
-              secureTextEntry
-              style={[
-                styles.input,
-                { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md, backgroundColor: colors.surfaceSolid },
-              ]}
-            />
+
+            <View style={styles.passwordRow}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Contraseña"
+                placeholderTextColor={colors.textTertiary}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md, backgroundColor: colors.surfaceSolid },
+                ]}
+              />
+              <Pressable
+                onPress={() => setShowPassword((v) => !v)}
+                style={styles.eyeButton}
+                accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {mode === 'signUp' && (
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirmar contraseña"
+                placeholderTextColor={colors.textTertiary}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                style={[
+                  styles.input,
+                  { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md, backgroundColor: colors.surfaceSolid },
+                ]}
+              />
+            )}
           </View>
 
           {error.length > 0 && (
@@ -92,7 +132,7 @@ export default function Auth() {
             </Text>
           </Pressable>
 
-          <Pressable onPress={() => setMode(mode === 'signIn' ? 'signUp' : 'signIn')} style={{ alignItems: 'center' }}>
+          <Pressable onPress={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')} style={{ alignItems: 'center' }}>
             <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>
               {mode === 'signIn' ? '¿Primera vez? Crea tu cuenta' : '¿Ya tienes cuenta? Inicia sesión'}
             </Text>
@@ -106,5 +146,8 @@ export default function Auth() {
 const styles = StyleSheet.create({
   header: { alignItems: 'center' },
   input: { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16 },
+  passwordRow: { position: 'relative', justifyContent: 'center' },
+  passwordInput: { paddingRight: 48 },
+  eyeButton: { position: 'absolute', right: 4, height: '100%', paddingHorizontal: 12, justifyContent: 'center' },
   cta: { paddingVertical: 16, alignItems: 'center' },
 });
