@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { registerConfiguredLLMProvider } from '@/providers/llm/registerConfiguredProvider';
 import { useAuthSession } from '@/services/auth/useAuthSession';
-import { useProfileReconciliation, usePushProfileOnChange } from '@/services/auth/useProfileReconciliation';
+import { usePushProfileOnChange } from '@/services/auth/useProfileReconciliation';
 import { useSyncEngine } from '@/services/sync/useSyncEngine';
 import { useAppStore } from '@/store/useAppStore';
 import { selectActiveAccounts, selectActiveInvestments, selectActiveLiabilities } from '@/store/selectors';
@@ -20,7 +20,6 @@ function RootStack() {
   const { colors, scheme } = useTheme();
   const { userId } = useAuthSession();
   useSyncEngine();
-  useProfileReconciliation(userId);
   usePushProfileOnChange(userId);
   const hasHydrated = useAppStore((s) => s.hasHydrated);
   const rawAccounts = useAppStore((s) => s.accounts);

@@ -11,7 +11,7 @@ import { DEFAULT_CATEGORIES } from '@/data/categories';
 import { selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { buildBudgetLines, type BudgetStatus } from '@/utils/finance';
+import { buildBudgetLines, spendByCategory, type BudgetStatus } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
 
 const STATUS_LABEL: Record<BudgetStatus, string> = {
@@ -31,19 +31,23 @@ export default function Presupuesto() {
   const setBudget = useAppStore((s) => s.setBudget);
   const deleteBudget = useAppStore((s) => s.deleteBudget);
 
-  const [showForm, setShowForm] = useState(false);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [amount, setAmount] = useState('');
-
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
 
   const lines = buildBudgetLines(budgets, transactions, profile.budgetThresholds);
-  const availableCategories = EXPENSE_CATEGORY_IDS.filter((id) => !budgets.some((b) => b.categoryId === id));
+  const lineByCategory = new Map(lines.map((l) => [l.categoryId, l]));
+  const spendNoBudget = spendByCategory(transactions);
 
-  const handleAdd = () => {
-    if (!categoryId || !amount) return;
-    const value = parseFloat(amount.replace(',', '.'));
+  // Texto que el usuario está escribiendo por categoría, antes de guardar.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  const totalBudgeted = lines.reduce((s, l) => s + l.budgeted, 0);
+  const totalActual = lines.reduce((s, l) => s + l.actual, 0);
+
+  const handleSave = (categoryId: string) => {
+    const raw = drafts[categoryId];
+    if (raw === undefined) return;
+    const value = parseFloat(raw.replace(',', '.'));
     if (Number.isNaN(value) || value <= 0) return;
     setBudget({
       categoryId,
@@ -51,9 +55,11 @@ export default function Presupuesto() {
       currency: profile.primaryCurrency,
       thresholds: profile.budgetThresholds,
     });
-    setShowForm(false);
-    setCategoryId(null);
-    setAmount('');
+    setDrafts((d) => {
+      const next = { ...d };
+      delete next[categoryId];
+      return next;
+    });
   };
 
   return (
@@ -64,108 +70,92 @@ export default function Presupuesto() {
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={[typography.title, { color: colors.textPrimary }]}>Presupuesto</Text>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>Este mes</Text>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            {totalBudgeted > 0
+              ? `${formatCurrency(totalActual, profile.primaryCurrency)} de ${formatCurrency(totalBudgeted, profile.primaryCurrency)} este mes`
+              : 'Define cuánto planeas gastar por categoría'}
+          </Text>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.md }}>
-        {lines.length === 0 && !showForm && (
-          <Text style={[typography.caption, { color: colors.textTertiary }]}>
-            Aún no has definido presupuesto por categoría. Agrega el primero.
-          </Text>
-        )}
+        {EXPENSE_CATEGORY_IDS.map((categoryId) => {
+          const category = DEFAULT_CATEGORIES.find((c) => c.id === categoryId)!;
+          const line = lineByCategory.get(categoryId);
+          const draft = drafts[categoryId];
+          const hasDraftChange = draft !== undefined && draft !== '';
+          const actualNoBudget = spendNoBudget[categoryId] ?? 0;
 
-        {lines.map((line) => (
-          <GlassCard key={line.categoryId} style={{ gap: spacing.sm }}>
-            <View style={styles.rowBetween}>
-              <View style={styles.rowCenter}>
-                <CategoryIcon categoryId={line.categoryId} size={16} />
-                <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: spacing.sm }]}>
-                  {line.categoryName}
-                </Text>
+          return (
+            <GlassCard key={categoryId} style={{ gap: spacing.sm }}>
+              <View style={styles.rowBetween}>
+                <View style={styles.rowCenter}>
+                  <CategoryIcon categoryId={categoryId} size={16} />
+                  <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: spacing.sm }]}>
+                    {category.name}
+                  </Text>
+                </View>
+                {line && (
+                  <Pressable onPress={() => deleteBudget(line.budgetId)}>
+                    <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
+                  </Pressable>
+                )}
               </View>
-              <Pressable onPress={() => deleteBudget(line.budgetId)}>
-                <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
-              </Pressable>
-            </View>
-            <ProgressBar percent={line.percentUsed} status={line.status} />
-            <View style={styles.rowBetween}>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                {formatCurrency(line.actual, profile.primaryCurrency)} de {formatCurrency(line.budgeted, profile.primaryCurrency)}
-              </Text>
-              <Text
-                style={[
-                  typography.caption,
-                  {
-                    fontWeight: '700',
-                    color:
-                      line.status === 'exceeded' || line.status === 'warning'
-                        ? colors.danger
-                        : line.status === 'attention'
-                          ? colors.warning
-                          : colors.success,
-                  },
-                ]}
-              >
-                {line.percentUsed}% · {STATUS_LABEL[line.status]}
-              </Text>
-            </View>
-          </GlassCard>
-        ))}
 
-        {showForm ? (
-          <GlassCard style={{ gap: spacing.md }}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>CATEGORÍA</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {availableCategories.map((id) => {
-                const cat = DEFAULT_CATEGORIES.find((c) => c.id === id)!;
-                return (
-                  <Pressable
-                    key={id}
-                    onPress={() => setCategoryId(id)}
+              {line ? (
+                <>
+                  <ProgressBar percent={line.percentUsed} status={line.status} />
+                  <View style={styles.rowBetween}>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      {formatCurrency(line.actual, profile.primaryCurrency)} de {formatCurrency(line.budgeted, profile.primaryCurrency)}
+                    </Text>
+                    <Text
+                      style={[
+                        typography.caption,
+                        {
+                          fontWeight: '700',
+                          color:
+                            line.status === 'exceeded' || line.status === 'warning'
+                              ? colors.danger
+                              : line.status === 'attention'
+                                ? colors.warning
+                                : colors.success,
+                        },
+                      ]}
+                    >
+                      {line.percentUsed}% · {STATUS_LABEL[line.status]}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.rowGap}>
+                  <TextInput
+                    value={draft ?? ''}
+                    onChangeText={(v) => setDrafts((d) => ({ ...d, [categoryId]: v }))}
+                    keyboardType="decimal-pad"
+                    placeholder={actualNoBudget > 0 ? `Ya llevas ${formatCurrency(actualNoBudget, profile.primaryCurrency)}` : 'Monto mensual'}
+                    placeholderTextColor={colors.textTertiary}
+                    onSubmitEditing={() => handleSave(categoryId)}
                     style={[
-                      styles.chip,
-                      { borderRadius: radius.pill, borderColor: categoryId === id ? colors.accentFrom : colors.surfaceBorder, backgroundColor: categoryId === id ? colors.accentSoft : 'transparent' },
+                      styles.input,
+                      { flex: 1, color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md },
+                    ]}
+                  />
+                  <Pressable
+                    onPress={() => handleSave(categoryId)}
+                    disabled={!hasDraftChange}
+                    style={[
+                      styles.saveBtn,
+                      { borderRadius: radius.md, backgroundColor: hasDraftChange ? colors.accentFrom : colors.surfaceBorder },
                     ]}
                   >
-                    <Text style={{ color: categoryId === id ? colors.accentFrom : colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                      {cat.name}
-                    </Text>
+                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                   </Pressable>
-                );
-              })}
-            </ScrollView>
-            <TextInput
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              placeholder="Monto mensual"
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-            />
-            <View style={styles.formActions}>
-              <Pressable onPress={() => setShowForm(false)}>
-                <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleAdd}
-                style={[styles.saveBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill }]}
-              >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Guardar</Text>
-              </Pressable>
-            </View>
-          </GlassCard>
-        ) : (
-          availableCategories.length > 0 && (
-            <Pressable
-              onPress={() => setShowForm(true)}
-              style={[styles.addBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-            >
-              <Ionicons name="add" size={18} color={colors.accentFrom} />
-              <Text style={{ color: colors.accentFrom, fontWeight: '700', marginLeft: 6 }}>Agregar presupuesto</Text>
-            </Pressable>
-          )
-        )}
+                </View>
+              )}
+            </GlassCard>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -174,9 +164,7 @@ export default function Presupuesto() {
 const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
-  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
-  formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center' },
-  saveBtn: { paddingHorizontal: 20, paddingVertical: 10 },
-  addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', paddingVertical: 14 },
+  rowGap: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15 },
+  saveBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 });

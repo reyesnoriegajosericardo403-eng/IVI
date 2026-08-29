@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +8,6 @@ import { findCategory, findSubcategory } from '@/data/categories';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
 import { StatCard } from '@/components/StatCard';
 import {
@@ -74,10 +74,36 @@ export default function Dashboard() {
   const sparkData = netWorthHistory.slice(-30).map((h) => h.netWorth);
   const recentTx = transactions.slice(0, 4);
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
-        <ScreenHeader title={`Hola, ${profile.name || 'tú'}`} subtitle="Así está tu dinero hoy" showSettings />
+        <View style={[styles.greetingRow, { marginBottom: spacing.xs }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>{greeting}</Text>
+            <Text style={[typography.display, { color: colors.textPrimary, marginTop: 2 }]} numberOfLines={1} adjustsFontSizeToFit>
+              {profile.name || 'Hola'}
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <Pressable
+              accessibilityLabel="Ajustes"
+              onPress={() => router.push('/settings')}
+              style={[styles.iconButton, { backgroundColor: colors.accentSoft }]}
+            >
+              <Ionicons name="settings-outline" size={20} color={colors.accentFrom} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Abrir copiloto IA"
+              onPress={() => router.push('/(tabs)/ia')}
+              style={[styles.iconButton, { backgroundColor: colors.accentSoft }]}
+            >
+              <Ionicons name="sparkles" size={20} color={colors.accentFrom} />
+            </Pressable>
+          </View>
+        </View>
 
         {demoDataLoaded && (
           <View style={[styles.demoBanner, { backgroundColor: colors.accentSoft, borderRadius: radius.md }]}>
@@ -176,6 +202,9 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
+  greetingRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  headerActions: { flexDirection: 'row', gap: 10, marginLeft: 12 },
+  iconButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   demoBanner: { paddingVertical: 8, paddingHorizontal: 12, alignSelf: 'flex-start' },
   rowGap: { flexDirection: 'row', gap: 12 },
   spaceBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

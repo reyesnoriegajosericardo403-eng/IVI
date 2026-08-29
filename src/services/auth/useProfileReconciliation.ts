@@ -1,31 +1,42 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { fetchRemoteProfile, pushRemoteProfile } from '@/services/supabase/profileRepository';
 import { useAppStore } from '@/store/useAppStore';
 
 // Cuando alguien inicia sesión, reconcilia el perfil local con el remoto:
-// si ya completó onboarding en otro dispositivo, adopta ese perfil; si
-// completó onboarding localmente sin haber iniciado sesión antes (primer
-// uso offline), sube ese perfil al servidor. Corre una sola vez por
-// sesión iniciada, no en cada render (spec 76).
-export function useProfileReconciliation(userId: string | null) {
-  const reconciledFor = useRef<string | null>(null);
+// si ya completó onboarding en otro dispositivo (o en un intento anterior
+// en este mismo navegador), adopta ese perfil; si completó onboarding
+// localmente sin haber iniciado sesión antes (primer uso offline), sube
+// ese perfil al servidor. Expone `ready` para que quien decida a dónde
+// navegar (app/index.tsx) espere a saber el estado REAL antes de decidir
+// — nunca confía en el estado local a ciegas, que puede venir de un
+// intento de registro anterior con otra cuenta en el mismo navegador.
+export function useProfileReconciliation(userId: string | null): { ready: boolean } {
+  const [readyForUserId, setReadyForUserId] = useState<string | null>(null);
+  const startedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!userId || reconciledFor.current === userId) return;
-    reconciledFor.current = userId;
+    if (!userId) return;
+    if (startedFor.current === userId) return;
+    startedFor.current = userId;
 
     (async () => {
-      const remote = await fetchRemoteProfile(userId);
-      const { profile, completeOnboarding } = useAppStore.getState();
+      try {
+        const remote = await fetchRemoteProfile(userId);
+        const { profile, completeOnboarding } = useAppStore.getState();
 
-      if (remote?.onboardingComplete) {
-        completeOnboarding(remote);
-      } else if (profile.onboardingComplete) {
-        await pushRemoteProfile(userId, profile);
+        if (remote?.onboardingComplete) {
+          completeOnboarding(remote);
+        } else if (profile.onboardingComplete) {
+          await pushRemoteProfile(userId, profile);
+        }
+      } finally {
+        setReadyForUserId(userId);
       }
     })();
   }, [userId]);
+
+  return { ready: userId === null || readyForUserId === userId };
 }
 
 // Mientras hay sesión, cualquier cambio posterior de perfil (tema,
