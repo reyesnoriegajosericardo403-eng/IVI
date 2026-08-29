@@ -1,4 +1,5 @@
-import { DEFAULT_CATEGORIES } from '@/data/categories';
+import { BUDGET_CONCEPTS, findBudgetConcept } from '@/data/budgetConcepts';
+import { DEFAULT_CATEGORIES, findSubcategory } from '@/data/categories';
 import { getUsdMxnRate } from '@/data/exchangeRate';
 import type {
   Account,
@@ -63,6 +64,21 @@ export function isSameMonth(iso: string, ref = new Date()): boolean {
   return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
 }
 
+// Semana de lunes a domingo que contiene `ref` — usada por el toggle
+// Semanal/Mensual del presupuesto (spec 41).
+export function isSameWeek(iso: string, ref = new Date()): boolean {
+  const d = new Date(iso);
+  const startOfWeek = (date: Date) => {
+    const day = date.getDay(); // 0 = domingo
+    const diff = day === 0 ? -6 : 1 - day; // retrocede hasta el lunes
+    const monday = new Date(date);
+    monday.setDate(date.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  };
+  return startOfWeek(d).getTime() === startOfWeek(ref).getTime();
+}
+
 export function spendInPeriod(transactions: Transaction[], ref = new Date()): number {
   return transactions
     .filter((t) => t.type === 'expense' && isSameMonth(t.date, ref))
@@ -76,6 +92,48 @@ export function spendByCategory(transactions: Transaction[], ref = new Date()): 
     result[t.categoryId] = (result[t.categoryId] ?? 0) + t.amount;
   }
   return result;
+}
+
+// Tipos que cuentan como "salida de dinero" para un concepto de
+// presupuesto — no solo 'expense': una aportación a ahorro ('saving') o
+// una compra de inversión ('investment_buy') también son dinero que sale
+// hacia LUEGO, aunque no estén categorizadas como gasto (spec 41).
+const SPEND_TYPES: Transaction['type'][] = ['expense', 'saving', 'investment_buy'];
+
+// Igual que spendByCategory pero suma por CONCEPTO de presupuesto (spec
+// 41) — un concepto puede agrupar varias categorías/subcategorías reales.
+// `scope` decide si se filtra por mes o por semana (toggle Semanal/Mensual).
+export function spendByConcept(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): Record<string, number> {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
+  const expenses = transactions.filter((t) => SPEND_TYPES.includes(t.type) && inScope(t.date, ref));
+  const result: Record<string, number> = {};
+  for (const concept of BUDGET_CONCEPTS) {
+    let total = 0;
+    for (const t of expenses) {
+      const matched = concept.matches.some((m) => {
+        if (m.categoryId !== t.categoryId) return false;
+        return !m.subcategoryIds || m.subcategoryIds.includes(t.subcategoryId);
+      });
+      if (matched) total += t.amount;
+    }
+    result[concept.id] = total;
+  }
+  return result;
+}
+
+// Ingresos reales (nunca proyectados) del periodo, separados en fijos y
+// variables/eventuales según la subcategoría (spec 41, sección Ingresos).
+export function incomeByKind(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): { fixed: number; variable: number } {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
+  let fixed = 0;
+  let variable = 0;
+  for (const t of transactions) {
+    if (t.type !== 'income' || !inScope(t.date, ref)) continue;
+    const sub = findSubcategory(t.categoryId, t.subcategoryId);
+    if (sub?.incomeKind === 'fixed') fixed += t.amount;
+    else variable += t.amount;
+  }
+  return { fixed, variable };
 }
 
 export type BudgetStatus = 'normal' | 'attention' | 'warning' | 'exceeded';
@@ -106,15 +164,21 @@ export function buildBudgetLines(
   thresholds: { attention: number; warning: number; exceeded: number },
   ref = new Date()
 ): BudgetLine[] {
+  // b.categoryId puede ser un id de categoría (presupuestos guardados con
+  // el esquema anterior) o un id de concepto de presupuesto (esquema
+  // nuevo) — se reconocen ambos para que ningún presupuesto ya guardado
+  // se quede huérfano al pasar a la nueva taxonomía.
   const spend = spendByCategory(transactions, ref);
+  const conceptSpend = spendByConcept(transactions, ref);
   return budgets.map((b) => {
-    const actual = spend[b.categoryId] ?? 0;
+    const concept = findBudgetConcept(b.categoryId);
+    const actual = concept ? conceptSpend[b.categoryId] ?? 0 : spend[b.categoryId] ?? 0;
     const percentUsed = b.monthlyAmount > 0 ? Math.round((actual / b.monthlyAmount) * 100) : 0;
-    const category = DEFAULT_CATEGORIES.find((c) => c.id === b.categoryId);
+    const categoryName = concept?.name ?? DEFAULT_CATEGORIES.find((c) => c.id === b.categoryId)?.name ?? b.categoryId;
     return {
       budgetId: b.id,
       categoryId: b.categoryId,
-      categoryName: category?.name ?? b.categoryId,
+      categoryName,
       budgeted: b.monthlyAmount,
       actual,
       percentUsed,

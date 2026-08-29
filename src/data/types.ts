@@ -37,6 +37,10 @@ export interface SubcategoryDef {
   id: string;
   name: string;
   keywords: string[]; // sinónimos/palabras clave para clasificación por voz/texto
+  // Solo aplica a las subcategorías de "income" — separa ingresos fijos
+  // (salario, mesada) de variables/eventuales (spec: presupuesto por
+  // ingresos fijos vs. variables).
+  incomeKind?: 'fixed' | 'variable';
 }
 
 export interface Transaction extends SyncMeta {
@@ -66,7 +70,13 @@ export interface Account extends SyncMeta {
   isDemo?: boolean;
 }
 
+export type BudgetPeriodicity = 'day' | 'week' | 'month';
+export type BudgetFrequency = 'all_days' | 'weekdays' | 'weekends' | 'custom' | 'one_time';
+
 export interface Budget extends SyncMeta {
+  // Puede ser el id de una categoría (esquema anterior) o el id de un
+  // concepto de presupuesto (esquema nuevo, spec 41) — buildBudgetLines
+  // reconoce ambos, así que un presupuesto ya guardado nunca se pierde.
   categoryId: string;
   monthlyAmount: number;
   currency: Currency;
@@ -75,6 +85,13 @@ export interface Budget extends SyncMeta {
     warning: number; // ej. 90
     exceeded: number; // ej. 100
   };
+  // Metadatos de cómo se calculó monthlyAmount, para poder reabrir el
+  // formulario con los mismos controles — monthlyAmount sigue siendo la
+  // única cifra que el resto de la app necesita leer.
+  periodicity?: BudgetPeriodicity;
+  frequency?: BudgetFrequency;
+  customDaysPerWeek?: number;
+  baseAmount?: number;
 }
 
 export interface Goal extends SyncMeta {
