@@ -18,7 +18,9 @@ export async function providerFetch(url: string, headers: Record<string, string>
         'En la versión web, conectar tu propia IA requiere tener un proyecto Supabase conectado (funciona como relevo para saltar la restricción de seguridad del navegador). Prueba desde la app nativa, o conecta Supabase para activarlo aquí también.'
       );
     }
-    const res = await fetch(`${supabaseProjectUrl}/functions/v1/ai-relay`, {
+    const baseUrl = (supabaseProjectUrl ?? '').replace(/\/+$/, '');
+    const relayUrl = `${baseUrl}/functions/v1/ai-relay`;
+    const res = await fetch(relayUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -28,7 +30,7 @@ export async function providerFetch(url: string, headers: Record<string, string>
     });
     if (res.status === 404) {
       throw new Error(
-        'La función de relevo (ai-relay) todavía no está desplegada en tu proyecto de Supabase. Sin ella, la IA no puede responder en la versión web (funciona ya en la app nativa). Pide que se despliegue desde Supabase → Edge Functions.'
+        `La función de relevo (ai-relay) todavía no está desplegada en tu proyecto de Supabase (se intentó llamar a ${relayUrl}). Sin ella, la IA no puede responder en la versión web (funciona ya en la app nativa). Pide que se despliegue desde Supabase → Edge Functions.`
       );
     }
     if (!res.ok) {
