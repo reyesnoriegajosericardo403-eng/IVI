@@ -25,6 +25,21 @@ export function formatCompactDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
+// "hace X minutos/horas" para timestamps recientes (ej. última
+// actualización de precios en vivo) — para algo de hace más de un día cae
+// de vuelta a formatRelativeDay.
+export function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 1) return 'hace un momento';
+  if (diffMin === 1) return 'hace 1 minuto';
+  if (diffMin < 60) return `hace ${diffMin} minutos`;
+  const diffHours = Math.round(diffMin / 60);
+  if (diffHours === 1) return 'hace 1 hora';
+  if (diffHours < 24) return `hace ${diffHours} horas`;
+  return formatRelativeDay(iso);
+}
+
 export function formatRelativeDay(iso: string): string {
   const date = new Date(iso);
   const today = new Date();

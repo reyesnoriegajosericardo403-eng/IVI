@@ -40,6 +40,7 @@ export default function Dashboard() {
   const rawBudgets = useAppStore((s) => s.budgets);
   const rawNetWorthHistory = useAppStore((s) => s.netWorthHistory);
   const demoDataLoaded = useAppStore((s) => s.demoDataLoaded);
+  const liveQuotes = useAppStore((s) => s.liveQuotes);
 
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
@@ -48,7 +49,7 @@ export default function Dashboard() {
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
   const netWorthHistory = useMemo(() => selectActiveNetWorthHistory(rawNetWorthHistory), [rawNetWorthHistory]);
 
-  const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency);
+  const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency, liveQuotes);
   const monthTrend = getNetWorthTrend(netWorthHistory, 30);
 
   const monthlySpend = spendInPeriod(transactions);

@@ -21,16 +21,23 @@ export interface CopilotProvider {
 export interface MarketQuote {
   ticker: string;
   price: number;
-  currency: Currency;
+  previousClose: number | null;
   asOf: string;
   source: string;
+  // true cuando el precio devuelto es el último que se pudo obtener,
+  // pero la consulta más reciente falló o el mercado está cerrado — se
+  // sigue mostrando (nunca se inventa uno nuevo), solo se avisa que no
+  // es de este instante.
+  stale: boolean;
 }
 
 export interface MarketDataProvider {
   name: string;
-  // null cuando no hay una fuente real conectada todavía — nunca se
-  // inventa un precio (spec 17, 42).
-  getQuote(ticker: string): Promise<MarketQuote | null>;
+  // Cotiza varios tickers de una sola vez (más eficiente que uno por
+  // uno). Cada entrada es null cuando no hay una fuente real conectada
+  // todavía o el ticker no se pudo resolver — nunca se inventa un precio
+  // (spec 17, 42).
+  getQuotes(tickers: string[]): Promise<Record<string, MarketQuote | null>>;
 }
 
 export interface ExchangeRateInfo {

@@ -10,6 +10,7 @@ import type {
   NetWorthSnapshot,
   Transaction,
 } from '@/data/types';
+import type { MarketQuote } from '@/providers/types';
 
 // Todas las funciones aquí son puras: reciben datos del store y devuelven
 // cifras derivadas. Ningún número de mercado se inventa — si algo depende
@@ -29,11 +30,39 @@ export interface NetWorthBreakdown {
   netWorth: number;
 }
 
+// Valor de una posición: su valor de mercado en vivo (cantidad × precio
+// actual) cuando hay una cotización real disponible, o el monto invertido
+// cuando no — nunca se inventa un precio para rellenar el hueco (spec 17,
+// 42, y Fase 4: "en base a eso se actualicen los datos... en el
+// Dashboard y todo en cuanto a la app").
+export function investmentCurrentValue(investment: InvestmentPosition, liveQuotes: Record<string, MarketQuote>): number {
+  const quote = liveQuotes[investment.ticker];
+  return quote ? investment.quantity * quote.price : investment.amountInvested;
+}
+
+// Ganancia o pérdida no realizada: valor de mercado en vivo menos el
+// capital invertido. null cuando no hay cotización real para el ticker —
+// nunca se calcula con un precio inventado.
+export function investmentUnrealizedPnL(investment: InvestmentPosition, liveQuotes: Record<string, MarketQuote>): number | null {
+  const quote = liveQuotes[investment.ticker];
+  if (!quote) return null;
+  return investment.quantity * quote.price - investment.amountInvested;
+}
+
+// Cambio del día de una posición (precio actual vs. cierre anterior). null
+// cuando no hay cotización o el proveedor no reportó un cierre anterior.
+export function investmentDailyChange(investment: InvestmentPosition, liveQuotes: Record<string, MarketQuote>): number | null {
+  const quote = liveQuotes[investment.ticker];
+  if (!quote || quote.previousClose === null) return null;
+  return investment.quantity * (quote.price - quote.previousClose);
+}
+
 export function computeNetWorth(
   accounts: Account[],
   investments: InvestmentPosition[],
   liabilities: Liability[],
-  baseCurrency: Currency
+  baseCurrency: Currency,
+  liveQuotes: Record<string, MarketQuote> = {}
 ): NetWorthBreakdown {
   const accountAssets = accounts
     .filter((a) => !a.isLiability)
@@ -44,7 +73,7 @@ export function computeNetWorth(
     .reduce((sum, a) => sum + toBaseCurrency(a.balance, a.currency, baseCurrency), 0);
 
   const investmentAssets = investments.reduce(
-    (sum, i) => sum + toBaseCurrency(i.amountInvested, i.currency, baseCurrency),
+    (sum, i) => sum + toBaseCurrency(investmentCurrentValue(i, liveQuotes), i.currency, baseCurrency),
     0
   );
 

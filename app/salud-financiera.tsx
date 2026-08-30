@@ -43,6 +43,7 @@ export default function SaludFinanciera() {
   const rawLiabilities = useAppStore((s) => s.liabilities);
   const rawTransactions = useAppStore((s) => s.transactions);
   const rawBudgets = useAppStore((s) => s.budgets);
+  const liveQuotes = useAppStore((s) => s.liveQuotes);
 
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
@@ -50,7 +51,7 @@ export default function SaludFinanciera() {
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
 
-  const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency);
+  const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency, liveQuotes);
   const monthlySpend = spendInPeriod(transactions);
   const emergencyFund = accounts.filter((a) => a.type === 'savings').reduce((sum, a) => sum + a.balance, 0);
   const budgetLines = buildBudgetLines(budgets, transactions, profile.budgetThresholds);

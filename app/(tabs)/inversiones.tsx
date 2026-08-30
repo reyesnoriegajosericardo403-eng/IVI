@@ -10,12 +10,19 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
 import { ASSET_CLASSES, ASSET_CLASS_GROUP, ASSET_CLASS_LABELS, RISK_GROUP_LABELS, type RiskGroup } from '@/data/investmentMeta';
 import type { AssetClass, Currency, InvestmentPosition, SyncMeta } from '@/data/types';
+import { refreshMarketData } from '@/services/market/marketDataRefresh';
 import { selectActiveInvestments } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { todayISO } from '@/utils/date';
-import { applyInvestmentTransaction } from '@/utils/finance';
-import { formatCurrency } from '@/utils/format';
+import {
+  applyInvestmentTransaction,
+  investmentCurrentValue,
+  investmentDailyChange,
+  investmentUnrealizedPnL,
+} from '@/utils/finance';
+import { formatCurrency, formatPercent, formatRelativeTime } from '@/utils/format';
+import { isUsMarketOpenNow } from '@/utils/marketHours';
 
 type Draft<T> = Omit<T, keyof SyncMeta>;
 
@@ -30,14 +37,32 @@ export default function Inversiones() {
   const addInvestment = useAppStore((s) => s.addInvestment);
   const updateInvestment = useAppStore((s) => s.updateInvestment);
   const deleteInvestment = useAppStore((s) => s.deleteInvestment);
+  const liveQuotes = useAppStore((s) => s.liveQuotes);
+  const lastQuotesFetchedAt = useAppStore((s) => s.lastQuotesFetchedAt);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
 
   const totalInvested = investments.reduce((sum, i) => sum + i.amountInvested, 0);
   const totalRealizedPnL = investments.reduce((sum, i) => sum + (i.realizedPnL ?? 0), 0);
   const hasRealizedActivity = investments.some((i) => i.realizedPnL);
+  const hasAnyLiveQuote = investments.some((i) => liveQuotes[i.ticker]);
+  const totalCurrentValue = investments.reduce((sum, i) => sum + investmentCurrentValue(i, liveQuotes), 0);
+  const totalUnrealizedPnL = investments.reduce((sum, i) => sum + (investmentUnrealizedPnL(i, liveQuotes) ?? 0), 0);
+  const totalUnrealizedPercent = totalInvested > 0 ? (totalUnrealizedPnL / totalInvested) * 100 : 0;
+  const totalDailyChange = investments.reduce((sum, i) => sum + (investmentDailyChange(i, liveQuotes) ?? 0), 0);
+  const marketOpen = isUsMarketOpenNow();
+
+  const handleRefreshPrices = async () => {
+    setRefreshing(true);
+    try {
+      await refreshMarketData(true);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const byAssetClass = useMemo(() => {
     const map = new Map<AssetClass, number>();
@@ -76,15 +101,83 @@ export default function Inversiones() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
         <ScreenHeader title="Inversiones" subtitle="Tus posiciones registradas" />
 
+        {investments.length > 0 && (
+          <GlassCard style={{ gap: spacing.sm }}>
+            <View style={styles.rowBetween}>
+              <View style={styles.row}>
+                <View style={[styles.statusDot, { backgroundColor: marketOpen ? colors.success : colors.textTertiary }]} />
+                <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 6 }]}>
+                  {marketOpen ? 'Mercado de EE. UU. abierto' : 'Mercado de EE. UU. cerrado'}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel="Actualizar precios"
+                onPress={handleRefreshPrices}
+                disabled={refreshing}
+                style={[
+                  styles.refreshBtn,
+                  { borderColor: colors.surfaceBorder, borderRadius: radius.pill, opacity: refreshing ? 0.6 : 1 },
+                ]}
+              >
+                <Ionicons name="refresh" size={14} color={colors.accentFrom} />
+                <Text style={{ color: colors.accentFrom, fontWeight: '700', fontSize: 12, marginLeft: 4 }}>
+                  {refreshing ? 'Actualizando…' : 'Actualizar precios'}
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={[typography.micro, { color: colors.textTertiary }]}>
+              {lastQuotesFetchedAt
+                ? `Precios actualizados ${formatRelativeTime(lastQuotesFetchedAt)} · se reprograman solas cada 15 min mientras el mercado está abierto.`
+                : 'Aún no se han consultado precios en vivo para tus posiciones.'}
+            </Text>
+          </GlassCard>
+        )}
+
         <GlassCard style={{ gap: 4 }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>Total invertido</Text>
           <Text style={[typography.display, { color: colors.textPrimary }]}>
             {formatCurrency(totalInvested, profile.primaryCurrency)}
           </Text>
-          <Text style={[typography.caption, { color: colors.textTertiary, marginTop: 4 }]}>
-            Suma de capital invertido por posición. El valor de mercado en vivo y el rendimiento no realizado
-            llegan en la Fase 4, cuando se conecte una fuente de precios real.
-          </Text>
+          {hasAnyLiveQuote ? (
+            <>
+              <View style={[styles.rowBetween, { marginTop: spacing.sm }]}>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>Valor de mercado ahora</Text>
+                <Text style={[typography.headline, { color: colors.textPrimary }]}>
+                  {formatCurrency(totalCurrentValue, profile.primaryCurrency)}
+                </Text>
+              </View>
+              <View style={styles.rowBetween}>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>Rendimiento no realizado</Text>
+                <Text style={[typography.headline, { color: totalUnrealizedPnL >= 0 ? colors.success : colors.danger }]}>
+                  {totalUnrealizedPnL >= 0 ? '+' : ''}
+                  {formatCurrency(totalUnrealizedPnL, profile.primaryCurrency)} ({formatPercent(totalUnrealizedPercent)})
+                </Text>
+              </View>
+              {totalDailyChange !== 0 && (
+                <View style={styles.rowBetween}>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Cambio de hoy</Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: totalDailyChange >= 0 ? colors.success : colors.danger, fontWeight: '700' },
+                    ]}
+                  >
+                    {totalDailyChange >= 0 ? '+' : ''}
+                    {formatCurrency(totalDailyChange, profile.primaryCurrency)}
+                  </Text>
+                </View>
+              )}
+              <Text style={[typography.caption, { color: colors.textTertiary, marginTop: 4 }]}>
+                Calculado solo con las posiciones que tienen precio en vivo conectado. Las demás se cuentan por su
+                monto invertido.
+              </Text>
+            </>
+          ) : (
+            <Text style={[typography.caption, { color: colors.textTertiary, marginTop: 4 }]}>
+              El valor de mercado en vivo y el rendimiento no realizado aparecen aquí en cuanto haya una cotización
+              real disponible para tus tickers.
+            </Text>
+          )}
         </GlassCard>
 
         {hasRealizedActivity && (
@@ -131,8 +224,8 @@ export default function Inversiones() {
               ))}
 
             <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.sm }]}>
-              Diversificación por sector: aún no disponible — requiere conectar una fuente de datos de mercado
-              (Fase 4). No mostramos un sector inventado.
+              Diversificación por sector: no disponible — nuestra fuente de precios en vivo no incluye ese dato.
+              No mostramos un sector inventado.
             </Text>
           </GlassCard>
         )}
@@ -152,8 +245,13 @@ export default function Inversiones() {
           <Text style={[typography.caption, { color: colors.textTertiary }]}>Aún no registras inversiones.</Text>
         )}
 
-        {investments.map((inv) =>
-          editingId === inv.id ? (
+        {investments.map((inv) => {
+          const quote = liveQuotes[inv.ticker];
+          const currentValue = investmentCurrentValue(inv, liveQuotes);
+          const unrealized = investmentUnrealizedPnL(inv, liveQuotes);
+          const dailyChange = investmentDailyChange(inv, liveQuotes);
+
+          return editingId === inv.id ? (
             <TransactionForm
               key={inv.id}
               position={inv}
@@ -176,7 +274,7 @@ export default function Inversiones() {
                   </Text>
                 </View>
                 <Text style={[typography.headline, { color: colors.textPrimary, marginRight: spacing.sm }]}>
-                  {formatCurrency(inv.amountInvested, inv.currency)}
+                  {formatCurrency(currentValue, inv.currency)}
                 </Text>
                 <Pressable
                   accessibilityLabel={`Editar ${inv.ticker}`}
@@ -189,6 +287,42 @@ export default function Inversiones() {
                   <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
                 </Pressable>
               </View>
+              {quote ? (
+                <View style={{ marginLeft: 52, gap: 2 }}>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                    Precio en vivo: {formatCurrency(quote.price, inv.currency)}
+                    {quote.stale ? ' (último precio conocido)' : ''}
+                  </Text>
+                  <View style={styles.row}>
+                    {unrealized !== null && (
+                      <Text
+                        style={[
+                          typography.caption,
+                          { color: unrealized >= 0 ? colors.success : colors.danger, fontWeight: '700' },
+                        ]}
+                      >
+                        No realizado: {unrealized >= 0 ? '+' : ''}
+                        {formatCurrency(unrealized, inv.currency)}
+                      </Text>
+                    )}
+                    {dailyChange !== null && (
+                      <Text
+                        style={[
+                          typography.caption,
+                          { color: dailyChange >= 0 ? colors.success : colors.danger, marginLeft: spacing.sm },
+                        ]}
+                      >
+                        Hoy: {dailyChange >= 0 ? '+' : ''}
+                        {formatCurrency(dailyChange, inv.currency)}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ) : (
+                <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 52 }]}>
+                  Precio en vivo no disponible para {inv.ticker}.
+                </Text>
+              )}
               {!!inv.realizedPnL && (
                 <Text
                   style={[
@@ -204,8 +338,8 @@ export default function Inversiones() {
                 <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 52 }]}>{inv.notes}</Text>
               )}
             </GlassCard>
-          )
-        )}
+          );
+        })}
 
         {showForm ? (
           <InvestmentForm
@@ -503,6 +637,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   tickerBadge: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  refreshBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', paddingVertical: 14 },
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   notesInput: { minHeight: 60, textAlignVertical: 'top' },

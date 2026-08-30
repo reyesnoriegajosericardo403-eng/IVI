@@ -15,7 +15,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDateDMY } from '@/utils/date';
 import { formatCurrency, formatPercent } from '@/utils/format';
-import { computeNetWorth, getNetWorthTrend } from '@/utils/finance';
+import { computeNetWorth, getNetWorthTrend, investmentCurrentValue } from '@/utils/finance';
 
 const ACCOUNT_TYPES: AccountType[] = ['cash', 'bank', 'savings', 'credit_card'];
 const LIABILITY_TYPES: LiabilityType[] = ['credit_card', 'student_loan', 'personal_loan', 'mortgage', 'other'];
@@ -29,6 +29,7 @@ export default function Patrimonio() {
   const rawInvestments = useAppStore((s) => s.investments);
   const rawLiabilities = useAppStore((s) => s.liabilities);
   const rawNetWorthHistory = useAppStore((s) => s.netWorthHistory);
+  const liveQuotes = useAppStore((s) => s.liveQuotes);
   const addAccount = useAppStore((s) => s.addAccount);
   const deleteAccount = useAppStore((s) => s.deleteAccount);
   const addLiability = useAppStore((s) => s.addLiability);
@@ -46,7 +47,7 @@ export default function Patrimonio() {
   const updateAccount = useAppStore((s) => s.updateAccount);
   const updateLiability = useAppStore((s) => s.updateLiability);
 
-  const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency);
+  const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency, liveQuotes);
   const sparkData = netWorthHistory.map((h) => h.netWorth);
   const assetsHistory = netWorthHistory.map((h) => h.assets);
   const liabilitiesHistory = netWorthHistory.map((h) => h.liabilities);
@@ -59,6 +60,8 @@ export default function Patrimonio() {
   ];
 
   const investmentTotal = investments.reduce((sum, i) => sum + i.amountInvested, 0);
+  const investmentCurrentTotal = investments.reduce((sum, i) => sum + investmentCurrentValue(i, liveQuotes), 0);
+  const hasLiveInvestmentData = investments.some((i) => liveQuotes[i.ticker]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
@@ -135,7 +138,9 @@ export default function Patrimonio() {
 
         {investmentTotal > 0 && (
           <Text style={[typography.caption, { color: colors.textTertiary }]}>
-            Incluye {formatCurrency(investmentTotal, profile.primaryCurrency)} en inversiones (monto invertido, no valor de mercado — ver pestaña Inversiones).
+            {hasLiveInvestmentData
+              ? `Incluye ${formatCurrency(investmentCurrentTotal, profile.primaryCurrency)} en inversiones a valor de mercado en vivo (ver pestaña Inversiones).`
+              : `Incluye ${formatCurrency(investmentTotal, profile.primaryCurrency)} en inversiones (monto invertido — ver pestaña Inversiones para precios en vivo).`}
           </Text>
         )}
 

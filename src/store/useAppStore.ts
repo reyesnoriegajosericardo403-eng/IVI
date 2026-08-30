@@ -23,6 +23,7 @@ import type {
   UserProfile,
 } from '@/data/types';
 import type { SyncQueueEntry, SyncTable } from '@/services/sync/types';
+import type { MarketQuote } from '@/providers/types';
 import { generateId } from '@/utils/id';
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -73,6 +74,14 @@ interface AppState {
   lastSyncedAt: string | null;
   demoDataLoaded: boolean;
   hasHydrated: boolean;
+
+  // Cotizaciones en vivo — deliberadamente FUERA de lo que se persiste
+  // (ver partialize abajo): es un valor de "ahora mismo", no un dato
+  // financiero del usuario, y no debe acumularse como historial (spec:
+  // "no se deben quedar en el historial o en alguna base de datos").
+  liveQuotes: Record<string, MarketQuote>;
+  lastQuotesFetchedAt: string | null;
+  setLiveQuotes: (quotes: Record<string, MarketQuote | null>) => void;
 
   setHasHydrated: (v: boolean) => void;
   completeOnboarding: (profile: Partial<UserProfile>) => void;
@@ -153,6 +162,28 @@ export const useAppStore = create<AppState>()(
         lastSyncedAt: null,
         demoDataLoaded: false,
         hasHydrated: false,
+        liveQuotes: {},
+        lastQuotesFetchedAt: null,
+
+        setLiveQuotes: (quotes) =>
+          set((s) => {
+            const next = { ...s.liveQuotes };
+            let updatedAny = false;
+            for (const [ticker, quote] of Object.entries(quotes)) {
+              if (quote) {
+                next[ticker] = quote;
+                updatedAny = true;
+              }
+            }
+            // Solo se avanza "actualizado hace X" cuando de verdad llegó al
+            // menos una cotización — si todo vino null (relevo caído, sin
+            // clave configurada) no se debe aparentar una actualización que
+            // no ocurrió.
+            return {
+              liveQuotes: next,
+              lastQuotesFetchedAt: updatedAny ? new Date().toISOString() : s.lastQuotesFetchedAt,
+            };
+          }),
 
         setHasHydrated: (v) => set({ hasHydrated: v }),
 
@@ -388,6 +419,13 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
+      },
+      // liveQuotes/lastQuotesFetchedAt quedan fuera a propósito — son un
+      // valor de "ahora mismo" que se vuelve a pedir al abrir la app,
+      // nunca algo que deba sobrevivir como historial guardado.
+      partialize: (state) => {
+        const { liveQuotes: _liveQuotes, lastQuotesFetchedAt: _lastQuotesFetchedAt, ...rest } = state;
+        return rest;
       },
     }
   )
