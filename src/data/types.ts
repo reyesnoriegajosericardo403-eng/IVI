@@ -56,6 +56,11 @@ export interface Transaction extends SyncMeta {
   notes?: string;
   origin: TransactionOrigin;
   isDemo?: boolean;
+  // El usuario puede excluir un movimiento puntual de todos los cálculos de
+  // presupuesto (ej. algo que le van a reembolsar) sin dejar de registrarlo
+  // — sigue apareciendo en Movimientos, solo no cuenta en sumas/gráficas de
+  // presupuesto.
+  excludeFromBudget?: boolean;
 }
 
 export type AccountType = 'cash' | 'bank' | 'credit_card' | 'investment' | 'savings';
@@ -92,6 +97,10 @@ export interface Budget extends SyncMeta {
   frequency?: BudgetFrequency;
   customDaysPerWeek?: number;
   baseAmount?: number;
+  // Día del mes en que normalmente llega este ingreso (ej. 3 = "cada 3 de
+  // cada mes recibo mi mesada") — solo tiene sentido para ingresos FIJOS,
+  // nunca para variables/eventuales como Freelance, que no tienen fecha fija.
+  incomeDayOfMonth?: number;
 }
 
 export interface Goal extends SyncMeta {

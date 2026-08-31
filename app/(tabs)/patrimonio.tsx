@@ -3,20 +3,30 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { router } from 'expo-router';
+
 import { DualLineChart } from '@/components/DualLineChart';
 import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
+import { HealthGradientBar } from '@/components/HealthGradientBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS, LIABILITY_TYPE_LABELS } from '@/data/accountMeta';
 import type { Account, AccountType, Currency, Liability, LiabilityType, SyncMeta } from '@/data/types';
 import { useContentMaxWidth } from '@/hooks/useBreakpoint';
-import { selectActiveAccounts, selectActiveInvestments, selectActiveLiabilities, selectActiveNetWorthHistory } from '@/store/selectors';
+import {
+  selectActiveAccounts,
+  selectActiveBudgets,
+  selectActiveInvestments,
+  selectActiveLiabilities,
+  selectActiveNetWorthHistory,
+  selectActiveTransactions,
+} from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDateDMY } from '@/utils/date';
 import { formatCurrency, formatPercent } from '@/utils/format';
-import { computeNetWorth, getNetWorthTrend, investmentCurrentValue } from '@/utils/finance';
+import { buildBudgetLines, computeFinancialHealth, computeNetWorth, getNetWorthTrend, investmentCurrentValue, spendInPeriod } from '@/utils/finance';
 
 const ACCOUNT_TYPES: AccountType[] = ['cash', 'bank', 'savings', 'credit_card'];
 const LIABILITY_TYPES: LiabilityType[] = ['credit_card', 'student_loan', 'personal_loan', 'mortgage', 'other'];
@@ -30,6 +40,8 @@ export default function Patrimonio() {
   const rawAccounts = useAppStore((s) => s.accounts);
   const rawInvestments = useAppStore((s) => s.investments);
   const rawLiabilities = useAppStore((s) => s.liabilities);
+  const rawTransactions = useAppStore((s) => s.transactions);
+  const rawBudgets = useAppStore((s) => s.budgets);
   const rawNetWorthHistory = useAppStore((s) => s.netWorthHistory);
   const liveQuotes = useAppStore((s) => s.liveQuotes);
   const addAccount = useAppStore((s) => s.addAccount);
@@ -40,6 +52,8 @@ export default function Patrimonio() {
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
   const liabilities = useMemo(() => selectActiveLiabilities(rawLiabilities), [rawLiabilities]);
+  const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
   const netWorthHistory = useMemo(() => selectActiveNetWorthHistory(rawNetWorthHistory), [rawNetWorthHistory]);
 
   const [showAccountForm, setShowAccountForm] = useState(false);
@@ -65,6 +79,20 @@ export default function Patrimonio() {
   const investmentCurrentTotal = investments.reduce((sum, i) => sum + investmentCurrentValue(i, liveQuotes), 0);
   const hasLiveInvestmentData = investments.some((i) => liveQuotes[i.ticker]);
 
+  // ---- Tu salud financiera (movida aquí desde Inicio) ----
+  const monthlySpend = spendInPeriod(transactions);
+  const emergencyFund = accounts.filter((a) => a.type === 'savings').reduce((sum, a) => sum + a.balance, 0);
+  const monthlyBudgetLines = buildBudgetLines(budgets, transactions, profile.budgetThresholds, new Date(), 'month');
+  const health = computeFinancialHealth({
+    netWorth,
+    emergencyFundBalance: emergencyFund,
+    monthlySpend: monthlySpend || 1,
+    budgetLines: monthlyBudgetLines,
+  });
+
+  const todayTrend = trends[0].value;
+  const trendUp = todayTrend === null ? null : todayTrend >= 0;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView
@@ -73,19 +101,60 @@ export default function Patrimonio() {
           maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null,
         ]}
       >
-        <ScreenHeader title="Patrimonio" subtitle="Activos menos pasivos" />
+        <ScreenHeader title="Patrimonio" subtitle="Tu panorama financiero" showSettings />
 
         <GlassCard style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>Patrimonio neto</Text>
-          <Text style={[typography.display, { color: colors.textPrimary }]}>
-            {formatCurrency(netWorth.netWorth, profile.primaryCurrency)}
-          </Text>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>Resumen de hoy</Text>
+          <View style={styles.netWorthHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>Tu patrimonio neto</Text>
+              <Text style={[typography.display, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
+                {formatCurrency(netWorth.netWorth, profile.primaryCurrency)}
+              </Text>
+            </View>
+            {trendUp !== null && (
+              <View
+                style={[
+                  styles.trendCircle,
+                  { backgroundColor: trendUp ? colors.success : colors.danger, borderRadius: 999 },
+                ]}
+              >
+                <Ionicons name={trendUp ? 'trending-up' : 'trending-down'} size={22} color="#FFFFFF" />
+              </View>
+            )}
+          </View>
           {sparkData.length >= 2 && (
             <View style={{ marginTop: spacing.xs }}>
               <Sparkline data={sparkData} color={colors.accentFrom} width={300} height={60} />
             </View>
           )}
-          <View style={[styles.trendRow, { marginTop: spacing.sm }]}>
+        </GlassCard>
+
+        <View style={styles.rowGap}>
+          <GlassCard style={{ flex: 1, gap: 6 }}>
+            <View style={[styles.assetIcon, { backgroundColor: 'rgba(22,163,74,0.12)', borderRadius: 999 }]}>
+              <Ionicons name="wallet-outline" size={18} color={colors.success} />
+            </View>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>Activos</Text>
+            <Text style={[typography.headline, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
+              {formatCurrency(netWorth.assets, profile.primaryCurrency)}
+            </Text>
+            <Text style={[typography.micro, { color: colors.textTertiary }]}>Lo que tienes</Text>
+          </GlassCard>
+          <GlassCard style={{ flex: 1, gap: 6 }}>
+            <View style={[styles.assetIcon, { backgroundColor: 'rgba(239,68,68,0.12)', borderRadius: 999 }]}>
+              <Ionicons name="card-outline" size={18} color={colors.danger} />
+            </View>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>Pasivos</Text>
+            <Text style={[typography.headline, { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+              {formatCurrency(netWorth.liabilities, profile.primaryCurrency)}
+            </Text>
+            <Text style={[typography.micro, { color: colors.textTertiary }]}>Lo que debes</Text>
+          </GlassCard>
+        </View>
+
+        <GlassCard>
+          <View style={styles.trendRow}>
             {trends.map((t) => (
               <View key={t.label} style={styles.trendItem}>
                 <Text style={[typography.micro, { color: colors.textTertiary }]}>{t.label.toUpperCase()}</Text>
@@ -102,20 +171,20 @@ export default function Patrimonio() {
           </View>
         </GlassCard>
 
-        <View style={styles.rowGap}>
-          <GlassCard style={{ flex: 1, gap: 4 }}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>Activos</Text>
-            <Text style={[typography.headline, { color: colors.success }]}>
-              {formatCurrency(netWorth.assets, profile.primaryCurrency)}
-            </Text>
-          </GlassCard>
-          <GlassCard style={{ flex: 1, gap: 4 }}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>Pasivos</Text>
-            <Text style={[typography.headline, { color: colors.danger }]}>
-              {formatCurrency(netWorth.liabilities, profile.primaryCurrency)}
-            </Text>
-          </GlassCard>
-        </View>
+        {/* ---------- Tu salud financiera (movida desde Inicio) ---------- */}
+        <GlassCard style={{ gap: spacing.sm }}>
+          <View style={styles.rowBetween}>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>Tu salud financiera</Text>
+            <Text style={[typography.headline, { color: colors.accentFrom }]}>{health.score}/100</Text>
+          </View>
+          <HealthGradientBar score={health.score} width={280} />
+          <View style={styles.rowBetween}>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>{health.label}</Text>
+            <Pressable accessibilityLabel="Ver recomendaciones de salud financiera" onPress={() => router.push('/salud-financiera')}>
+              <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>Recomendaciones →</Text>
+            </Pressable>
+          </View>
+        </GlassCard>
 
         {assetsHistory.length >= 2 && (
           <GlassCard style={{ gap: spacing.sm }}>
@@ -527,6 +596,9 @@ function LiabilityForm({
 const styles = StyleSheet.create({
   rowGap: { flexDirection: 'row', gap: 12 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  netWorthHeaderRow: { flexDirection: 'row', alignItems: 'center' },
+  trendCircle: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
+  assetIcon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   trendRow: { flexDirection: 'row', justifyContent: 'space-between' },

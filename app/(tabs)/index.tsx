@@ -1,14 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { findCategory, findSubcategory } from '@/data/categories';
-import { CategoryIcon } from '@/components/CategoryIcon';
 import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
-import { ProgressBar } from '@/components/ProgressBar';
 import { Sparkline } from '@/components/Sparkline';
 import { useContentMaxWidth } from '@/hooks/useBreakpoint';
 import {
@@ -25,10 +22,11 @@ import { getBudgetBanner, getDailyBudgetTip, greetingIcon } from '@/utils/dashbo
 import { formatCurrency, formatPercent } from '@/utils/format';
 import {
   buildBudgetLines,
-  computeFinancialHealth,
   computeNetWorth,
   getNetWorthTrend,
+  periodKey,
   previousMonthSpend,
+  previousPeriodAvailable,
   spendInPeriod,
   sumByTypeInPeriod,
   topSpendCategories,
@@ -49,6 +47,8 @@ export default function Dashboard() {
   const rawNetWorthHistory = useAppStore((s) => s.netWorthHistory);
   const demoDataLoaded = useAppStore((s) => s.demoDataLoaded);
   const liveQuotes = useAppStore((s) => s.liveQuotes);
+  const budgetPeriods = useAppStore((s) => s.budgetPeriods);
+  const ackBudgetPeriod = useAppStore((s) => s.ackBudgetPeriod);
 
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
@@ -79,29 +79,59 @@ export default function Dashboard() {
   const budgetBanner = getBudgetBanner(hasBudget);
   const dailyTip = getDailyBudgetTip();
 
+  // ---- Sobrante del periodo anterior (semana o mes) que sigue contando
+  // como Disponible mientras el usuario no diga lo contrario — spec:
+  // "¿seguimos con el mismo sobrante de dinero disponible?" ----
+  const weekKey = periodKey('week');
+  const monthKey = periodKey('month');
+  const currentCarryOver = budgetPeriods[summaryScope].lastPeriodKey === (summaryScope === 'week' ? weekKey : monthKey)
+    ? budgetPeriods[summaryScope].carryOver
+    : 0;
+
+  const pendingRollovers = useMemo(() => {
+    const out: Array<{ scope: Scope; key: string; leftover: number }> = [];
+    (['week', 'month'] as Scope[]).forEach((s) => {
+      const key = s === 'week' ? weekKey : monthKey;
+      const state = budgetPeriods[s];
+      if (state.lastPeriodKey && state.lastPeriodKey !== key) {
+        const leftover = previousPeriodAvailable(budgets, transactions, profile.budgetThresholds, s, new Date());
+        if (leftover > 0) out.push({ scope: s, key, leftover });
+      }
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekKey, monthKey, budgetPeriods.week.lastPeriodKey, budgetPeriods.month.lastPeriodKey, budgets, transactions]);
+
+  useEffect(() => {
+    (['week', 'month'] as Scope[]).forEach((s) => {
+      const key = s === 'week' ? weekKey : monthKey;
+      const state = budgetPeriods[s];
+      if (state.lastPeriodKey === null) {
+        ackBudgetPeriod(s, key, 0);
+        return;
+      }
+      if (state.lastPeriodKey !== key) {
+        const leftover = previousPeriodAvailable(budgets, transactions, profile.budgetThresholds, s, new Date());
+        if (leftover <= 0) ackBudgetPeriod(s, key, 0);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekKey, monthKey]);
+
   // ---- "Tu resumen" (con toggle semana/mes) ----
   const summaryBudgetLines = buildBudgetLines(budgets, transactions, profile.budgetThresholds, new Date(), summaryScope);
   const summaryBudgeted = summaryBudgetLines.reduce((s, b) => s + b.budgeted, 0);
   const summarySpent = spendInPeriod(transactions, new Date(), summaryScope);
   const summarySaved = sumByTypeInPeriod(transactions, 'saving', new Date(), summaryScope);
-  const summaryAvailable = summaryBudgeted > 0 ? Math.max(0, summaryBudgeted - summarySpent) : 0;
+  const summaryAvailable = summaryBudgeted > 0 ? Math.max(0, summaryBudgeted - summarySpent) + currentCarryOver : 0;
   const summaryTotal = summaryAvailable + summarySpent + summarySaved;
 
   // ---- Recordatorios reales (deudas por vencer) ----
   const reminders = upcomingLiabilityReminders(liabilities, 14).slice(0, 3);
 
-  const recentTx = transactions.slice(0, 4);
-
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
 
-  const emergencyFund = accounts.filter((a) => a.type === 'savings').reduce((sum, a) => sum + a.balance, 0);
-  const health = computeFinancialHealth({
-    netWorth,
-    emergencyFundBalance: emergencyFund,
-    monthlySpend: monthlySpend || 1,
-    budgetLines: monthlyBudgetLines,
-  });
   const sparkData = netWorthHistory.slice(-30).map((h) => h.netWorth);
 
   const reminderLabel = (daysUntil: number) => {
@@ -109,6 +139,8 @@ export default function Dashboard() {
     if (daysUntil === 0) return 'Vence hoy';
     return `Vence en ${daysUntil} día${daysUntil === 1 ? '' : 's'}`;
   };
+
+  const scopeLabel = (s: Scope) => (s === 'week' ? 'la semana pasada' : 'el mes pasado');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
@@ -152,6 +184,38 @@ export default function Dashboard() {
             </Text>
           </View>
         )}
+
+        {/* ---------- ¿Seguimos con el mismo sobrante disponible? ---------- */}
+        {pendingRollovers.map((p) => (
+          <View key={p.scope} style={[styles.rolloverCard, { backgroundColor: colors.accentFrom, borderRadius: radius.lg }]}>
+            <View style={styles.rowCenter}>
+              <Ionicons name="help-buoy-outline" size={22} color="#FFFFFF" />
+              <Text style={[typography.headline, { color: '#FFFFFF', marginLeft: spacing.sm, flex: 1 }]}>
+                Ya terminó {p.scope === 'week' ? 'la semana' : 'el mes'} pasad{p.scope === 'week' ? 'a' : 'o'}
+              </Text>
+            </View>
+            <Text style={[typography.body, { color: 'rgba(255,255,255,0.9)' }]}>
+              Te quedaron {formatCurrency(p.leftover, profile.primaryCurrency)} disponibles de {scopeLabel(p.scope)}. ¿Seguimos
+              contando ese dinero como disponible para {p.scope === 'week' ? 'esta semana' : 'este mes'}?
+            </Text>
+            <View style={styles.rolloverActions}>
+              <Pressable
+                accessibilityLabel={`No mantener sobrante de ${p.scope === 'week' ? 'la semana' : 'el mes'} pasad${p.scope === 'week' ? 'a' : 'o'}`}
+                onPress={() => ackBudgetPeriod(p.scope, p.key, 0)}
+                style={[styles.rolloverBtnGhost, { borderRadius: radius.pill, borderColor: 'rgba(255,255,255,0.5)' }]}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>No, empezar en $0</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Sí mantener sobrante de ${p.scope === 'week' ? 'la semana' : 'el mes'} pasad${p.scope === 'week' ? 'a' : 'o'}`}
+                onPress={() => ackBudgetPeriod(p.scope, p.key, p.leftover)}
+                style={[styles.rolloverBtnSolid, { borderRadius: radius.pill }]}
+              >
+                <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>Sí, sigue conmigo</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
 
         {/* ---------- ¿En qué gastaste tu dinero? ---------- */}
         <GlassCard style={{ gap: spacing.md }}>
@@ -318,7 +382,7 @@ export default function Dashboard() {
           </View>
         )}
 
-        {/* ---------- Panorama completo (patrimonio, salud financiera, movimientos) ---------- */}
+        {/* ---------- Panorama completo (patrimonio) ---------- */}
         <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.sm }]}>TU PANORAMA COMPLETO</Text>
 
         <GlassCard style={{ gap: spacing.sm }}>
@@ -342,55 +406,6 @@ export default function Dashboard() {
             </Text>
           </Pressable>
         </GlassCard>
-
-        <Pressable onPress={() => router.push('/salud-financiera')}>
-          <GlassCard style={{ gap: spacing.sm }}>
-            <View style={styles.spaceBetween}>
-              <Text style={[typography.headline, { color: colors.textPrimary }]}>Salud financiera</Text>
-              <Text style={[typography.headline, { color: colors.accentFrom }]}>{health.score}/100</Text>
-            </View>
-            <ProgressBar percent={health.score} status={health.score >= 60 ? 'normal' : health.score >= 40 ? 'attention' : 'exceeded'} />
-            <View style={styles.spaceBetween}>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>{health.label}</Text>
-              <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>Ver desglose →</Text>
-            </View>
-          </GlassCard>
-        </Pressable>
-
-        <View>
-          <View style={[styles.spaceBetween, { marginBottom: spacing.sm }]}>
-            <Text style={[typography.headline, { color: colors.textPrimary }]}>Movimientos recientes</Text>
-            <Pressable onPress={() => router.push('/(tabs)/movimientos')}>
-              <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>Ver todos</Text>
-            </Pressable>
-          </View>
-          <GlassCard style={{ gap: spacing.md }}>
-            {recentTx.length === 0 && (
-              <Text style={[typography.body, { color: colors.textSecondary }]}>
-                Aún no registras movimientos. Usa el botón de voz para agregar el primero.
-              </Text>
-            )}
-            {recentTx.map((t) => (
-              <View key={t.id} style={styles.txRow}>
-                <CategoryIcon categoryId={t.categoryId} size={16} />
-                <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                  <Text style={[typography.body, { color: colors.textPrimary }]}>
-                    {t.merchant || findSubcategory(t.categoryId, t.subcategoryId)?.name || findCategory(t.categoryId)?.name}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    typography.headline,
-                    { color: t.type === 'income' ? colors.success : colors.textPrimary },
-                  ]}
-                >
-                  {t.type === 'income' ? '+' : '-'}
-                  {formatCurrency(t.amount, t.currency)}
-                </Text>
-              </View>
-            ))}
-          </GlassCard>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -403,6 +418,10 @@ const styles = StyleSheet.create({
   demoBanner: { paddingVertical: 8, paddingHorizontal: 12, alignSelf: 'flex-start' },
   spaceBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
+  rolloverCard: { padding: 18, gap: 10 },
+  rolloverActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  rolloverBtnGhost: { flex: 1, alignItems: 'center', paddingVertical: 10, borderWidth: 1.5 },
+  rolloverBtnSolid: { flex: 1, alignItems: 'center', paddingVertical: 10, backgroundColor: '#FFFFFF' },
   txRow: { flexDirection: 'row', alignItems: 'center' },
   donutRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 },
   donutWrap: { width: 140, height: 140, alignItems: 'center', justifyContent: 'center' },

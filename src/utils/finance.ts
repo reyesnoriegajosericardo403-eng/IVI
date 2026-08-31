@@ -108,10 +108,19 @@ export function isSameWeek(iso: string, ref = new Date()): boolean {
   return startOfWeek(d).getTime() === startOfWeek(ref).getTime();
 }
 
+// Movimientos que el propio usuario marcó como "excluir del presupuesto"
+// (ej. algo que le van a reembolsar) nunca cuentan en sumas, gráficas ni
+// líneas de presupuesto — pero siguen apareciendo en Movimientos, porque
+// solo se excluyen del cálculo, no se borran (spec: "la opción de
+// excluirlo del presupuesto").
+function countsForBudget(t: Transaction): boolean {
+  return !t.excludeFromBudget;
+}
+
 export function spendInPeriod(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): number {
   const inScope = scope === 'month' ? isSameMonth : isSameWeek;
   return transactions
-    .filter((t) => t.type === 'expense' && inScope(t.date, ref))
+    .filter((t) => t.type === 'expense' && countsForBudget(t) && inScope(t.date, ref))
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
@@ -121,14 +130,14 @@ export function spendInPeriod(transactions: Transaction[], ref = new Date(), sco
 export function sumByTypeInPeriod(transactions: Transaction[], type: Transaction['type'], ref = new Date(), scope: 'month' | 'week' = 'month'): number {
   const inScope = scope === 'month' ? isSameMonth : isSameWeek;
   return transactions
-    .filter((t) => t.type === type && inScope(t.date, ref))
+    .filter((t) => t.type === type && countsForBudget(t) && inScope(t.date, ref))
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
 export function spendByCategory(transactions: Transaction[], ref = new Date()): Record<string, number> {
   const result: Record<string, number> = {};
   for (const t of transactions) {
-    if (t.type !== 'expense' || !isSameMonth(t.date, ref)) continue;
+    if (t.type !== 'expense' || !countsForBudget(t) || !isSameMonth(t.date, ref)) continue;
     result[t.categoryId] = (result[t.categoryId] ?? 0) + t.amount;
   }
   return result;
@@ -154,7 +163,7 @@ export function topSpendCategories(
   const byCategory: Record<string, number> = {};
   let total = 0;
   for (const t of transactions) {
-    if (t.type !== 'expense' || !inScope(t.date, ref)) continue;
+    if (t.type !== 'expense' || !countsForBudget(t) || !inScope(t.date, ref)) continue;
     byCategory[t.categoryId] = (byCategory[t.categoryId] ?? 0) + t.amount;
     total += t.amount;
   }
@@ -197,7 +206,7 @@ export function topSpendSubcategories(
   const inScope = scope === 'month' ? isSameMonth : isSameWeek;
   const bySub: Record<string, { categoryId: string; subcategoryId: string; amount: number }> = {};
   for (const t of transactions) {
-    if (t.type !== 'expense' || !inScope(t.date, ref)) continue;
+    if (t.type !== 'expense' || !countsForBudget(t) || !inScope(t.date, ref)) continue;
     const key = `${t.categoryId}::${t.subcategoryId}`;
     if (!bySub[key]) bySub[key] = { categoryId: t.categoryId, subcategoryId: t.subcategoryId, amount: 0 };
     bySub[key].amount += t.amount;
@@ -249,7 +258,7 @@ const SPEND_TYPES: Transaction['type'][] = ['expense', 'saving', 'investment_buy
 // `scope` decide si se filtra por mes o por semana (toggle Semanal/Mensual).
 export function spendByConcept(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): Record<string, number> {
   const inScope = scope === 'month' ? isSameMonth : isSameWeek;
-  const expenses = transactions.filter((t) => SPEND_TYPES.includes(t.type) && inScope(t.date, ref));
+  const expenses = transactions.filter((t) => SPEND_TYPES.includes(t.type) && countsForBudget(t) && inScope(t.date, ref));
   const result: Record<string, number> = {};
   for (const concept of BUDGET_CONCEPTS) {
     let total = 0;
@@ -272,7 +281,7 @@ export function incomeByKind(transactions: Transaction[], ref = new Date(), scop
   let fixed = 0;
   let variable = 0;
   for (const t of transactions) {
-    if (t.type !== 'income' || !inScope(t.date, ref)) continue;
+    if (t.type !== 'income' || !countsForBudget(t) || !inScope(t.date, ref)) continue;
     const sub = findSubcategory(t.categoryId, t.subcategoryId);
     if (sub?.incomeKind === 'fixed') fixed += t.amount;
     else variable += t.amount;
@@ -287,7 +296,7 @@ export function incomeByKind(transactions: Transaction[], ref = new Date(), scop
 // editable, igual que un concepto de gasto).
 export function incomeByConcept(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): Record<string, number> {
   const inScope = scope === 'month' ? isSameMonth : isSameWeek;
-  const incomeTx = transactions.filter((t) => t.type === 'income' && inScope(t.date, ref));
+  const incomeTx = transactions.filter((t) => t.type === 'income' && countsForBudget(t) && inScope(t.date, ref));
   const result: Record<string, number> = {};
   for (const concept of INCOME_CONCEPTS) {
     let total = 0;
@@ -313,6 +322,8 @@ export interface BudgetLine {
   actual: number;
   percentUsed: number;
   status: BudgetStatus;
+  // Solo presente en conceptos de ingreso FIJO con día de cobro capturado.
+  incomeDayOfMonth?: number;
 }
 
 export function computeBudgetStatus(
@@ -362,8 +373,45 @@ export function buildBudgetLines(
       actual,
       percentUsed,
       status: computeBudgetStatus(percentUsed, thresholds),
+      incomeDayOfMonth: incomeConcept ? b.incomeDayOfMonth : undefined,
     };
   });
+}
+
+// Clave estable del periodo que contiene `ref` — misma semana/mes siempre
+// produce la misma clave, para poder detectar cuándo "ya cambió de
+// semana/mes" desde la última vez que se abrió la app (spec: "cuando
+// acabe la semana el domingo... al momento de abrir la app").
+export function periodKey(scope: 'month' | 'week', ref = new Date()): string {
+  if (scope === 'month') {
+    return `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const day = ref.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + diff);
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+}
+
+// Cuánto quedó "Disponible" (presupuestado - gastado) en el periodo ANTERIOR
+// al que contiene `ref` — usado para preguntarle al usuario si ese sobrante
+// sigue contando como dinero disponible en el periodo nuevo (spec: "¿seguimos
+// con el mismo sobrante de dinero disponible?"). 0 si no había presupuesto
+// ese periodo — nunca se inventa un sobrante.
+export function previousPeriodAvailable(
+  budgets: Budget[],
+  transactions: Transaction[],
+  thresholds: { attention: number; warning: number; exceeded: number },
+  scope: 'month' | 'week',
+  ref = new Date()
+): number {
+  const prevRef = new Date(ref);
+  if (scope === 'month') prevRef.setMonth(prevRef.getMonth() - 1);
+  else prevRef.setDate(prevRef.getDate() - 7);
+  const lines = buildBudgetLines(budgets, transactions, thresholds, prevRef, scope);
+  const budgeted = lines.reduce((s, b) => s + b.budgeted, 0);
+  if (budgeted <= 0) return 0;
+  const spent = spendInPeriod(transactions, prevRef, scope);
+  return Math.max(0, budgeted - spent);
 }
 
 // Busca el snapshot más cercano a "hace N días" y devuelve el % de cambio

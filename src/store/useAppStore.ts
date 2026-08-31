@@ -34,6 +34,22 @@ const DEFAULT_PROFILE: UserProfile = {
   budgetThresholds: { attention: 70, warning: 90, exceeded: 100 },
 };
 
+// Estado de "¿ya reconocimos el cambio de semana/mes?" por periodicidad —
+// lastPeriodKey es la última clave de periodo que el usuario ya confirmó
+// (o para la que no había nada que confirmar), y carryOver es el sobrante
+// del periodo anterior que sigue contando como Disponible mientras
+// lastPeriodKey sea el periodo actual (spec: "¿seguimos con el mismo
+// sobrante de dinero disponible?").
+interface BudgetPeriodState {
+  lastPeriodKey: string | null;
+  carryOver: number;
+}
+
+const DEFAULT_BUDGET_PERIODS: { week: BudgetPeriodState; month: BudgetPeriodState } = {
+  week: { lastPeriodKey: null, carryOver: 0 },
+  month: { lastPeriodKey: null, carryOver: 0 },
+};
+
 // Da a un registro nuevo su identidad de sincronización (spec 75, 77, 83).
 function withNewMeta<T extends object>(draft: T): T & SyncMeta {
   const now = new Date().toISOString();
@@ -74,6 +90,9 @@ interface AppState {
   lastSyncedAt: string | null;
   demoDataLoaded: boolean;
   hasHydrated: boolean;
+
+  budgetPeriods: { week: BudgetPeriodState; month: BudgetPeriodState };
+  ackBudgetPeriod: (scope: 'week' | 'month', periodKey: string, carryOver: number) => void;
 
   // Cotizaciones en vivo — deliberadamente FUERA de lo que se persiste
   // (ver partialize abajo): es un valor de "ahora mismo", no un dato
@@ -174,6 +193,12 @@ export const useAppStore = create<AppState>()(
         liveQuotes: {},
         lastQuotesFetchedAt: null,
         cetesRates: null,
+        budgetPeriods: DEFAULT_BUDGET_PERIODS,
+
+        ackBudgetPeriod: (scope, periodKey, carryOver) =>
+          set((s) => ({
+            budgetPeriods: { ...s.budgetPeriods, [scope]: { lastPeriodKey: periodKey, carryOver } },
+          })),
 
         setLiveQuotes: (quotes) =>
           set((s) => {
@@ -425,6 +450,7 @@ export const useAppStore = create<AppState>()(
             pendingSync: [],
             lastSyncedAt: null,
             demoDataLoaded: false,
+            budgetPeriods: DEFAULT_BUDGET_PERIODS,
           }),
       };
     },

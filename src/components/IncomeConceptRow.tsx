@@ -68,6 +68,11 @@ export function IncomeConceptRow({
             </Text>
             <Text style={[typography.caption, { fontWeight: '700', color: met ? colors.success : colors.warning }]}>{percentUsed}%</Text>
           </View>
+          {!!line.incomeDayOfMonth && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>
+              Normalmente te llega el día {line.incomeDayOfMonth} de cada mes.
+            </Text>
+          )}
         </>
       ) : (
         <Text style={[typography.caption, { color: colors.textTertiary }]}>

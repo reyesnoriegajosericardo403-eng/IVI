@@ -67,7 +67,7 @@ export default function Presupuesto() {
 
   const handleSaveConcept = (
     categoryId: string,
-    input: { baseAmount: number; periodicity: BudgetPeriodicity; frequency?: BudgetFrequency; customDaysPerWeek?: number }
+    input: { baseAmount: number; periodicity: BudgetPeriodicity; frequency?: BudgetFrequency; customDaysPerWeek?: number; incomeDayOfMonth?: number }
   ) => {
     const monthlyAmount = computeMonthlyAmount(input);
     if (monthlyAmount <= 0) return;
@@ -80,6 +80,7 @@ export default function Presupuesto() {
       frequency: input.frequency,
       customDaysPerWeek: input.customDaysPerWeek,
       baseAmount: input.baseAmount,
+      incomeDayOfMonth: input.incomeDayOfMonth,
     });
     setEditingConceptId(null);
   };
@@ -94,6 +95,7 @@ export default function Presupuesto() {
         concept={concept}
         initial={budgets.find((b) => b.categoryId === concept.id)}
         currency={profile.primaryCurrency}
+        showDayOfMonth={concept.kind === 'fixed'}
         onCancel={() => setEditingConceptId(null)}
         onSave={(input) => handleSaveConcept(concept.id, input)}
       />

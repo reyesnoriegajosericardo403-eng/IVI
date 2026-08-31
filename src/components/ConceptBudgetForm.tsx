@@ -17,13 +17,25 @@ export function ConceptBudgetForm({
   concept,
   initial,
   currency,
+  showDayOfMonth,
   onSave,
   onCancel,
 }: {
   concept: { id: string; name: string };
   initial: Budget | undefined;
   currency: Currency;
-  onSave: (input: { baseAmount: number; periodicity: BudgetPeriodicity; frequency?: BudgetFrequency; customDaysPerWeek?: number }) => void;
+  // Solo true para ingresos FIJOS (Salario, Mesada) — los variables como
+  // Freelance no tienen fecha fija, así que no tiene caso pedirla (spec:
+  // "las categorías de freelancer pues no tienen caso porque esos no
+  // tienen fecha fija").
+  showDayOfMonth?: boolean;
+  onSave: (input: {
+    baseAmount: number;
+    periodicity: BudgetPeriodicity;
+    frequency?: BudgetFrequency;
+    customDaysPerWeek?: number;
+    incomeDayOfMonth?: number;
+  }) => void;
   onCancel: () => void;
 }) {
   const { colors, typography, spacing, radius } = useTheme();
@@ -31,6 +43,7 @@ export function ConceptBudgetForm({
   const [frequency, setFrequency] = useState<BudgetFrequency>(initial?.frequency ?? 'all_days');
   const [customDays, setCustomDays] = useState(initial?.customDaysPerWeek ?? 3);
   const [amountText, setAmountText] = useState(initial?.baseAmount ? String(initial.baseAmount) : '');
+  const [dayOfMonthText, setDayOfMonthText] = useState(initial?.incomeDayOfMonth ? String(initial.incomeDayOfMonth) : '');
 
   const baseAmount = parseFloat(amountText.replace(',', '.')) || 0;
   const monthlyAmount = computeMonthlyAmount({ baseAmount, periodicity, frequency, customDaysPerWeek: customDays });
@@ -108,13 +121,38 @@ export function ConceptBudgetForm({
         </View>
       )}
 
+      {showDayOfMonth && (
+        <View>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>
+            ¿Qué día del mes te llega? (opcional)
+          </Text>
+          <TextInput
+            value={dayOfMonthText}
+            onChangeText={(v) => setDayOfMonthText(v.replace(/[^0-9]/g, '').slice(0, 2))}
+            keyboardType="number-pad"
+            placeholder="Ej. 3"
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md, maxWidth: 100 }]}
+          />
+          {!!dayOfMonthText && (
+            <Text style={[typography.caption, { color: colors.textTertiary, marginTop: 6 }]}>
+              Te lo recordaremos como el día {dayOfMonthText} de cada mes.
+            </Text>
+          )}
+        </View>
+      )}
+
       <View style={styles.rowEnd}>
         <Pressable onPress={onCancel}>
           <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
         </Pressable>
         <Pressable
           disabled={!canSave}
-          onPress={() => onSave({ baseAmount, periodicity, frequency: periodicity === 'day' ? frequency : undefined, customDaysPerWeek: customDays })}
+          onPress={() => {
+            const dayNum = parseInt(dayOfMonthText, 10);
+            const incomeDayOfMonth = showDayOfMonth && dayNum >= 1 && dayNum <= 31 ? dayNum : undefined;
+            onSave({ baseAmount, periodicity, frequency: periodicity === 'day' ? frequency : undefined, customDaysPerWeek: customDays, incomeDayOfMonth });
+          }}
           style={[styles.saveBtn, { borderRadius: radius.pill, backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder }]}
         >
           <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Guardar</Text>
