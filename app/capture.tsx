@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { SwipeToConfirm } from '@/components/SwipeToConfirm';
 import { ValuMark } from '@/components/ValuMark';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
 import { providers } from '@/providers/registry';
@@ -326,18 +327,16 @@ export default function Capture() {
                 {liveTranscript || '…'}
               </Text>
             </ScrollView>
-            <View style={[styles.rowGap, { marginTop: spacing.lg }]}>
-              <Pressable
-                onPress={handleCancelListening}
-                style={[styles.cta, { borderWidth: 1, borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}
-              >
+            <View style={{ width: '100%', maxWidth: 340, marginTop: spacing.lg, gap: spacing.md }}>
+              <SwipeToConfirm
+                onConfirm={handleStopListening}
+                label="Desliza para guardar"
+                confirmedLabel="¡Listo!"
+                icon="checkmark"
+                accessibilityLabel="Deslizar para guardar movimiento"
+              />
+              <Pressable onPress={handleCancelListening} style={{ alignSelf: 'center', paddingVertical: 4 }}>
                 <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleStopListening}
-                style={[styles.cta, { backgroundColor: colors.accentFrom, borderRadius: radius.pill }]}
-              >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Listo</Text>
               </Pressable>
             </View>
           </View>
@@ -355,6 +354,7 @@ export default function Capture() {
             {(stage === 'idle' || stage === 'error') && (
               <>
                 <Pressable
+                  accessibilityLabel="Grabar por voz"
                   onPress={handleMicPress}
                   style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, marginTop: spacing.xl }]}
                 >
@@ -398,7 +398,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   checkCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
-  rowGap: { flexDirection: 'row', gap: 12 },
   amountInput: {
     width: 200,
     textAlign: 'center',
