@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarPicker } from '@/components/CalendarPicker';
 import { CategoryIcon } from '@/components/CategoryIcon';
@@ -42,6 +42,7 @@ function groupByDay(transactions: Transaction[]): Section[] {
 export default function Movimientos() {
   const { colors, typography, spacing, radius } = useTheme();
   const maxWidth = useContentMaxWidth();
+  const insets = useSafeAreaInsets();
   const profile = useAppStore((s) => s.profile);
   const rawTransactions = useAppStore((s) => s.transactions);
   const rawBudgets = useAppStore((s) => s.budgets);
@@ -268,15 +269,21 @@ export default function Movimientos() {
         />
       )}
 
-      <Pressable
-        onPress={() => router.push('/transaction/new')}
-        style={[styles.addBtn, { backgroundColor: colors.surfaceSolid, borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}
+      <View
+        pointerEvents="box-none"
+        style={[styles.manualFabWrap, { bottom: (Platform.OS === 'ios' ? 58 : 54) + insets.bottom }]}
       >
-        <Ionicons name="add" size={20} color={colors.accentFrom} />
-        <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700', marginLeft: 4 }]}>
+        <Pressable
+          accessibilityLabel="Registro manual"
+          onPress={() => router.push('/transaction/new')}
+          style={[styles.manualFab, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}
+        >
+          <Ionicons name="create-outline" size={26} color="#FFFFFF" />
+        </Pressable>
+        <Text style={[typography.micro, { color: colors.textSecondary, fontWeight: '700', marginTop: 6 }]}>
           Registro manual
         </Text>
-      </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -293,14 +300,16 @@ const styles = StyleSheet.create({
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   barTrack: { height: 8, overflow: 'hidden' },
   barFill: { height: 8 },
-  addBtn: {
-    position: 'absolute',
-    right: 20,
-    bottom: 130,
-    flexDirection: 'row',
+  manualFabWrap: { position: 'absolute', right: 20, alignItems: 'center' },
+  manualFab: {
+    width: 60,
+    height: 60,
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 1,
+    justifyContent: 'center',
+    shadowColor: '#4F46E5',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
 });

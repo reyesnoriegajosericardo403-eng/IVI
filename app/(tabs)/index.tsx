@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
 import { Sparkline } from '@/components/Sparkline';
+import { budgetConceptsByGroup, findIncomeConcept } from '@/data/budgetConcepts';
 import { useContentMaxWidth } from '@/hooks/useBreakpoint';
 import {
   selectActiveAccounts,
@@ -24,14 +25,17 @@ import {
   buildBudgetLines,
   computeNetWorth,
   getNetWorthTrend,
+  incomeByKind,
   periodKey,
   previousMonthSpend,
   previousPeriodAvailable,
+  spendByConcept,
   spendInPeriod,
   sumByTypeInPeriod,
   topSpendCategories,
   upcomingLiabilityReminders,
 } from '@/utils/finance';
+import { evaluateFinancialInsights, type FinancialInsight } from '@/utils/financialInsights';
 
 type Scope = 'month' | 'week';
 
@@ -78,6 +82,46 @@ export default function Dashboard() {
   // ---- Banner de presupuesto + tip (cambian por hora/día — spec) ----
   const budgetBanner = getBudgetBanner(hasBudget);
   const dailyTip = getDailyBudgetTip();
+
+  // ---- Insights financieros (nudging empático) — mismo lugar que el
+  // banner de presupuesto, pero un aviso de comportamiento real le gana
+  // al recordatorio genérico cuando aplica (spec: "esa ficha es donde van
+  // a salir los anuncios"). Gastos_De_Hoy/Gastos_De_Luego = lo que de
+  // verdad se ha gastado este mes en los grupos HOY/LUEGO del presupuesto;
+  // Ingreso_Mensual = lo presupuestado como ingreso si existe, si no, lo
+  // que ya se recibió realmente este mes — nunca un número inventado.
+  const conceptSpendMonth = spendByConcept(transactions, new Date(), 'month');
+  const gastosHoy = budgetConceptsByGroup('hoy').reduce((s, c) => s + (conceptSpendMonth[c.id] ?? 0), 0);
+  const gastosLuego = budgetConceptsByGroup('luego').reduce((s, c) => s + (conceptSpendMonth[c.id] ?? 0), 0);
+  const plannedIncome = monthlyBudgetLines
+    .filter((l) => !!findIncomeConcept(l.categoryId))
+    .reduce((s, l) => s + l.budgeted, 0);
+  const actualIncome = incomeByKind(transactions, new Date(), 'month');
+  const ingresoMensual = plannedIncome > 0 ? plannedIncome : actualIncome.fixed + actualIncome.variable;
+
+  const now = new Date();
+  const currentDay = now.getDate();
+  const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  const financialInsights = evaluateFinancialInsights({
+    gastosHoy,
+    gastosLuego,
+    ingresoMensual,
+    currentDay,
+    totalDaysInMonth,
+    currency: profile.primaryCurrency,
+  });
+  const topInsight: FinancialInsight | undefined = financialInsights[0];
+  const insightToneColor: Record<FinancialInsight['tone'], string> = {
+    caution: colors.warning,
+    opportunity: colors.accentFrom,
+    celebration: colors.success,
+  };
+  const insightToneIcon: Record<FinancialInsight['tone'], keyof typeof Ionicons.glyphMap> = {
+    caution: 'alert-circle-outline',
+    opportunity: 'rocket-outline',
+    celebration: 'trophy-outline',
+  };
 
   // ---- Sobrante del periodo anterior (semana o mes) que sigue contando
   // como Disponible mientras el usuario no diga lo contrario — spec:
@@ -268,20 +312,36 @@ export default function Dashboard() {
           )}
         </GlassCard>
 
-        {/* ---------- Banner de presupuesto (cambia según haya presupuesto, hora y día) ---------- */}
-        <Pressable
-          accessibilityLabel={budgetBanner.cta}
-          onPress={() => router.push('/presupuesto')}
-          style={[styles.budgetBanner, { backgroundColor: colors.accentFrom, borderRadius: radius.lg }]}
-        >
-          <Ionicons name="clipboard-outline" size={32} color="rgba(255,255,255,0.85)" />
-          <View style={{ flex: 1, marginLeft: spacing.md }}>
-            <Text style={[typography.body, { color: '#FFFFFF', fontWeight: '600' }]}>{budgetBanner.title}</Text>
-            <Text style={[typography.caption, { color: 'rgba(255,255,255,0.85)', fontWeight: '700', marginTop: spacing.xs }]}>
-              {budgetBanner.cta} →
-            </Text>
-          </View>
-        </Pressable>
+        {/* ---------- Ficha de anuncios: insight financiero si aplica, si no el recordatorio de presupuesto ---------- */}
+        {topInsight ? (
+          <Pressable
+            accessibilityLabel={topInsight.title}
+            onPress={() => router.push('/presupuesto')}
+            style={[styles.budgetBanner, { backgroundColor: insightToneColor[topInsight.tone], borderRadius: radius.lg }]}
+          >
+            <Ionicons name={insightToneIcon[topInsight.tone]} size={32} color="rgba(255,255,255,0.85)" />
+            <View style={{ flex: 1, marginLeft: spacing.md }}>
+              <Text style={[typography.body, { color: '#FFFFFF', fontWeight: '600' }]}>{topInsight.title}</Text>
+              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.85)', marginTop: spacing.xs }]}>
+                {topInsight.message}
+              </Text>
+            </View>
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityLabel={budgetBanner.cta}
+            onPress={() => router.push('/presupuesto')}
+            style={[styles.budgetBanner, { backgroundColor: colors.accentFrom, borderRadius: radius.lg }]}
+          >
+            <Ionicons name="clipboard-outline" size={32} color="rgba(255,255,255,0.85)" />
+            <View style={{ flex: 1, marginLeft: spacing.md }}>
+              <Text style={[typography.body, { color: '#FFFFFF', fontWeight: '600' }]}>{budgetBanner.title}</Text>
+              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.85)', fontWeight: '700', marginTop: spacing.xs }]}>
+                {budgetBanner.cta} →
+              </Text>
+            </View>
+          </Pressable>
+        )}
 
         <View style={[styles.tipCard, { backgroundColor: colors.accentSoft, borderRadius: radius.md }]}>
           <Ionicons name="bulb-outline" size={16} color={colors.accentFrom} />

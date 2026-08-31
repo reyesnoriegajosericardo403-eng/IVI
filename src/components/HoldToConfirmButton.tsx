@@ -1,19 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
 
-const AnimatedRect = Animated.createAnimatedComponent(Rect);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const HOLD_DURATION_MS = 900;
 const RELEASE_DURATION_MS = 180;
 const ERROR_RESET_MS = 3000;
-const STROKE_WIDTH = 3;
+const STROKE_WIDTH = 4;
+const DIAMETER = 84;
 
 type HoldState = 'idle' | 'holding' | 'saving' | 'success' | 'error';
+
+// Estilo que evita que el navegador seleccione texto o muestre el menú de
+// "copiar/pegar" al mantener el dedo/mouse presionado — eso era lo que
+// cancelaba el gesto (spec: "se selecciona el texto que está dentro del
+// botoncito y eso cancela el registro"). Ya no hay texto adentro del
+// botón, pero se deja también aquí por si el navegador intenta seleccionar
+// el ícono o el fondo.
+const noSelectStyle = {
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  WebkitTouchCallout: 'none',
+} as any;
 
 interface HoldToConfirmButtonProps {
   // Puede ser async — si truena/rechaza, el botón muestra el estado de
@@ -28,29 +41,26 @@ interface HoldToConfirmButtonProps {
   icon?: keyof typeof Ionicons.glyphMap;
   disabled?: boolean;
   accessibilityLabel?: string;
-  height?: number;
 }
 
-// Botón "Mantén presionado para confirmar" — reemplaza el gesto de deslizar
-// (que seguía sin registrar el toque a la primera para algunos usuarios) por
-// un mantener-presionado con un anillo de neón que se llena alrededor del
-// botón. Solo se ejecuta `onConfirm` cuando el llenado llega al 100%; soltar
-// antes cancela sin ejecutar nada.
+// Botón circular "Mantén presionado para confirmar" — el texto vive AFUERA
+// del botón (nunca adentro) para que no haya nada que un navegador pueda
+// intentar seleccionar durante el hold. Un anillo de neón se llena
+// alrededor del círculo mientras se sostiene; soltar antes del 100%
+// cancela sin ejecutar nada.
 export function HoldToConfirmButton({
   onConfirm,
   label = 'Mantén presionado para guardar',
   holdingLabel = 'Sigue presionando…',
   savingLabel = 'Guardando…',
   successLabel = '¡Guardado correctamente!',
-  errorLabel = 'Upps, no se guardó correctamente. Dale otra vez.',
+  errorLabel = 'Upps, no se guardó. Dale otra vez.',
   icon = 'mic',
   disabled = false,
   accessibilityLabel = 'Mantener presionado para guardar',
-  height = 64,
 }: HoldToConfirmButtonProps) {
-  const { colors, typography, radius } = useTheme();
+  const { colors, typography } = useTheme();
   const [state, setState] = useState<HoldState>('idle');
-  const [boxWidth, setBoxWidth] = useState(0);
 
   const fill = useRef(new Animated.Value(0)).current;
   const runningAnimRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -71,10 +81,6 @@ export function HoldToConfirmButton({
     },
     []
   );
-
-  const onLayout = useCallback((e: LayoutChangeEvent) => {
-    setBoxWidth(e.nativeEvent.layout.width);
-  }, []);
 
   const resetToIdle = useCallback(() => {
     setState('idle');
@@ -132,83 +138,72 @@ export function HoldToConfirmButton({
   const displayLabel =
     state === 'saving' ? savingLabel : state === 'success' ? successLabel : state === 'error' ? errorLabel : state === 'holding' ? holdingLabel : label;
 
-  const rx = height / 2;
-  const perimeter = boxWidth > 0 ? 2 * (boxWidth - 2 * rx) + 2 * (height - 2 * rx) + 2 * Math.PI * rx : 0;
-  const strokeDashoffset = fill.interpolate({ inputRange: [0, 1], outputRange: [perimeter, 0] });
+  const radiusPx = (DIAMETER - STROKE_WIDTH) / 2;
+  const circumference = 2 * Math.PI * radiusPx;
+  const strokeDashoffset = fill.interpolate({ inputRange: [0, 1], outputRange: [circumference, 0] });
 
   return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      onLayout={onLayout}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={disabled || state === 'saving' || state === 'success'}
-      style={[
-        styles.button,
-        {
-          height,
-          borderRadius: rx,
-          backgroundColor: colors.surfaceSolid,
-          borderWidth: 1,
-          borderColor: colors.surfaceBorder,
-          opacity: disabled ? 0.6 : 1,
-          shadowColor: stateColor,
-          shadowOpacity: state === 'holding' || state === 'success' ? 0.55 : 0,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: state === 'holding' || state === 'success' ? 6 : 0,
-        },
-      ]}
-    >
-      {boxWidth > 0 && (
-        <Svg width={boxWidth} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Rect
-            x={STROKE_WIDTH / 2}
-            y={STROKE_WIDTH / 2}
-            width={boxWidth - STROKE_WIDTH}
-            height={height - STROKE_WIDTH}
-            rx={rx - STROKE_WIDTH / 2}
-            fill="none"
-            stroke={colors.divider}
-            strokeWidth={STROKE_WIDTH}
-          />
-          <AnimatedRect
-            x={STROKE_WIDTH / 2}
-            y={STROKE_WIDTH / 2}
-            width={boxWidth - STROKE_WIDTH}
-            height={height - STROKE_WIDTH}
-            rx={rx - STROKE_WIDTH / 2}
+    <View style={styles.wrap}>
+      <Pressable
+        accessibilityLabel={accessibilityLabel}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled || state === 'saving' || state === 'success'}
+        style={[
+          styles.button,
+          noSelectStyle,
+          {
+            width: DIAMETER,
+            height: DIAMETER,
+            borderRadius: DIAMETER / 2,
+            backgroundColor: colors.surfaceSolid,
+            borderWidth: 1,
+            borderColor: colors.surfaceBorder,
+            opacity: disabled ? 0.6 : 1,
+            shadowColor: stateColor,
+            shadowOpacity: state === 'holding' || state === 'success' ? 0.6 : 0,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: state === 'holding' || state === 'success' ? 8 : 0,
+          },
+        ]}
+      >
+        <Svg width={DIAMETER} height={DIAMETER} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Circle cx={DIAMETER / 2} cy={DIAMETER / 2} r={radiusPx} fill="none" stroke={colors.divider} strokeWidth={STROKE_WIDTH} />
+          <AnimatedCircle
+            cx={DIAMETER / 2}
+            cy={DIAMETER / 2}
+            r={radiusPx}
             fill="none"
             stroke={stateColor}
             strokeWidth={STROKE_WIDTH}
-            strokeDasharray={`${perimeter}, ${perimeter}`}
+            strokeDasharray={`${circumference}, ${circumference}`}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
+            rotation={-90}
+            origin={`${DIAMETER / 2}, ${DIAMETER / 2}`}
           />
         </Svg>
-      )}
-      <View style={styles.content} pointerEvents="none">
-        {state === 'saving' ? (
-          <ActivityIndicator color={stateColor} />
-        ) : (
-          <Ionicons
-            name={state === 'success' ? 'checkmark-circle' : state === 'error' ? 'alert-circle' : icon}
-            size={20}
-            color={stateColor}
-          />
-        )}
-        <Text
-          style={[typography.body, { color: colors.textPrimary, fontWeight: '700', marginLeft: 10, flexShrink: 1 }]}
-          numberOfLines={2}
-        >
-          {displayLabel}
-        </Text>
-      </View>
-    </Pressable>
+        <View pointerEvents="none">
+          {state === 'saving' ? (
+            <ActivityIndicator color={stateColor} />
+          ) : (
+            <Ionicons
+              name={state === 'success' ? 'checkmark-circle' : state === 'error' ? 'alert-circle' : icon}
+              size={30}
+              color={stateColor}
+            />
+          )}
+        </View>
+      </Pressable>
+      <Text style={[typography.caption, noSelectStyle, { color: colors.textSecondary, fontWeight: '700', marginTop: 10, textAlign: 'center' }]}>
+        {displayLabel}
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  button: { width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  wrap: { alignItems: 'center' },
+  button: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 });
