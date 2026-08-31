@@ -52,6 +52,21 @@ const NUMBER_WORDS: Record<string, number> = {
   mil: 1000,
 };
 
+// Normaliza a minúsculas, sin acentos y sin puntuación — así "café", "CAFÉ"
+// y "cafe." (como suele transcribir voz-a-texto) comparan igual. Se aplica
+// tanto al texto dictado como a cada palabra clave del catálogo antes de
+// buscar coincidencias (spec: "normalizar el string: lowercase, eliminar
+// acentos, puntos y comas").
+function normalize(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[.,;:!¡¿?"'()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const KNOWN_MERCHANTS: Array<{ name: string; keyword: string; categoryId: string; subcategoryId: string }> = [
   { name: 'Starbucks', keyword: 'starbucks', categoryId: 'food', subcategoryId: 'food_coffee' },
   { name: 'Netflix', keyword: 'netflix', categoryId: 'entertainment', subcategoryId: 'ent_streaming' },
@@ -92,20 +107,24 @@ function extractType(text: string): TransactionType {
 }
 
 function extractCategory(text: string): { categoryId: string | null; subcategoryId: string | null; merchant?: string } {
-  const lower = text.toLowerCase();
+  const normalizedText = normalize(text);
 
   for (const m of KNOWN_MERCHANTS) {
-    if (lower.includes(m.keyword)) {
+    if (normalizedText.includes(normalize(m.keyword))) {
       return { categoryId: m.categoryId, subcategoryId: m.subcategoryId, merchant: m.name };
     }
   }
 
+  // La palabra clave más larga que coincida gana — así "barbacoa" (comida
+  // rápida) no se confunde con la coincidencia parcial más corta "bar"
+  // (discotecas) que también aparece dentro de esa palabra.
   let best: { categoryId: string; subcategoryId: string; score: number } | null = null;
   for (const category of DEFAULT_CATEGORIES) {
     for (const sub of category.subcategories) {
       for (const kw of sub.keywords) {
-        if (kw.length > 2 && lower.includes(kw)) {
-          const score = kw.length;
+        const normalizedKw = normalize(kw);
+        if (normalizedKw.length > 2 && normalizedText.includes(normalizedKw)) {
+          const score = normalizedKw.length;
           if (!best || score > best.score) {
             best = { categoryId: category.id, subcategoryId: sub.id, score };
           }

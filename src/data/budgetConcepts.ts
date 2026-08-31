@@ -104,6 +104,13 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     icon: 'debt',
     matches: [{ categoryId: 'debt' }],
   },
+  {
+    id: 'concept_education',
+    name: 'Educación y desarrollo',
+    group: 'hoy',
+    icon: 'education',
+    matches: [{ categoryId: 'education' }],
+  },
 
   // ---------- LUEGO: ahorro e inversión ----------
   {

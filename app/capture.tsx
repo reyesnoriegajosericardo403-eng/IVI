@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
-import { SwipeToConfirm } from '@/components/SwipeToConfirm';
+import { HoldToConfirmButton } from '@/components/HoldToConfirmButton';
 import { ValuMark } from '@/components/ValuMark';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
 import { providers } from '@/providers/registry';
@@ -328,12 +328,13 @@ export default function Capture() {
               </Text>
             </ScrollView>
             <View style={{ width: '100%', maxWidth: 340, marginTop: spacing.lg, gap: spacing.md }}>
-              <SwipeToConfirm
-                onConfirm={handleStopListening}
-                label="Desliza para guardar"
-                confirmedLabel="¡Listo!"
+              <HoldToConfirmButton
+                onConfirm={() => {
+                  handleStopListening();
+                }}
+                label="Mantén presionado para guardar"
                 icon="checkmark"
-                accessibilityLabel="Deslizar para guardar movimiento"
+                accessibilityLabel="Mantener presionado para guardar movimiento"
               />
               <Pressable onPress={handleCancelListening} style={{ alignSelf: 'center', paddingVertical: 4 }}>
                 <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancelar</Text>
