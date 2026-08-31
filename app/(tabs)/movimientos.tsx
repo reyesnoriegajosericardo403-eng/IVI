@@ -6,15 +6,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CalendarPicker } from '@/components/CalendarPicker';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
+import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { SectionToggle } from '@/components/SectionToggle';
+import { findIncomeConcept } from '@/data/budgetConcepts';
 import { findCategory, findSubcategory } from '@/data/categories';
 import type { Transaction } from '@/data/types';
-import { selectActiveTransactions } from '@/store/selectors';
+import { useContentMaxWidth } from '@/hooks/useBreakpoint';
+import { selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDateDMY, todayISO } from '@/utils/date';
 import { formatCurrency, formatRelativeDay } from '@/utils/format';
+import { buildBudgetLines, topSpendCategories, topSpendSubcategories } from '@/utils/finance';
 
 interface Section {
   title: string;
@@ -35,12 +41,17 @@ function groupByDay(transactions: Transaction[]): Section[] {
 
 export default function Movimientos() {
   const { colors, typography, spacing, radius } = useTheme();
+  const maxWidth = useContentMaxWidth();
+  const profile = useAppStore((s) => s.profile);
   const rawTransactions = useAppStore((s) => s.transactions);
+  const rawBudgets = useAppStore((s) => s.budgets);
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
 
   const [showCalendar, setShowCalendar] = useState(false);
   const [monthIso, setMonthIso] = useState(todayISO());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [analysisOpen, setAnalysisOpen] = useState(true);
 
   const markedIsoDates = useMemo(() => new Set(transactions.map((t) => t.date.slice(0, 10))), [transactions]);
 
@@ -52,9 +63,27 @@ export default function Movimientos() {
   const sections = useMemo(() => groupByDay(visibleTransactions), [visibleTransactions]);
   const flatData = useMemo(() => sections.flatMap((s) => [{ type: 'header' as const, title: s.title }, ...s.data.map((t) => ({ type: 'tx' as const, tx: t }))]), [sections]);
 
+  // ---- Análisis: mismo donut del Dashboard + 2 gráficos con más detalle ----
+  const spendSlices = topSpendCategories(transactions, new Date(), 'month', 3);
+  const SLICE_COLORS = [colors.success, colors.danger, colors.info, colors.accentFrom];
+  const donutData = spendSlices.map((s, i) => ({ label: s.name, value: s.amount, color: SLICE_COLORS[i % SLICE_COLORS.length] }));
+
+  const topSubs = topSpendSubcategories(transactions, new Date(), 'month', 5);
+  const maxSubAmount = Math.max(1, ...topSubs.map((s) => s.amount));
+
+  const budgetLines = buildBudgetLines(budgets, transactions, profile.budgetThresholds);
+  // Solo conceptos de GASTO — un ingreso arriba de lo esperado es buena
+  // noticia, no un "punto crítico" que deba marcarse en rojo.
+  const criticalLines = [...budgetLines]
+    .filter((l) => l.budgeted > 0 && !findIncomeConcept(l.categoryId))
+    .sort((a, b) => b.percentUsed - a.percentUsed)
+    .slice(0, 5);
+
+  const hasAnalysis = spendSlices.length > 0 || topSubs.length > 0 || criticalLines.length > 0;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <View style={[{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }, maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <ScreenHeader title="Movimientos" subtitle={`${visibleTransactions.length} registrados`} />
@@ -103,7 +132,102 @@ export default function Movimientos() {
         <FlatList
           data={flatData}
           keyExtractor={(item, idx) => (item.type === 'header' ? `h-${item.title}-${idx}` : item.tx.id)}
-          contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.sm }}
+          contentContainerStyle={[
+            { padding: spacing.lg, paddingBottom: 140, gap: spacing.sm },
+            maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null,
+          ]}
+          ListHeaderComponent={
+            hasAnalysis ? (
+              <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
+                <SectionToggle title="Análisis de tus gastos" open={analysisOpen} onToggle={() => setAnalysisOpen((v) => !v)} />
+
+                {analysisOpen && (
+                  <View style={{ gap: spacing.md }}>
+                    {spendSlices.length > 0 && (
+                      <GlassCard style={{ gap: spacing.md }}>
+                        <Text style={[typography.headline, { color: colors.textPrimary }]}>¿En qué gastaste tu dinero?</Text>
+                        <View style={styles.donutRow}>
+                          <DonutChart data={donutData} size={120} emptyColor={colors.divider} />
+                          <View style={{ flex: 1, gap: spacing.xs, minWidth: 140 }}>
+                            {spendSlices.map((slice, i) => (
+                              <View key={slice.categoryId} style={styles.legendRow}>
+                                <View style={[styles.legendDot, { backgroundColor: SLICE_COLORS[i % SLICE_COLORS.length] }]} />
+                                <Text style={[typography.caption, { color: colors.textPrimary, flex: 1, marginLeft: 8 }]} numberOfLines={1}>
+                                  {slice.name}
+                                </Text>
+                                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                                  {Math.round(slice.percent)}%
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      </GlassCard>
+                    )}
+
+                    {topSubs.length > 0 && (
+                      <GlassCard style={{ gap: spacing.sm }}>
+                        <Text style={[typography.headline, { color: colors.textPrimary }]}>Tus gastos más fuertes</Text>
+                        {topSubs.map((s) => (
+                          <View key={`${s.categoryId}::${s.subcategoryId}`} style={{ gap: 4 }}>
+                            <View style={styles.rowBetween}>
+                              <Text style={[typography.caption, { color: colors.textPrimary }]} numberOfLines={1}>
+                                {s.name}
+                              </Text>
+                              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                                {formatCurrency(s.amount, profile.primaryCurrency)}
+                              </Text>
+                            </View>
+                            <View style={[styles.barTrack, { backgroundColor: colors.divider, borderRadius: radius.pill }]}>
+                              <View
+                                style={[
+                                  styles.barFill,
+                                  { width: `${(s.amount / maxSubAmount) * 100}%`, backgroundColor: colors.accentFrom, borderRadius: radius.pill },
+                                ]}
+                              />
+                            </View>
+                          </View>
+                        ))}
+                      </GlassCard>
+                    )}
+
+                    {criticalLines.length > 0 && (
+                      <GlassCard style={{ gap: spacing.sm }}>
+                        <Text style={[typography.headline, { color: colors.textPrimary }]}>Presupuesto vs. real</Text>
+                        <Text style={[typography.caption, { color: colors.textSecondary, marginTop: -4 }]}>
+                          Tus puntos más críticos este mes
+                        </Text>
+                        {criticalLines.map((line) => (
+                          <View key={line.budgetId} style={{ gap: 4 }}>
+                            <View style={styles.rowBetween}>
+                              <Text style={[typography.caption, { color: colors.textPrimary }]} numberOfLines={1}>
+                                {line.categoryName}
+                              </Text>
+                              <Text
+                                style={[
+                                  typography.caption,
+                                  {
+                                    fontWeight: '700',
+                                    color: line.status === 'exceeded' || line.status === 'warning' ? colors.danger : line.status === 'attention' ? colors.warning : colors.success,
+                                  },
+                                ]}
+                              >
+                                {line.percentUsed}%
+                              </Text>
+                            </View>
+                            <ProgressBar percent={line.percentUsed} status={line.status} />
+                            <Text style={[typography.micro, { color: colors.textTertiary }]}>
+                              {formatCurrency(line.actual, profile.primaryCurrency)} de {formatCurrency(line.budgeted, profile.primaryCurrency)}
+                            </Text>
+                          </View>
+                        ))}
+                      </GlassCard>
+                    )}
+                  </View>
+                )}
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => {
             if (item.type === 'header') {
               return (
@@ -163,6 +287,12 @@ const styles = StyleSheet.create({
   filterChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   txCard: { flexDirection: 'row', alignItems: 'center' },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  donutRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 },
+  legendRow: { flexDirection: 'row', alignItems: 'center' },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  barTrack: { height: 8, overflow: 'hidden' },
+  barFill: { height: 8 },
   addBtn: {
     position: 'absolute',
     right: 20,

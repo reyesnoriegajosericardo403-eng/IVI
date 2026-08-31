@@ -10,6 +10,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS, LIABILITY_TYPE_LABELS } from '@/data/accountMeta';
 import type { Account, AccountType, Currency, Liability, LiabilityType, SyncMeta } from '@/data/types';
+import { useContentMaxWidth } from '@/hooks/useBreakpoint';
 import { selectActiveAccounts, selectActiveInvestments, selectActiveLiabilities, selectActiveNetWorthHistory } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -24,6 +25,7 @@ type Draft<T> = Omit<T, keyof SyncMeta>;
 
 export default function Patrimonio() {
   const { colors, typography, spacing, radius } = useTheme();
+  const maxWidth = useContentMaxWidth();
   const profile = useAppStore((s) => s.profile);
   const rawAccounts = useAppStore((s) => s.accounts);
   const rawInvestments = useAppStore((s) => s.investments);
@@ -65,7 +67,12 @@ export default function Patrimonio() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={[
+          { padding: spacing.lg, paddingBottom: 140, gap: spacing.lg },
+          maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null,
+        ]}
+      >
         <ScreenHeader title="Patrimonio" subtitle="Activos menos pasivos" />
 
         <GlassCard style={{ gap: spacing.sm }}>

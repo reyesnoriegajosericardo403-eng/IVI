@@ -1,5 +1,5 @@
 import { BUDGET_CONCEPTS, findBudgetConcept, findIncomeConcept, INCOME_CONCEPTS } from '@/data/budgetConcepts';
-import { DEFAULT_CATEGORIES, findSubcategory } from '@/data/categories';
+import { DEFAULT_CATEGORIES, findCategory, findSubcategory } from '@/data/categories';
 import { getUsdMxnRate } from '@/data/exchangeRate';
 import type {
   Account,
@@ -108,9 +108,20 @@ export function isSameWeek(iso: string, ref = new Date()): boolean {
   return startOfWeek(d).getTime() === startOfWeek(ref).getTime();
 }
 
-export function spendInPeriod(transactions: Transaction[], ref = new Date()): number {
+export function spendInPeriod(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): number {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
   return transactions
-    .filter((t) => t.type === 'expense' && isSameMonth(t.date, ref))
+    .filter((t) => t.type === 'expense' && inScope(t.date, ref))
+    .reduce((sum, t) => sum + t.amount, 0);
+}
+
+// Ingreso o ahorro real del periodo por tipo de movimiento — usado por
+// "Tu resumen" del Dashboard (Ahorrado = aportaciones reales a ahorro,
+// nunca un cálculo inventado).
+export function sumByTypeInPeriod(transactions: Transaction[], type: Transaction['type'], ref = new Date(), scope: 'month' | 'week' = 'month'): number {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
+  return transactions
+    .filter((t) => t.type === type && inScope(t.date, ref))
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
@@ -121,6 +132,110 @@ export function spendByCategory(transactions: Transaction[], ref = new Date()): 
     result[t.categoryId] = (result[t.categoryId] ?? 0) + t.amount;
   }
   return result;
+}
+
+export interface CategorySpendSlice {
+  categoryId: string;
+  name: string;
+  amount: number;
+  percent: number;
+}
+
+// Categorías reales con más gasto en el periodo, agrupando el resto en
+// "Otros" — nunca se completa a un número fijo si hay menos categorías
+// reales que `limit` (spec Dashboard: "¿En qué gastaste tu dinero?").
+export function topSpendCategories(
+  transactions: Transaction[],
+  ref = new Date(),
+  scope: 'month' | 'week' = 'month',
+  limit = 3
+): CategorySpendSlice[] {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
+  const byCategory: Record<string, number> = {};
+  let total = 0;
+  for (const t of transactions) {
+    if (t.type !== 'expense' || !inScope(t.date, ref)) continue;
+    byCategory[t.categoryId] = (byCategory[t.categoryId] ?? 0) + t.amount;
+    total += t.amount;
+  }
+  if (total <= 0) return [];
+
+  const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+  const top = sorted.slice(0, limit);
+  const restAmount = sorted.slice(limit).reduce((sum, [, amount]) => sum + amount, 0);
+
+  const slices: CategorySpendSlice[] = top.map(([categoryId, amount]) => ({
+    categoryId,
+    name: findCategory(categoryId)?.name ?? categoryId,
+    amount,
+    percent: (amount / total) * 100,
+  }));
+
+  if (restAmount > 0) {
+    slices.push({ categoryId: '__other__', name: 'Otros', amount: restAmount, percent: (restAmount / total) * 100 });
+  }
+
+  return slices;
+}
+
+export interface SubcategorySpendSlice {
+  categoryId: string;
+  subcategoryId: string;
+  name: string;
+  amount: number;
+}
+
+// Subcategorías reales con más gasto — el detalle "más específico" que
+// pide Movimientos para ver tus gastos más fuertes (spec: "distribución
+// más específica de tus gastos más fuertes").
+export function topSpendSubcategories(
+  transactions: Transaction[],
+  ref = new Date(),
+  scope: 'month' | 'week' = 'month',
+  limit = 5
+): SubcategorySpendSlice[] {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
+  const bySub: Record<string, { categoryId: string; subcategoryId: string; amount: number }> = {};
+  for (const t of transactions) {
+    if (t.type !== 'expense' || !inScope(t.date, ref)) continue;
+    const key = `${t.categoryId}::${t.subcategoryId}`;
+    if (!bySub[key]) bySub[key] = { categoryId: t.categoryId, subcategoryId: t.subcategoryId, amount: 0 };
+    bySub[key].amount += t.amount;
+  }
+  return Object.values(bySub)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, limit)
+    .map((s) => ({
+      categoryId: s.categoryId,
+      subcategoryId: s.subcategoryId,
+      name: findSubcategory(s.categoryId, s.subcategoryId)?.name ?? s.subcategoryId,
+      amount: s.amount,
+    }));
+}
+
+export interface LiabilityReminder {
+  liabilityId: string;
+  institution: string;
+  dueDate: string;
+  daysUntil: number;
+}
+
+// Deudas con fecha de pago real dentro de la ventana (incluye las ya
+// vencidas, con daysUntil negativo) — solo lo que el usuario ya
+// capturó, nunca un recordatorio inventado (spec Dashboard:
+// "Recordatorios para ti").
+export function upcomingLiabilityReminders(liabilities: Liability[], withinDays = 14, ref = new Date()): LiabilityReminder[] {
+  const startOfToday = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  return liabilities
+    .filter((l): l is Liability & { dueDate: string } => !!l.dueDate)
+    .map((l) => {
+      const due = new Date(l.dueDate);
+      const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+      const daysUntil = Math.round((dueDay.getTime() - startOfToday.getTime()) / 86400000);
+      return { liabilityId: l.id, institution: l.institution, dueDate: l.dueDate, daysUntil };
+    })
+    .filter((r) => r.daysUntil <= withinDays)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
 // Tipos que cuentan como "salida de dinero" para un concepto de

@@ -12,6 +12,8 @@ export const palette = {
   warningLight: '#FBBF24',
   danger: '#EF4444',
   dangerLight: '#F87171',
+  info: '#3B82F6',
+  infoLight: '#60A5FA',
   white: '#FFFFFF',
   black: '#000000',
 };
@@ -31,6 +33,7 @@ export interface ThemeColors {
   success: string;
   warning: string;
   danger: string;
+  info: string;
   tabBarBackground: string;
   divider: string;
 }
@@ -50,6 +53,7 @@ export const lightColors: ThemeColors = {
   success: palette.success,
   warning: palette.warning,
   danger: palette.danger,
+  info: palette.info,
   tabBarBackground: 'rgba(255,255,255,0.85)',
   divider: 'rgba(15,23,42,0.06)',
 };
@@ -69,6 +73,7 @@ export const darkColors: ThemeColors = {
   success: palette.successLight,
   warning: palette.warningLight,
   danger: palette.dangerLight,
+  info: palette.infoLight,
   tabBarBackground: 'rgba(18,26,43,0.85)',
   divider: 'rgba(255,255,255,0.07)',
 };
