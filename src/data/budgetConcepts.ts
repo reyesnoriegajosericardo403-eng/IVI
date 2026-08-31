@@ -166,3 +166,38 @@ export function findBudgetConcept(id: string): BudgetConcept | undefined {
 export function budgetConceptsByGroup(group: BudgetGroupId): BudgetConcept[] {
   return BUDGET_CONCEPTS.filter((c) => c.group === group);
 }
+
+// Un concepto por cada subcategoría de ingreso — a diferencia de los
+// gastos (que agrupan varias subcategorías por concepto para que no sean
+// demasiados renglones), aquí solo hay 10 en total, así que mostrarlas
+// todas por separado es lo más simple y directo.
+export interface IncomeConcept {
+  id: string;
+  name: string;
+  icon: CategoryIconKey;
+  kind: 'fixed' | 'variable';
+  matches: ConceptMatch[];
+}
+
+export const INCOME_CONCEPTS: IncomeConcept[] = [
+  { id: 'income_inc_salary', name: 'Salario', icon: 'income', kind: 'fixed', matches: [{ categoryId: 'income', subcategoryIds: ['inc_salary'] }] },
+  { id: 'income_inc_allowance', name: 'Mesada', icon: 'income', kind: 'fixed', matches: [{ categoryId: 'income', subcategoryIds: ['inc_allowance'] }] },
+  { id: 'income_inc_bonus', name: 'Bonos', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_bonus'] }] },
+  {
+    id: 'income_inc_investments',
+    name: 'Rendimiento de inversiones',
+    icon: 'income',
+    kind: 'variable',
+    matches: [{ categoryId: 'income', subcategoryIds: ['inc_investments'] }],
+  },
+  { id: 'income_inc_dividends', name: 'Dividendos', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_dividends'] }] },
+  { id: 'income_inc_interest', name: 'Intereses', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_interest'] }] },
+  { id: 'income_inc_freelance', name: 'Freelance', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_freelance'] }] },
+  { id: 'income_inc_gifts', name: 'Regalos recibidos', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_gifts'] }] },
+  { id: 'income_inc_sales', name: 'Ventas', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_sales'] }] },
+  { id: 'income_inc_other', name: 'Otros ingresos', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_other'] }] },
+];
+
+export function findIncomeConcept(id: string): IncomeConcept | undefined {
+  return INCOME_CONCEPTS.find((c) => c.id === id);
+}

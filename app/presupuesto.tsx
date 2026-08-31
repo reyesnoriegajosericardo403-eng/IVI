@@ -8,13 +8,21 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
-import { BUDGET_GROUP_DESCRIPTIONS, BUDGET_GROUP_LABELS, budgetConceptsByGroup, type BudgetConcept, type BudgetGroupId } from '@/data/budgetConcepts';
+import {
+  BUDGET_GROUP_DESCRIPTIONS,
+  BUDGET_GROUP_LABELS,
+  budgetConceptsByGroup,
+  INCOME_CONCEPTS,
+  type BudgetConcept,
+  type BudgetGroupId,
+  type IncomeConcept,
+} from '@/data/budgetConcepts';
 import type { Budget, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
 import { selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { computeMonthlyAmount, FREQUENCY_LABELS, PERIODICITY_LABELS, WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
-import { buildBudgetLines, incomeByKind, spendByConcept, type BudgetLine, type BudgetStatus } from '@/utils/finance';
+import { buildBudgetLines, incomeByConcept, incomeByKind, spendByConcept, type BudgetLine, type BudgetStatus } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
 
 const STATUS_LABEL: Record<BudgetStatus, string> = {
@@ -46,10 +54,13 @@ export default function Presupuesto() {
 
   const [scope, setScope] = useState<Scope>('month');
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
+  const [ingresosOpen, setIngresosOpen] = useState(false);
+  const [gastosOpen, setGastosOpen] = useState(false);
 
-  const lines = buildBudgetLines(budgets, transactions, profile.budgetThresholds);
+  const lines = buildBudgetLines(budgets, transactions, profile.budgetThresholds, new Date(), scope);
   const lineByConcept = new Map(lines.map((l) => [l.categoryId, l]));
   const conceptSpend = spendByConcept(transactions, new Date(), scope);
+  const incomeConceptActual = incomeByConcept(transactions, new Date(), scope);
   const income = incomeByKind(transactions, new Date(), scope);
 
   const scopedBudgeted = (monthlyAmount: number) => (scope === 'week' ? monthlyAmount / WEEKS_PER_MONTH : monthlyAmount);
@@ -68,13 +79,13 @@ export default function Presupuesto() {
   }));
 
   const handleSaveConcept = (
-    concept: BudgetConcept,
+    categoryId: string,
     input: { baseAmount: number; periodicity: BudgetPeriodicity; frequency?: BudgetFrequency; customDaysPerWeek?: number }
   ) => {
     const monthlyAmount = computeMonthlyAmount(input);
     if (monthlyAmount <= 0) return;
     setBudget({
-      categoryId: concept.id,
+      categoryId,
       monthlyAmount,
       currency: profile.primaryCurrency,
       thresholds: profile.budgetThresholds,
@@ -85,6 +96,33 @@ export default function Presupuesto() {
     });
     setEditingConceptId(null);
   };
+
+  const fixedIncomeConcepts = INCOME_CONCEPTS.filter((c) => c.kind === 'fixed');
+  const variableIncomeConcepts = INCOME_CONCEPTS.filter((c) => c.kind === 'variable');
+
+  const renderIncomeConcept = (concept: IncomeConcept) =>
+    editingConceptId === concept.id ? (
+      <ConceptBudgetForm
+        key={concept.id}
+        concept={concept}
+        initial={budgets.find((b) => b.categoryId === concept.id)}
+        currency={profile.primaryCurrency}
+        onCancel={() => setEditingConceptId(null)}
+        onSave={(input) => handleSaveConcept(concept.id, input)}
+      />
+    ) : (
+      <IncomeConceptRow
+        key={concept.id}
+        concept={concept}
+        line={lineByConcept.get(concept.id)}
+        scope={scope}
+        scopedBudgeted={scopedBudgeted}
+        actualNoBudget={incomeConceptActual[concept.id] ?? 0}
+        currency={profile.primaryCurrency}
+        onEdit={() => setEditingConceptId(concept.id)}
+        onDelete={(budgetId) => deleteBudget(budgetId)}
+      />
+    );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
@@ -126,92 +164,150 @@ export default function Presupuesto() {
           </Text>
         </GlassCard>
 
-        <GlassCard style={{ gap: spacing.sm }}>
-          <Text style={[typography.headline, { color: colors.textPrimary }]}>Ingresos</Text>
-          <View style={styles.rowBetween}>
-            <Text style={[typography.body, { color: colors.textSecondary }]}>Fijos</Text>
-            <Text style={[typography.headline, { color: colors.textPrimary }]}>{formatCurrency(income.fixed, profile.primaryCurrency)}</Text>
-          </View>
-          <View style={styles.rowBetween}>
-            <Text style={[typography.body, { color: colors.textSecondary }]}>Variables / eventuales</Text>
-            <Text style={[typography.headline, { color: colors.textPrimary }]}>{formatCurrency(income.variable, profile.primaryCurrency)}</Text>
-          </View>
-        </GlassCard>
+        {/* ---------- Ingresos: casilla desplegable ---------- */}
+        <SectionToggle
+          title="Ingresos"
+          amount={totalIncome}
+          currency={profile.primaryCurrency}
+          open={ingresosOpen}
+          onToggle={() => setIngresosOpen((v) => !v)}
+        />
 
-        <GlassCard style={{ gap: spacing.md, alignItems: 'center' }}>
-          <Text style={[typography.headline, { color: colors.textPrimary, alignSelf: 'flex-start' }]}>Gastos por grupo</Text>
-          {totalActualExpense > 0 ? (
-            <>
-              <DonutChart data={donutData} emptyColor={colors.divider} />
-              <View style={{ width: '100%', gap: 6 }}>
-                {donutData.map((d) => (
-                  <View key={d.label} style={styles.rowBetween}>
-                    <View style={styles.rowCenter}>
-                      <View style={[styles.legendDot, { backgroundColor: d.color }]} />
-                      <Text style={[typography.caption, { color: colors.textPrimary, marginLeft: 6 }]}>{d.label}</Text>
-                    </View>
-                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      {formatCurrency(d.value, profile.primaryCurrency)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          ) : (
-            <Text style={[typography.caption, { color: colors.textTertiary }]}>
-              Aún no registras gastos {scope === 'week' ? 'esta semana' : 'este mes'}.
+        {ingresosOpen && (
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[typography.caption, { color: colors.textSecondary, paddingHorizontal: 4 }]}>
+              Anota cuánto esperas recibir de cada tipo de ingreso — es opcional, y lo puedes editar cuando quieras.
             </Text>
-          )}
-        </GlassCard>
 
-        {GROUPS.map((group) => {
-          const concepts = budgetConceptsByGroup(group);
-          const groupBudgeted = concepts.reduce((s, c) => s + scopedBudgeted(lineByConcept.get(c.id)?.budgeted ?? 0), 0);
-          const groupActual = concepts.reduce((s, c) => s + (conceptSpend[c.id] ?? 0), 0);
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>Fijos</Text>
+            {fixedIncomeConcepts.map(renderIncomeConcept)}
 
-          return (
-            <View key={group} style={{ gap: spacing.sm }}>
-              <View style={styles.groupHeader}>
-                <View>
-                  <Text style={[typography.title, { color: colors.textPrimary }]}>{BUDGET_GROUP_LABELS[group]}</Text>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{BUDGET_GROUP_DESCRIPTIONS[group]}</Text>
-                </View>
-                {groupBudgeted > 0 && (
-                  <Text style={[typography.caption, { color: colors.textTertiary }]}>
-                    {formatCurrency(groupActual, profile.primaryCurrency)} / {formatCurrency(groupBudgeted, profile.primaryCurrency)}
-                  </Text>
-                )}
-              </View>
+            <Text style={[typography.headline, { color: colors.textPrimary, marginTop: spacing.xs }]}>Variables / eventuales</Text>
+            {variableIncomeConcepts.map(renderIncomeConcept)}
+          </View>
+        )}
 
-              {concepts.map((concept) =>
-                editingConceptId === concept.id ? (
-                  <ConceptBudgetForm
-                    key={concept.id}
-                    concept={concept}
-                    initial={budgets.find((b) => b.categoryId === concept.id)}
-                    currency={profile.primaryCurrency}
-                    onCancel={() => setEditingConceptId(null)}
-                    onSave={(input) => handleSaveConcept(concept, input)}
-                  />
-                ) : (
-                  <ConceptRow
-                    key={concept.id}
-                    concept={concept}
-                    line={lineByConcept.get(concept.id)}
-                    scope={scope}
-                    scopedBudgeted={scopedBudgeted}
-                    actualNoBudget={conceptSpend[concept.id] ?? 0}
-                    currency={profile.primaryCurrency}
-                    onEdit={() => setEditingConceptId(concept.id)}
-                    onDelete={(budgetId) => deleteBudget(budgetId)}
-                  />
-                )
+        {/* ---------- Gastos: casilla desplegable ---------- */}
+        <SectionToggle
+          title="Gastos"
+          amount={totalActualExpense}
+          currency={profile.primaryCurrency}
+          open={gastosOpen}
+          onToggle={() => setGastosOpen((v) => !v)}
+        />
+
+        {gastosOpen && (
+          <View style={{ gap: spacing.md }}>
+            <GlassCard style={{ gap: spacing.md, alignItems: 'center' }}>
+              <Text style={[typography.headline, { color: colors.textPrimary, alignSelf: 'flex-start' }]}>Gastos por grupo</Text>
+              {totalActualExpense > 0 ? (
+                <>
+                  <DonutChart data={donutData} emptyColor={colors.divider} />
+                  <View style={{ width: '100%', gap: 6 }}>
+                    {donutData.map((d) => (
+                      <View key={d.label} style={styles.rowBetween}>
+                        <View style={styles.rowCenter}>
+                          <View style={[styles.legendDot, { backgroundColor: d.color }]} />
+                          <Text style={[typography.caption, { color: colors.textPrimary, marginLeft: 6 }]}>{d.label}</Text>
+                        </View>
+                        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                          {formatCurrency(d.value, profile.primaryCurrency)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <Text style={[typography.caption, { color: colors.textTertiary }]}>
+                  Aún no registras gastos {scope === 'week' ? 'esta semana' : 'este mes'}.
+                </Text>
               )}
-            </View>
-          );
-        })}
+            </GlassCard>
+
+            {GROUPS.map((group) => {
+              const concepts = budgetConceptsByGroup(group);
+              const groupBudgeted = concepts.reduce((s, c) => s + scopedBudgeted(lineByConcept.get(c.id)?.budgeted ?? 0), 0);
+              const groupActual = concepts.reduce((s, c) => s + (conceptSpend[c.id] ?? 0), 0);
+
+              return (
+                <View key={group} style={{ gap: spacing.sm }}>
+                  <View style={styles.groupHeader}>
+                    <View>
+                      <Text style={[typography.title, { color: colors.textPrimary }]}>{BUDGET_GROUP_LABELS[group]}</Text>
+                      <Text style={[typography.caption, { color: colors.textSecondary }]}>{BUDGET_GROUP_DESCRIPTIONS[group]}</Text>
+                    </View>
+                    {groupBudgeted > 0 && (
+                      <Text style={[typography.caption, { color: colors.textTertiary }]}>
+                        {formatCurrency(groupActual, profile.primaryCurrency)} / {formatCurrency(groupBudgeted, profile.primaryCurrency)}
+                      </Text>
+                    )}
+                  </View>
+
+                  {concepts.map((concept) =>
+                    editingConceptId === concept.id ? (
+                      <ConceptBudgetForm
+                        key={concept.id}
+                        concept={concept}
+                        initial={budgets.find((b) => b.categoryId === concept.id)}
+                        currency={profile.primaryCurrency}
+                        onCancel={() => setEditingConceptId(null)}
+                        onSave={(input) => handleSaveConcept(concept.id, input)}
+                      />
+                    ) : (
+                      <ConceptRow
+                        key={concept.id}
+                        concept={concept}
+                        line={lineByConcept.get(concept.id)}
+                        scope={scope}
+                        scopedBudgeted={scopedBudgeted}
+                        actualNoBudget={conceptSpend[concept.id] ?? 0}
+                        currency={profile.primaryCurrency}
+                        onEdit={() => setEditingConceptId(concept.id)}
+                        onDelete={(budgetId) => deleteBudget(budgetId)}
+                      />
+                    )
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function SectionToggle({
+  title,
+  amount,
+  currency,
+  open,
+  onToggle,
+}: {
+  title: string;
+  amount: number;
+  currency: Currency;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { colors, typography, spacing, radius } = useTheme();
+  return (
+    <Pressable
+      accessibilityLabel={`${open ? 'Ocultar' : 'Mostrar'} ${title}`}
+      onPress={onToggle}
+      style={[
+        styles.sectionToggle,
+        { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.lg },
+      ]}
+    >
+      <Text style={[typography.title, { color: colors.textPrimary }]}>{title}</Text>
+      <View style={styles.rowCenter}>
+        <Text style={[typography.headline, { color: colors.textPrimary, marginRight: spacing.sm }]}>
+          {formatCurrency(amount, currency)}
+        </Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -289,6 +385,74 @@ function ConceptRow({
   );
 }
 
+// Igual que ConceptRow pero con semántica de ingreso: llegar o pasar el
+// monto esperado es bueno (verde), no una alarma — nunca se usa el rojo
+// de "excedido" aquí, porque ganar más de lo esperado no es un problema.
+function IncomeConceptRow({
+  concept,
+  line,
+  scope,
+  scopedBudgeted,
+  actualNoBudget,
+  currency,
+  onEdit,
+  onDelete,
+}: {
+  concept: IncomeConcept;
+  line: BudgetLine | undefined;
+  scope: Scope;
+  scopedBudgeted: (monthlyAmount: number) => number;
+  actualNoBudget: number;
+  currency: Currency;
+  onEdit: () => void;
+  onDelete: (budgetId: string) => void;
+}) {
+  const { colors, typography, spacing } = useTheme();
+  const budgeted = line ? scopedBudgeted(line.budgeted) : 0;
+  const percentUsed = line && budgeted > 0 ? Math.round((actualNoBudget / budgeted) * 100) : 0;
+  const met = percentUsed >= 100;
+
+  return (
+    <GlassCard style={{ gap: spacing.sm }}>
+      <View style={styles.rowBetween}>
+        <View style={styles.rowCenter}>
+          <CategoryIcon categoryId={concept.icon} size={16} />
+          <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: spacing.sm }]}>{concept.name}</Text>
+        </View>
+        <View style={styles.rowCenter}>
+          <Pressable accessibilityLabel={`Editar ${concept.name}`} onPress={onEdit} style={{ marginRight: line ? spacing.sm : 0 }}>
+            <Ionicons name={line ? 'pencil-outline' : 'add-circle-outline'} size={18} color={line ? colors.textTertiary : colors.accentFrom} />
+          </Pressable>
+          {line && (
+            <Pressable accessibilityLabel={`Eliminar esperado de ${concept.name}`} onPress={() => onDelete(line.budgetId)}>
+              <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {line ? (
+        <>
+          <ProgressBar percent={Math.min(percentUsed, 100)} status={met ? 'normal' : 'attention'} />
+          <View style={styles.rowBetween}>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {formatCurrency(actualNoBudget, currency)} de {formatCurrency(budgeted, currency)} esperados
+              {scope === 'week' ? ' esta semana' : ' este mes'}
+            </Text>
+            <Text style={[typography.caption, { fontWeight: '700', color: met ? colors.success : colors.warning }]}>{percentUsed}%</Text>
+          </View>
+        </>
+      ) : (
+        <Text style={[typography.caption, { color: colors.textTertiary }]}>
+          {actualNoBudget > 0
+            ? `Ya llevas ${formatCurrency(actualNoBudget, currency)} sin un monto esperado — toca + para definirlo.`
+            : 'Sin monto esperado — toca + para definirlo.'}
+        </Text>
+      )}
+    </GlassCard>
+  );
+}
+
 function ConceptBudgetForm({
   concept,
   initial,
@@ -296,7 +460,7 @@ function ConceptBudgetForm({
   onSave,
   onCancel,
 }: {
-  concept: BudgetConcept;
+  concept: { id: string; name: string };
   initial: Budget | undefined;
   currency: Currency;
   onSave: (input: { baseAmount: number; periodicity: BudgetPeriodicity; frequency?: BudgetFrequency; customDaysPerWeek?: number }) => void;
@@ -407,6 +571,7 @@ const styles = StyleSheet.create({
   groupHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 },
   scopeToggle: { flexDirection: 'row', borderWidth: 1, padding: 3, alignSelf: 'flex-start' },
   scopeBtn: { paddingHorizontal: 18, paddingVertical: 8 },
+  sectionToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   chipRow: { flexDirection: 'row', gap: 8 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

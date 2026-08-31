@@ -1,4 +1,4 @@
-import { BUDGET_CONCEPTS, findBudgetConcept } from '@/data/budgetConcepts';
+import { BUDGET_CONCEPTS, findBudgetConcept, findIncomeConcept, INCOME_CONCEPTS } from '@/data/budgetConcepts';
 import { DEFAULT_CATEGORIES, findSubcategory } from '@/data/categories';
 import { getUsdMxnRate } from '@/data/exchangeRate';
 import type {
@@ -165,6 +165,29 @@ export function incomeByKind(transactions: Transaction[], ref = new Date(), scop
   return { fixed, variable };
 }
 
+// Igual que spendByConcept pero para ingresos — cuánto has recibido de
+// verdad por cada subcategoría de ingreso, para comparar contra lo que
+// esperabas (spec: "en la categoría de ingresos no me deja agregar nada
+// y mucho menos editar eso" — cada subcategoría ahora es un renglón
+// editable, igual que un concepto de gasto).
+export function incomeByConcept(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): Record<string, number> {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
+  const incomeTx = transactions.filter((t) => t.type === 'income' && inScope(t.date, ref));
+  const result: Record<string, number> = {};
+  for (const concept of INCOME_CONCEPTS) {
+    let total = 0;
+    for (const t of incomeTx) {
+      const matched = concept.matches.some((m) => {
+        if (m.categoryId !== t.categoryId) return false;
+        return !m.subcategoryIds || m.subcategoryIds.includes(t.subcategoryId);
+      });
+      if (matched) total += t.amount;
+    }
+    result[concept.id] = total;
+  }
+  return result;
+}
+
 export type BudgetStatus = 'normal' | 'attention' | 'warning' | 'exceeded';
 
 export interface BudgetLine {
@@ -191,19 +214,31 @@ export function buildBudgetLines(
   budgets: Budget[],
   transactions: Transaction[],
   thresholds: { attention: number; warning: number; exceeded: number },
-  ref = new Date()
+  ref = new Date(),
+  scope: 'month' | 'week' = 'month'
 ): BudgetLine[] {
   // b.categoryId puede ser un id de categoría (presupuestos guardados con
-  // el esquema anterior) o un id de concepto de presupuesto (esquema
-  // nuevo) — se reconocen ambos para que ningún presupuesto ya guardado
-  // se quede huérfano al pasar a la nueva taxonomía.
+  // el esquema anterior), un id de concepto de gasto, o un id de concepto
+  // de ingreso — se reconocen los tres para que ningún presupuesto ya
+  // guardado se quede huérfano al pasar a la nueva taxonomía. `scope` se
+  // respeta en los tres casos: antes esta función siempre calculaba el
+  // gasto/ingreso real del MES aunque la pantalla estuviera en modo
+  // semanal, lo que desalineaba el % y el color mostrados contra el
+  // monto real de esa semana.
   const spend = spendByCategory(transactions, ref);
-  const conceptSpend = spendByConcept(transactions, ref);
+  const conceptSpend = spendByConcept(transactions, ref, scope);
+  const incomeConceptActual = incomeByConcept(transactions, ref, scope);
   return budgets.map((b) => {
-    const concept = findBudgetConcept(b.categoryId);
-    const actual = concept ? conceptSpend[b.categoryId] ?? 0 : spend[b.categoryId] ?? 0;
+    const expenseConcept = findBudgetConcept(b.categoryId);
+    const incomeConcept = findIncomeConcept(b.categoryId);
+    const actual = incomeConcept
+      ? incomeConceptActual[b.categoryId] ?? 0
+      : expenseConcept
+        ? conceptSpend[b.categoryId] ?? 0
+        : spend[b.categoryId] ?? 0;
     const percentUsed = b.monthlyAmount > 0 ? Math.round((actual / b.monthlyAmount) * 100) : 0;
-    const categoryName = concept?.name ?? DEFAULT_CATEGORIES.find((c) => c.id === b.categoryId)?.name ?? b.categoryId;
+    const categoryName =
+      expenseConcept?.name ?? incomeConcept?.name ?? DEFAULT_CATEGORIES.find((c) => c.id === b.categoryId)?.name ?? b.categoryId;
     return {
       budgetId: b.id,
       categoryId: b.categoryId,
