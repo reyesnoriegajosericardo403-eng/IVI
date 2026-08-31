@@ -8,6 +8,7 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
+import { SectionToggle } from '@/components/SectionToggle';
 import {
   BUDGET_GROUP_DESCRIPTIONS,
   BUDGET_GROUP_LABELS,
@@ -277,40 +278,6 @@ export default function Presupuesto() {
   );
 }
 
-function SectionToggle({
-  title,
-  amount,
-  currency,
-  open,
-  onToggle,
-}: {
-  title: string;
-  amount: number;
-  currency: Currency;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const { colors, typography, spacing, radius } = useTheme();
-  return (
-    <Pressable
-      accessibilityLabel={`${open ? 'Ocultar' : 'Mostrar'} ${title}`}
-      onPress={onToggle}
-      style={[
-        styles.sectionToggle,
-        { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.lg },
-      ]}
-    >
-      <Text style={[typography.title, { color: colors.textPrimary }]}>{title}</Text>
-      <View style={styles.rowCenter}>
-        <Text style={[typography.headline, { color: colors.textPrimary, marginRight: spacing.sm }]}>
-          {formatCurrency(amount, currency)}
-        </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
-      </View>
-    </Pressable>
-  );
-}
-
 function ConceptRow({
   concept,
   line,
@@ -571,7 +538,6 @@ const styles = StyleSheet.create({
   groupHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 },
   scopeToggle: { flexDirection: 'row', borderWidth: 1, padding: 3, alignSelf: 'flex-start' },
   scopeBtn: { paddingHorizontal: 18, paddingVertical: 8 },
-  sectionToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   chipRow: { flexDirection: 'row', gap: 8 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

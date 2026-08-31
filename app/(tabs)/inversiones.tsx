@@ -7,8 +7,17 @@ import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { SectionToggle } from '@/components/SectionToggle';
 import { Sparkline } from '@/components/Sparkline';
-import { ASSET_CLASSES, ASSET_CLASS_GROUP, ASSET_CLASS_LABELS, RISK_GROUP_LABELS, type RiskGroup } from '@/data/investmentMeta';
+import {
+  ASSET_CLASSES,
+  ASSET_CLASS_GROUP,
+  ASSET_CLASS_LABELS,
+  findLiquidityPosition,
+  LIQUIDITY_TICKER,
+  RISK_GROUP_LABELS,
+  type RiskGroup,
+} from '@/data/investmentMeta';
 import type { AssetClass, Currency, InvestmentPosition, SyncMeta } from '@/data/types';
 import { refreshMarketData } from '@/services/market/marketDataRefresh';
 import { selectActiveInvestments } from '@/store/selectors';
@@ -41,10 +50,36 @@ export default function Inversiones() {
   const lastQuotesFetchedAt = useAppStore((s) => s.lastQuotesFetchedAt);
   const cetesRates = useAppStore((s) => s.cetesRates);
 
-  const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDefaultOperation, setEditingDefaultOperation] = useState<'buy' | 'sell'>('buy');
+  const [carteraOpen, setCarteraOpen] = useState(false);
+  const [carteraAction, setCarteraAction] = useState<'buy' | 'sell' | 'liquidity' | null>(null);
+  const [liquidityDefaultCurrency, setLiquidityDefaultCurrency] = useState<Currency>(profile.primaryCurrency);
   const [refreshing, setRefreshing] = useState(false);
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
+
+  // Liquidez: efectivo disponible en la cartera, sin invertir todavía.
+  // Se acredita sola al vender un activo y se ajusta a mano desde Cartera
+  // → Depositar/retirar liquidez (spec: "cuando se venda una acción se
+  // debe quedar el liquidez"). Nunca baja de cero.
+  const adjustLiquidity = (delta: number, currency: Currency) => {
+    const existing = findLiquidityPosition(investments, currency);
+    const newAmount = Math.max(0, (existing?.amountInvested ?? 0) + delta);
+    if (existing) {
+      updateInvestment(existing.id, { quantity: newAmount, amountInvested: newAmount, avgCostPrice: 1 });
+    } else if (newAmount > 0) {
+      addInvestment({
+        ticker: LIQUIDITY_TICKER,
+        name: 'Liquidez',
+        assetClass: 'cash',
+        quantity: newAmount,
+        avgCostPrice: 1,
+        currency,
+        amountInvested: newAmount,
+        purchaseDate: todayISO(),
+      });
+    }
+  };
 
   const totalInvested = investments.reduce((sum, i) => sum + i.amountInvested, 0);
   const totalRealizedPnL = investments.reduce((sum, i) => sum + (i.realizedPnL ?? 0), 0);
@@ -88,6 +123,8 @@ export default function Inversiones() {
       percent: totalInvested > 0 ? ((map.get(group) ?? 0) / totalInvested) * 100 : 0,
     }));
   }, [investments, totalInvested]);
+
+  const sellable = investments.filter((i) => i.assetClass !== 'cash');
 
   const cumulativeCapital = useMemo(() => {
     const sorted = [...investments].sort((a, b) => a.purchaseDate.localeCompare(b.purchaseDate));
@@ -275,7 +312,7 @@ export default function Inversiones() {
           </GlassCard>
         )}
 
-        {investments.length === 0 && !showForm && (
+        {investments.length === 0 && (
           <Text style={[typography.caption, { color: colors.textTertiary }]}>Aún no registras inversiones.</Text>
         )}
 
@@ -289,9 +326,11 @@ export default function Inversiones() {
             <TransactionForm
               key={inv.id}
               position={inv}
+              defaultOperation={editingDefaultOperation}
               onCancel={() => setEditingId(null)}
-              onSave={(patch) => {
+              onSave={(patch, sale) => {
                 updateInvestment(inv.id, patch);
+                if (sale && sale.proceeds > 0) adjustLiquidity(sale.proceeds, sale.currency);
                 setEditingId(null);
               }}
             />
@@ -304,7 +343,9 @@ export default function Inversiones() {
                 <View style={{ flex: 1, marginLeft: spacing.md }}>
                   <Text style={[typography.headline, { color: colors.textPrimary }]}>{inv.name}</Text>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    {ASSET_CLASS_LABELS[inv.assetClass]} · {inv.quantity} u. · prom. {formatCurrency(inv.avgCostPrice, inv.currency)}
+                    {inv.assetClass === 'cash'
+                      ? 'Efectivo disponible en tu cartera'
+                      : `${ASSET_CLASS_LABELS[inv.assetClass]} · ${inv.quantity} u. · prom. ${formatCurrency(inv.avgCostPrice, inv.currency)}`}
                   </Text>
                 </View>
                 <Text style={[typography.headline, { color: colors.textPrimary, marginRight: spacing.sm }]}>
@@ -312,7 +353,16 @@ export default function Inversiones() {
                 </Text>
                 <Pressable
                   accessibilityLabel={`Editar ${inv.ticker}`}
-                  onPress={() => setEditingId(inv.id)}
+                  onPress={() => {
+                    if (inv.assetClass === 'cash') {
+                      setCarteraOpen(true);
+                      setCarteraAction('liquidity');
+                      setLiquidityDefaultCurrency(inv.currency);
+                    } else {
+                      setEditingId(inv.id);
+                      setEditingDefaultOperation('buy');
+                    }
+                  }}
                   style={{ marginRight: spacing.sm }}
                 >
                   <Ionicons name="pencil-outline" size={16} color={colors.textTertiary} />
@@ -356,7 +406,9 @@ export default function Inversiones() {
                 <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 52 }]}>
                   {inv.assetClass === 'cetes'
                     ? 'Los CETES no tienen precio de mercado por unidad — revisa la tasa vigente arriba.'
-                    : `Precio en vivo no disponible para ${inv.ticker}.`}
+                    : inv.assetClass === 'cash'
+                      ? 'La liquidez no tiene precio de mercado: es efectivo listo para invertir o retirar.'
+                      : `Precio en vivo no disponible para ${inv.ticker}.`}
                 </Text>
               )}
               {!!inv.realizedPnL && (
@@ -377,23 +429,118 @@ export default function Inversiones() {
           );
         })}
 
-        {showForm ? (
-          <InvestmentForm
-            defaultCurrency={profile.primaryCurrency}
-            onCancel={() => setShowForm(false)}
-            onSave={(inv) => {
-              addInvestment(inv);
-              setShowForm(false);
-            }}
-          />
-        ) : (
-          <Pressable
-            onPress={() => setShowForm(true)}
-            style={[styles.addBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-          >
-            <Ionicons name="add" size={18} color={colors.accentFrom} />
-            <Text style={{ color: colors.accentFrom, fontWeight: '700', marginLeft: 6 }}>Agregar inversión</Text>
-          </Pressable>
+        <SectionToggle
+          title="Cartera"
+          open={carteraOpen}
+          onToggle={() => {
+            setCarteraOpen((v) => !v);
+            setCarteraAction(null);
+          }}
+        />
+
+        {carteraOpen && (
+          <View style={{ gap: spacing.sm }}>
+            {carteraAction === null && (
+              <>
+                <Pressable
+                  accessibilityLabel="Comprar activo"
+                  onPress={() => setCarteraAction('buy')}
+                  style={[styles.carteraOption, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={colors.accentFrom} />
+                  <View style={{ flex: 1, marginLeft: spacing.md }}>
+                    <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>Comprar activo</Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      Registra una acción, ETF, FIBRA, CETE, bono, fondo o cripto nuevos
+                    </Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  accessibilityLabel="Vender activo"
+                  onPress={() => sellable.length > 0 && setCarteraAction('sell')}
+                  style={[styles.carteraOption, { borderColor: colors.surfaceBorder, borderRadius: radius.md, opacity: sellable.length === 0 ? 0.5 : 1 }]}
+                >
+                  <Ionicons name="remove-circle-outline" size={20} color={colors.danger} />
+                  <View style={{ flex: 1, marginLeft: spacing.md }}>
+                    <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>Vender activo</Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      {sellable.length === 0 ? 'Aún no tienes activos para vender' : 'Elige una posición existente y registra la venta'}
+                    </Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  accessibilityLabel="Depositar o retirar liquidez"
+                  onPress={() => {
+                    setCarteraAction('liquidity');
+                    setLiquidityDefaultCurrency(profile.primaryCurrency);
+                  }}
+                  style={[styles.carteraOption, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+                >
+                  <Ionicons name="cash-outline" size={20} color={colors.accentFrom} />
+                  <View style={{ flex: 1, marginLeft: spacing.md }}>
+                    <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>Depositar o retirar liquidez</Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      Efectivo disponible en tu cartera, listo para invertir cuando quieras
+                    </Text>
+                  </View>
+                </Pressable>
+              </>
+            )}
+
+            {carteraAction === 'buy' && (
+              <InvestmentForm
+                defaultCurrency={profile.primaryCurrency}
+                onCancel={() => setCarteraAction(null)}
+                onSave={(inv) => {
+                  addInvestment(inv);
+                  setCarteraAction(null);
+                  setCarteraOpen(false);
+                }}
+              />
+            )}
+
+            {carteraAction === 'sell' && (
+              <GlassCard style={{ gap: spacing.sm }}>
+                <Text style={[typography.headline, { color: colors.textPrimary }]}>¿Qué quieres vender?</Text>
+                {sellable.map((inv) => (
+                  <Pressable
+                    key={inv.id}
+                    accessibilityLabel={`Vender ${inv.ticker}`}
+                    onPress={() => {
+                      setEditingId(inv.id);
+                      setEditingDefaultOperation('sell');
+                      setCarteraAction(null);
+                      setCarteraOpen(false);
+                    }}
+                    style={[styles.sellRow, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+                  >
+                    <Text style={[typography.body, { color: colors.textPrimary }]}>
+                      {inv.ticker} · {inv.name}
+                    </Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>{inv.quantity} u.</Text>
+                  </Pressable>
+                ))}
+                <Pressable onPress={() => setCarteraAction(null)}>
+                  <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
+                </Pressable>
+              </GlassCard>
+            )}
+
+            {carteraAction === 'liquidity' && (
+              <LiquidityForm
+                investments={investments}
+                defaultCurrency={liquidityDefaultCurrency}
+                onCancel={() => setCarteraAction(null)}
+                onSave={(delta, currency) => {
+                  adjustLiquidity(delta, currency);
+                  setCarteraAction(null);
+                  setCarteraOpen(false);
+                }}
+              />
+            )}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -549,15 +696,17 @@ function InvestmentForm({
 
 function TransactionForm({
   position,
+  defaultOperation = 'buy',
   onSave,
   onCancel,
 }: {
   position: InvestmentPosition;
-  onSave: (patch: Partial<Draft<InvestmentPosition>>) => void;
+  defaultOperation?: 'buy' | 'sell';
+  onSave: (patch: Partial<Draft<InvestmentPosition>>, sale?: { proceeds: number; currency: Currency }) => void;
   onCancel: () => void;
 }) {
   const { colors, typography, spacing, radius } = useTheme();
-  const [operation, setOperation] = useState<'buy' | 'sell'>('buy');
+  const [operation, setOperation] = useState<'buy' | 'sell'>(defaultOperation);
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
   const [commission, setCommission] = useState('');
@@ -577,19 +726,29 @@ function TransactionForm({
 
   const handleSave = () => {
     if (!canSave) return;
+    const sellQty = round4(qtyNum);
     const result = applyInvestmentTransaction(position, {
       operation,
-      quantity: round4(qtyNum),
+      quantity: sellQty,
       price: priceNum,
       commission: commissionNum,
     });
-    onSave({
+    const patch = {
       quantity: result.quantity,
       avgCostPrice: result.avgCostPrice,
       amountInvested: result.amountInvested,
       realizedPnL: result.realizedPnL,
       notes: notes.trim() || undefined,
-    });
+    };
+    if (operation === 'sell') {
+      // El importe de la venta se acredita como liquidez — nunca
+      // desaparece del seguimiento de la cartera (spec: "cuando se venda
+      // una acción se debe quedar el liquidez").
+      const proceeds = Math.min(sellQty, position.quantity) * priceNum - commissionNum;
+      onSave(patch, { proceeds, currency: position.currency });
+    } else {
+      onSave(patch);
+    }
   };
 
   return (
@@ -669,6 +828,100 @@ function TransactionForm({
   );
 }
 
+function LiquidityForm({
+  investments,
+  defaultCurrency,
+  onSave,
+  onCancel,
+}: {
+  investments: InvestmentPosition[];
+  defaultCurrency: Currency;
+  onSave: (delta: number, currency: Currency) => void;
+  onCancel: () => void;
+}) {
+  const { colors, typography, spacing, radius } = useTheme();
+  const [currency, setCurrency] = useState<Currency>(defaultCurrency === 'MXN' ? 'MXN' : 'USD');
+  const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit');
+  const [amountText, setAmountText] = useState('');
+
+  // La liquidez se lleva POR MONEDA (vender una acción en USD no debe
+  // mezclarse con tu efectivo en MXN) — hay que elegir cuál se está
+  // depositando o retirando, en vez de asumir siempre la moneda
+  // principal del perfil.
+  const currentAmount = findLiquidityPosition(investments, currency)?.amountInvested ?? 0;
+  const amountNum = parseFloat(amountText.replace(',', '.')) || 0;
+  const canSave = amountNum > 0 && (mode === 'deposit' || amountNum <= currentAmount);
+
+  return (
+    <GlassCard style={{ gap: spacing.md }}>
+      <Text style={[typography.headline, { color: colors.textPrimary }]}>Liquidez</Text>
+      <View style={styles.twoCol}>
+        {(['USD', 'MXN'] as Currency[]).map((c) => (
+          <Pressable
+            key={c}
+            accessibilityLabel={`Liquidez en ${c}`}
+            onPress={() => setCurrency(c)}
+            style={[
+              styles.currencyPill,
+              { borderRadius: radius.pill, borderColor: currency === c ? colors.accentFrom : colors.surfaceBorder, backgroundColor: currency === c ? colors.accentSoft : 'transparent' },
+            ]}
+          >
+            <Text style={{ color: currency === c ? colors.accentFrom : colors.textSecondary, fontWeight: '600' }}>{c}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={[typography.caption, { color: colors.textSecondary, marginTop: -4 }]}>
+        Ahora tienes {formatCurrency(currentAmount, currency)} disponibles sin invertir.
+      </Text>
+      <View style={styles.twoCol}>
+        {(['deposit', 'withdraw'] as const).map((m) => (
+          <Pressable
+            key={m}
+            accessibilityLabel={m === 'deposit' ? 'Depositar liquidez' : 'Retirar liquidez'}
+            onPress={() => setMode(m)}
+            style={[
+              styles.opChip,
+              { borderRadius: radius.pill, borderColor: mode === m ? colors.accentFrom : colors.surfaceBorder, backgroundColor: mode === m ? colors.accentSoft : 'transparent' },
+            ]}
+          >
+            <Text style={{ color: mode === m ? colors.accentFrom : colors.textSecondary, fontWeight: '700' }}>
+              {m === 'deposit' ? 'Depositar' : 'Retirar'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <TextInput
+        value={amountText}
+        onChangeText={setAmountText}
+        keyboardType="decimal-pad"
+        placeholder="Monto"
+        placeholderTextColor={colors.textTertiary}
+        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+      />
+      {mode === 'withdraw' && amountNum > currentAmount && (
+        <Text style={[typography.caption, { color: colors.danger }]}>No puedes retirar más de lo que tienes en liquidez.</Text>
+      )}
+      <Text style={[typography.caption, { color: colors.textTertiary }]}>
+        {mode === 'deposit'
+          ? 'Súmalo cuando metas dinero a tu cartera para invertir después.'
+          : 'Réstalo cuando saques ese efectivo de tu cartera — no lo mueve automáticamente a ninguna cuenta.'}
+      </Text>
+      <View style={styles.formActions}>
+        <Pressable onPress={onCancel}>
+          <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
+        </Pressable>
+        <Pressable
+          disabled={!canSave}
+          onPress={() => onSave(mode === 'deposit' ? amountNum : -amountNum, currency)}
+          style={[styles.saveBtn, { backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.pill }]}
+        >
+          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Guardar</Text>
+        </Pressable>
+      </View>
+    </GlassCard>
+  );
+}
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -677,7 +930,8 @@ const styles = StyleSheet.create({
   refreshBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
   cetesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   cetesCell: { minWidth: '22%', gap: 2 },
-  addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', paddingVertical: 14 },
+  carteraOption: { flexDirection: 'row', alignItems: 'center', padding: 14, borderWidth: 1 },
+  sellRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderWidth: 1 },
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   notesInput: { minHeight: 60, textAlignVertical: 'top' },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },

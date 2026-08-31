@@ -168,6 +168,22 @@ export default function Settings() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>PRIVACIDAD Y DATOS</Text>
+          <Pressable accessibilityLabel="Privacidad y datos" onPress={() => router.push('/privacidad')}>
+            <GlassCard style={styles.row}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={colors.accentFrom} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Text style={[typography.body, { color: colors.textPrimary }]}>Privacidad y datos</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                  Qué guardamos, exportar tus datos o eliminar tu cuenta
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </GlassCard>
+          </Pressable>
+        </View>
+
+        <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>DATOS DE DEMOSTRACIÓN</Text>
           <GlassCard>
             <Text style={[typography.body, { color: colors.textPrimary, marginBottom: spacing.sm }]}>

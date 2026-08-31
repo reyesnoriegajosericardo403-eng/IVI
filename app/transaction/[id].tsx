@@ -75,6 +75,15 @@ export default function TransactionDetail() {
           {formatCompactDate(tx.date)} · {tx.origin === 'voice' ? 'Registrado por voz' : tx.origin === 'manual' ? 'Registro manual' : tx.origin}
         </Text>
 
+        {tx.notes && (
+          <View style={{ backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: spacing.sm }}>
+            <Text style={[typography.micro, { color: colors.accentFrom, fontWeight: '700', marginBottom: 2 }]}>
+              LO QUE DIJISTE
+            </Text>
+            <Text style={[typography.caption, { color: colors.textPrimary }]}>“{tx.notes}”</Text>
+          </View>
+        )}
+
         <TextInput
           keyboardType="decimal-pad"
           value={amount}

@@ -63,6 +63,9 @@ export default function Capture() {
       merchant: result.merchant,
       date: new Date().toISOString(),
       origin: 'voice',
+      // Respaldo textual de lo que se dijo — si la categorización
+      // automática se equivocó, aquí queda lo que realmente se dijo.
+      notes: result.rawText || undefined,
     });
     return { ...result, categoryId, subcategoryId };
   };

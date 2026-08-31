@@ -103,7 +103,7 @@ export interface Goal extends SyncMeta {
   isDemo?: boolean;
 }
 
-export type AssetClass = 'stock' | 'etf' | 'fibra' | 'cetes' | 'bond' | 'fund' | 'crypto' | 'other';
+export type AssetClass = 'stock' | 'etf' | 'fibra' | 'cetes' | 'bond' | 'fund' | 'crypto' | 'cash' | 'other';
 
 export interface InvestmentPosition extends SyncMeta {
   ticker: string;
