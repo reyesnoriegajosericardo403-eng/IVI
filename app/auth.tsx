@@ -5,7 +5,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ValuMark } from '@/components/ValuMark';
-import { signInWithEmail, signUpWithEmail } from '@/services/auth/actions';
+import { signInWithEmail, signInWithOAuth, signUpWithEmail } from '@/services/auth/actions';
+import { translateAuthError } from '@/services/auth/errorMessages';
 import { useTheme } from '@/theme/ThemeProvider';
 
 type Mode = 'signIn' | 'signUp';
@@ -19,6 +20,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -40,7 +42,7 @@ export default function Auth() {
     const result = mode === 'signIn' ? await signInWithEmail(email.trim(), password) : await signUpWithEmail(email.trim(), password);
     setLoading(false);
     if (!result.ok) {
-      setError(result.error ?? 'Algo salió mal. Intenta de nuevo.');
+      setError(translateAuthError(result.error));
       return;
     }
     if (mode === 'signUp') {
@@ -49,6 +51,19 @@ export default function Auth() {
       return;
     }
     router.replace('/');
+  };
+
+  const handleOAuth = async (provider: 'google' | 'apple') => {
+    setError('');
+    setOauthLoading(provider);
+    const result = await signInWithOAuth(provider);
+    setOauthLoading(null);
+    // Si funciona, Supabase redirige el navegador a Google/Apple — nunca
+    // llegamos a esta línea en ese caso. Si truena, es casi siempre porque
+    // el proveedor todavía no está habilitado en el proyecto de Supabase.
+    if (!result.ok) {
+      setError(translateAuthError(result.error));
+    }
   };
 
   return (
@@ -118,6 +133,12 @@ export default function Auth() {
             )}
           </View>
 
+          {mode === 'signIn' && (
+            <Pressable accessibilityLabel="Olvidé mi contraseña" onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'flex-end' }}>
+              <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '600' }]}>¿Olvidaste tu contraseña?</Text>
+            </Pressable>
+          )}
+
           {error.length > 0 && (
             <Text style={[typography.caption, { color: colors.danger, textAlign: 'center' }]}>{error}</Text>
           )}
@@ -131,6 +152,37 @@ export default function Auth() {
               {loading ? 'Un momento...' : mode === 'signIn' ? 'Iniciar sesión' : 'Crear cuenta'}
             </Text>
           </Pressable>
+
+          <View style={styles.dividerRow}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.surfaceBorder }]} />
+            <Text style={[typography.caption, { color: colors.textTertiary, marginHorizontal: spacing.sm }]}>o continúa con</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.surfaceBorder }]} />
+          </View>
+
+          <View style={{ gap: spacing.sm }}>
+            <Pressable
+              accessibilityLabel="Continuar con Google"
+              onPress={() => handleOAuth('google')}
+              disabled={oauthLoading !== null}
+              style={[styles.oauthBtn, { borderRadius: radius.pill, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceSolid, opacity: oauthLoading ? 0.6 : 1 }]}
+            >
+              <Ionicons name="logo-google" size={20} color={colors.textPrimary} />
+              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600', marginLeft: spacing.sm }]}>
+                {oauthLoading === 'google' ? 'Un momento...' : 'Continuar con Google'}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Continuar con Apple"
+              onPress={() => handleOAuth('apple')}
+              disabled={oauthLoading !== null}
+              style={[styles.oauthBtn, { borderRadius: radius.pill, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceSolid, opacity: oauthLoading ? 0.6 : 1 }]}
+            >
+              <Ionicons name="logo-apple" size={20} color={colors.textPrimary} />
+              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600', marginLeft: spacing.sm }]}>
+                {oauthLoading === 'apple' ? 'Un momento...' : 'Continuar con Apple'}
+              </Text>
+            </Pressable>
+          </View>
 
           <Pressable onPress={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')} style={{ alignItems: 'center' }}>
             <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>
@@ -150,4 +202,7 @@ const styles = StyleSheet.create({
   passwordInput: { paddingRight: 48 },
   eyeButton: { position: 'absolute', right: 4, height: '100%', paddingHorizontal: 12, justifyContent: 'center' },
   cta: { paddingVertical: 16, alignItems: 'center' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center' },
+  dividerLine: { flex: 1, height: 1 },
+  oauthBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, paddingVertical: 14 },
 });

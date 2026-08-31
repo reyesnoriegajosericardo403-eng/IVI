@@ -38,6 +38,11 @@ export default function Capture() {
   const interimTextRef = useRef('');
   const listeningRef = useRef(false);
   const registeredRef = useRef<ParsedCapture[]>([]);
+  // Puente entre el evento asíncrono del motor de voz (onEnd/onError) y
+  // quien pidió detener — así "qué se guardó" siempre lo decide el motor
+  // DESPUÉS de terminar de finalizar, nunca un valor leído de antemano
+  // (spec: auditoría del botón que fallaba ~4 de cada 5 veces).
+  const finalizeResolveRef = useRef<((text: string) => void) | null>(null);
 
   useEffect(() => {
     return () => {
@@ -113,71 +118,119 @@ export default function Capture() {
     }
   };
 
-  const runBatchParse = (raw: string) => {
+  const runBatchParse = (raw: string): Promise<void> => {
     setStage('processing');
-    setTimeout(async () => {
-      const segments = splitCaptureSegments(raw);
-      const results = await Promise.all(segments.map((seg) => providers.ai.parseCaptureText(seg)));
-      processBatch(results);
-    }, 380);
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        const segments = splitCaptureSegments(raw);
+        const results = await Promise.all(segments.map((seg) => providers.ai.parseCaptureText(seg)));
+        processBatch(results);
+        resolve();
+      }, 380);
+    });
   };
 
-  const handleMicPress = () => {
-    if (providers.speech.isAvailable()) {
-      finalTextRef.current = '';
-      interimTextRef.current = '';
-      setLiveTranscript('');
-      listeningRef.current = true;
-      setStage('listening');
-      const stop = providers.speech.startListening({
-        onResult: (transcript) => {
-          finalTextRef.current = transcript;
-          setLiveTranscript(`${finalTextRef.current} ${interimTextRef.current}`.trim());
-        },
-        onInterim: (interim) => {
-          interimTextRef.current = interim;
-          setLiveTranscript(`${finalTextRef.current} ${interimTextRef.current}`.trim());
-        },
-        onError: () => {
-          listeningRef.current = false;
-          setErrorMsg('No entendí, intenta escribirlo.');
-          setStage('error');
-        },
-        onEnd: () => {
-          stopListeningRef.current = null;
-          if (listeningRef.current) {
-            listeningRef.current = false;
-            const finalText = finalTextRef.current.trim();
-            if (finalText) {
-              runBatchParse(finalText);
-            } else {
-              setStage('idle');
-            }
-          }
-        },
-      });
-      stopListeningRef.current = stop;
-    } else {
+  // Arranca (o reinicia) una sesión de escucha. Se separó de handleMicPress
+  // para poder llamarla de nuevo automáticamente cuando un intento no captó
+  // nada — así la persona puede volver a intentar sin salir de la pantalla.
+  const beginListening = () => {
+    if (!providers.speech.isAvailable()) {
       setErrorMsg('El micrófono en vivo llega en la siguiente fase. Escribe tu movimiento abajo.');
       setStage('error');
-    }
-  };
-
-  const handleStopListening = () => {
-    const finalText = finalTextRef.current.trim();
-    listeningRef.current = false;
-    setStage('processing');
-    stopListeningRef.current?.();
-    stopListeningRef.current = null;
-    if (!finalText) {
-      setStage('idle');
       return;
     }
-    runBatchParse(finalText);
+    finalTextRef.current = '';
+    interimTextRef.current = '';
+    setLiveTranscript('');
+    listeningRef.current = true;
+    setStage('listening');
+    const stop = providers.speech.startListening({
+      onResult: (transcript) => {
+        finalTextRef.current = transcript;
+        setLiveTranscript(`${finalTextRef.current} ${interimTextRef.current}`.trim());
+      },
+      onInterim: (interim) => {
+        interimTextRef.current = interim;
+        setLiveTranscript(`${finalTextRef.current} ${interimTextRef.current}`.trim());
+      },
+      onError: () => {
+        listeningRef.current = false;
+        // Lo que ya se alcanzó a transcribir antes del error (silencio
+        // largo, hipo de red, etc.) NUNCA se tira a la basura — se
+        // aprovecha igual que si hubiera terminado bien.
+        const recovered = (finalTextRef.current || interimTextRef.current).trim();
+        if (finalizeResolveRef.current) {
+          finalizeResolveRef.current(recovered);
+          finalizeResolveRef.current = null;
+          return;
+        }
+        if (recovered) {
+          runBatchParse(recovered);
+          return;
+        }
+        setErrorMsg('No entendí, intenta escribirlo.');
+        setStage('error');
+      },
+      onEnd: () => {
+        stopListeningRef.current = null;
+        listeningRef.current = false;
+        // Única fuente de verdad de "qué se dijo": se lee AQUÍ, después de
+        // que el motor terminó de finalizar — nunca antes. Si el motor no
+        // alcanzó a marcar nada como "final", se usa lo último visto en
+        // pantalla (el texto interino) en vez de perderlo.
+        const finalText = (finalTextRef.current || interimTextRef.current).trim();
+        if (finalizeResolveRef.current) {
+          finalizeResolveRef.current(finalText);
+          finalizeResolveRef.current = null;
+          return;
+        }
+        // onEnd espontáneo (el usuario no pidió detener — el navegador
+        // cortó la escucha solo) — se procesa igual si ya hay algo dicho.
+        if (finalText) {
+          runBatchParse(finalText);
+        } else {
+          setStage('idle');
+        }
+      },
+    });
+    stopListeningRef.current = stop;
+  };
+
+  const handleMicPress = () => beginListening();
+
+  // Se llama desde el botón de "mantener presionado". Devuelve una promesa
+  // que se resuelve solo cuando el guardado de verdad ocurrió, y truena si
+  // no se logró capturar nada — así el botón muestra éxito/error honestos
+  // en vez de asumir que completar el gesto significa que ya se guardó.
+  const handleStopListening = async () => {
+    if (!listeningRef.current) return;
+    const finalText = await new Promise<string>((resolve) => {
+      finalizeResolveRef.current = resolve;
+      stopListeningRef.current?.();
+      // Respaldo por si el navegador nunca dispara onend/onerror — no se
+      // deja a la persona esperando para siempre.
+      setTimeout(() => {
+        if (finalizeResolveRef.current === resolve) {
+          finalizeResolveRef.current = null;
+          resolve((finalTextRef.current || interimTextRef.current).trim());
+        }
+      }, 2500);
+    });
+    if (!finalText) {
+      // No se detectó nada que guardar — se vuelve a escuchar de inmediato
+      // para poder intentar otra vez sin salir de esta pantalla.
+      beginListening();
+      throw new Error('No se detectó nada que guardar.');
+    }
+    await runBatchParse(finalText);
   };
 
   const handleCancelListening = () => {
     listeningRef.current = false;
+    if (finalizeResolveRef.current) {
+      finalizeResolveRef.current('');
+      finalizeResolveRef.current = null;
+    }
     stopListeningRef.current?.();
     stopListeningRef.current = null;
     setLiveTranscript('');
@@ -329,10 +382,9 @@ export default function Capture() {
             </ScrollView>
             <View style={{ width: '100%', maxWidth: 340, marginTop: spacing.lg, gap: spacing.md }}>
               <HoldToConfirmButton
-                onConfirm={() => {
-                  handleStopListening();
-                }}
+                onConfirm={handleStopListening}
                 label="Mantén presionado para guardar"
+                errorLabel="No se escuchó nada. Vuelve a hablar y dale otra vez."
                 icon="checkmark"
                 accessibilityLabel="Mantener presionado para guardar movimiento"
               />
