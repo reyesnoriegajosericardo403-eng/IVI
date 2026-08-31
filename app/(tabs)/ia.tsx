@@ -23,7 +23,33 @@ interface Message {
   text: string;
 }
 
+// TODO: cuando el problema de conexión de la IA en la versión web
+// (relevo ai-relay) quede resuelto por completo, borrar este aviso y la
+// bandera de abajo para que el copiloto vuelva a mostrarse normal.
+const AI_TEMPORARILY_DISABLED = true;
+
+function ProximamenteBanner() {
+  const { colors, typography, spacing } = useTheme();
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
+      <View style={{ alignItems: 'center', paddingHorizontal: spacing.xl }}>
+        <Text style={[typography.display, { color: colors.danger, fontWeight: '800', textAlign: 'center' }]}>
+          PRÓXIMAMENTE
+        </Text>
+        <Text style={[typography.headline, { color: colors.danger, textAlign: 'center', marginTop: spacing.sm }]}>
+          solo en IVI
+        </Text>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 export default function Ia() {
+  if (AI_TEMPORARILY_DISABLED) return <ProximamenteBanner />;
+  return <IaChat />;
+}
+
+function IaChat() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
   const rawTransactions = useAppStore((s) => s.transactions);

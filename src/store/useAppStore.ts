@@ -89,6 +89,11 @@ interface AppState {
 
   setHasHydrated: (v: boolean) => void;
   completeOnboarding: (profile: Partial<UserProfile>) => void;
+  // Igual que completeOnboarding pero SIN forzar onboardingComplete —
+  // para guardar nombre/moneda a medio del flujo de bienvenida (encuesta,
+  // presupuesto) sin marcarlo como terminado todavía, así una recarga a
+  // mitad del flujo no manda a alguien directo al dashboard.
+  updateProfileDraft: (patch: Partial<UserProfile>) => void;
   setThemePreference: (pref: UserProfile['themePreference']) => void;
 
   addTransaction: (draft: Draft<Transaction>) => void;
@@ -196,6 +201,8 @@ export const useAppStore = create<AppState>()(
 
         completeOnboarding: (profile) =>
           set((s) => ({ profile: { ...s.profile, ...profile, onboardingComplete: true } })),
+
+        updateProfileDraft: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
 
         setThemePreference: (pref) =>
           set((s) => ({ profile: { ...s.profile, themePreference: pref } })),

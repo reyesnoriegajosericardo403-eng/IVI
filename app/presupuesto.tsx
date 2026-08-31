@@ -1,37 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CategoryIcon } from '@/components/CategoryIcon';
+import { ConceptBudgetForm } from '@/components/ConceptBudgetForm';
+import { ConceptRow } from '@/components/ConceptRow';
 import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
-import { ProgressBar } from '@/components/ProgressBar';
+import { IncomeConceptRow } from '@/components/IncomeConceptRow';
 import { SectionToggle } from '@/components/SectionToggle';
-import {
-  BUDGET_GROUP_DESCRIPTIONS,
-  BUDGET_GROUP_LABELS,
-  budgetConceptsByGroup,
-  INCOME_CONCEPTS,
-  type BudgetConcept,
-  type BudgetGroupId,
-  type IncomeConcept,
-} from '@/data/budgetConcepts';
-import type { Budget, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
+import { BUDGET_GROUP_DESCRIPTIONS, BUDGET_GROUP_LABELS, budgetConceptsByGroup, INCOME_CONCEPTS, type BudgetGroupId, type IncomeConcept } from '@/data/budgetConcepts';
+import type { BudgetFrequency, BudgetPeriodicity } from '@/data/types';
 import { selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { computeMonthlyAmount, FREQUENCY_LABELS, PERIODICITY_LABELS, WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
-import { buildBudgetLines, incomeByConcept, incomeByKind, spendByConcept, type BudgetLine, type BudgetStatus } from '@/utils/finance';
+import { computeMonthlyAmount, WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
+import { buildBudgetLines, incomeByConcept, incomeByKind, spendByConcept } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
-
-const STATUS_LABEL: Record<BudgetStatus, string> = {
-  normal: 'Normal',
-  attention: 'Atención',
-  warning: 'Advertencia',
-  exceeded: 'Excedido',
-};
 
 const GROUPS: BudgetGroupId[] = ['hoy', 'luego', 'compartir'];
 const GROUP_COLOR_KEY: Record<BudgetGroupId, 'accentFrom' | 'accentTo' | 'warning'> = {
@@ -278,271 +264,11 @@ export default function Presupuesto() {
   );
 }
 
-function ConceptRow({
-  concept,
-  line,
-  scope,
-  scopedBudgeted,
-  actualNoBudget,
-  currency,
-  onEdit,
-  onDelete,
-}: {
-  concept: BudgetConcept;
-  line: BudgetLine | undefined;
-  scope: Scope;
-  scopedBudgeted: (monthlyAmount: number) => number;
-  actualNoBudget: number;
-  currency: Currency;
-  onEdit: () => void;
-  onDelete: (budgetId: string) => void;
-}) {
-  const { colors, typography, spacing } = useTheme();
-  const budgeted = line ? scopedBudgeted(line.budgeted) : 0;
-  const percentUsed = line && budgeted > 0 ? Math.round((actualNoBudget / budgeted) * 100) : 0;
-
-  return (
-    <GlassCard style={{ gap: spacing.sm }}>
-      <View style={styles.rowBetween}>
-        <View style={styles.rowCenter}>
-          <CategoryIcon categoryId={concept.icon} size={16} />
-          <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: spacing.sm }]}>{concept.name}</Text>
-        </View>
-        <View style={styles.rowCenter}>
-          <Pressable accessibilityLabel={`Editar ${concept.name}`} onPress={onEdit} style={{ marginRight: line ? spacing.sm : 0 }}>
-            <Ionicons name={line ? 'pencil-outline' : 'add-circle-outline'} size={18} color={line ? colors.textTertiary : colors.accentFrom} />
-          </Pressable>
-          {line && (
-            <Pressable accessibilityLabel={`Eliminar presupuesto de ${concept.name}`} onPress={() => onDelete(line.budgetId)}>
-              <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      {line ? (
-        <>
-          <ProgressBar percent={percentUsed} status={line.status} />
-          <View style={styles.rowBetween}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              {formatCurrency(actualNoBudget, currency)} de {formatCurrency(budgeted, currency)}
-              {scope === 'week' ? ' esta semana' : ' este mes'}
-            </Text>
-            <Text
-              style={[
-                typography.caption,
-                {
-                  fontWeight: '700',
-                  color: line.status === 'exceeded' || line.status === 'warning' ? colors.danger : line.status === 'attention' ? colors.warning : colors.success,
-                },
-              ]}
-            >
-              {percentUsed}% · {STATUS_LABEL[line.status]}
-            </Text>
-          </View>
-        </>
-      ) : (
-        <Text style={[typography.caption, { color: colors.textTertiary }]}>
-          {actualNoBudget > 0
-            ? `Ya llevas ${formatCurrency(actualNoBudget, currency)} sin presupuesto — toca + para definir uno.`
-            : 'Sin presupuesto — toca + para definir uno.'}
-        </Text>
-      )}
-    </GlassCard>
-  );
-}
-
-// Igual que ConceptRow pero con semántica de ingreso: llegar o pasar el
-// monto esperado es bueno (verde), no una alarma — nunca se usa el rojo
-// de "excedido" aquí, porque ganar más de lo esperado no es un problema.
-function IncomeConceptRow({
-  concept,
-  line,
-  scope,
-  scopedBudgeted,
-  actualNoBudget,
-  currency,
-  onEdit,
-  onDelete,
-}: {
-  concept: IncomeConcept;
-  line: BudgetLine | undefined;
-  scope: Scope;
-  scopedBudgeted: (monthlyAmount: number) => number;
-  actualNoBudget: number;
-  currency: Currency;
-  onEdit: () => void;
-  onDelete: (budgetId: string) => void;
-}) {
-  const { colors, typography, spacing } = useTheme();
-  const budgeted = line ? scopedBudgeted(line.budgeted) : 0;
-  const percentUsed = line && budgeted > 0 ? Math.round((actualNoBudget / budgeted) * 100) : 0;
-  const met = percentUsed >= 100;
-
-  return (
-    <GlassCard style={{ gap: spacing.sm }}>
-      <View style={styles.rowBetween}>
-        <View style={styles.rowCenter}>
-          <CategoryIcon categoryId={concept.icon} size={16} />
-          <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: spacing.sm }]}>{concept.name}</Text>
-        </View>
-        <View style={styles.rowCenter}>
-          <Pressable accessibilityLabel={`Editar ${concept.name}`} onPress={onEdit} style={{ marginRight: line ? spacing.sm : 0 }}>
-            <Ionicons name={line ? 'pencil-outline' : 'add-circle-outline'} size={18} color={line ? colors.textTertiary : colors.accentFrom} />
-          </Pressable>
-          {line && (
-            <Pressable accessibilityLabel={`Eliminar esperado de ${concept.name}`} onPress={() => onDelete(line.budgetId)}>
-              <Ionicons name="trash-outline" size={16} color={colors.textTertiary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      {line ? (
-        <>
-          <ProgressBar percent={Math.min(percentUsed, 100)} status={met ? 'normal' : 'attention'} />
-          <View style={styles.rowBetween}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              {formatCurrency(actualNoBudget, currency)} de {formatCurrency(budgeted, currency)} esperados
-              {scope === 'week' ? ' esta semana' : ' este mes'}
-            </Text>
-            <Text style={[typography.caption, { fontWeight: '700', color: met ? colors.success : colors.warning }]}>{percentUsed}%</Text>
-          </View>
-        </>
-      ) : (
-        <Text style={[typography.caption, { color: colors.textTertiary }]}>
-          {actualNoBudget > 0
-            ? `Ya llevas ${formatCurrency(actualNoBudget, currency)} sin un monto esperado — toca + para definirlo.`
-            : 'Sin monto esperado — toca + para definirlo.'}
-        </Text>
-      )}
-    </GlassCard>
-  );
-}
-
-function ConceptBudgetForm({
-  concept,
-  initial,
-  currency,
-  onSave,
-  onCancel,
-}: {
-  concept: { id: string; name: string };
-  initial: Budget | undefined;
-  currency: Currency;
-  onSave: (input: { baseAmount: number; periodicity: BudgetPeriodicity; frequency?: BudgetFrequency; customDaysPerWeek?: number }) => void;
-  onCancel: () => void;
-}) {
-  const { colors, typography, spacing, radius } = useTheme();
-  const [periodicity, setPeriodicity] = useState<BudgetPeriodicity>(initial?.periodicity ?? 'month');
-  const [frequency, setFrequency] = useState<BudgetFrequency>(initial?.frequency ?? 'all_days');
-  const [customDays, setCustomDays] = useState(initial?.customDaysPerWeek ?? 3);
-  const [amountText, setAmountText] = useState(initial?.baseAmount ? String(initial.baseAmount) : '');
-
-  const baseAmount = parseFloat(amountText.replace(',', '.')) || 0;
-  const monthlyAmount = computeMonthlyAmount({ baseAmount, periodicity, frequency, customDaysPerWeek: customDays });
-  const canSave = baseAmount > 0;
-
-  return (
-    <GlassCard style={{ gap: spacing.md }}>
-      <Text style={[typography.headline, { color: colors.textPrimary }]}>{concept.name}</Text>
-
-      <View>
-        <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>Periodicidad</Text>
-        <View style={styles.chipRow}>
-          {(['day', 'week', 'month'] as BudgetPeriodicity[]).map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => setPeriodicity(p)}
-              style={[styles.chip, { borderRadius: radius.pill, borderColor: periodicity === p ? colors.accentFrom : colors.surfaceBorder, backgroundColor: periodicity === p ? colors.accentSoft : 'transparent' }]}
-            >
-              <Text style={{ color: periodicity === p ? colors.accentFrom : colors.textSecondary, fontWeight: '600', fontSize: 12 }}>
-                {PERIODICITY_LABELS[p]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {periodicity === 'day' && (
-        <View>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>Frecuencia</Text>
-          <View style={styles.chipWrap}>
-            {(['all_days', 'weekdays', 'weekends', 'custom', 'one_time'] as BudgetFrequency[]).map((f) => (
-              <Pressable
-                key={f}
-                onPress={() => setFrequency(f)}
-                style={[styles.chip, { borderRadius: radius.pill, borderColor: frequency === f ? colors.accentFrom : colors.surfaceBorder, backgroundColor: frequency === f ? colors.accentSoft : 'transparent' }]}
-              >
-                <Text style={{ color: frequency === f ? colors.accentFrom : colors.textSecondary, fontWeight: '600', fontSize: 12 }}>
-                  {FREQUENCY_LABELS[f]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {periodicity === 'day' && frequency === 'custom' && (
-        <View style={styles.rowCenter}>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginRight: spacing.sm }]}>Días por semana:</Text>
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <Pressable
-              key={n}
-              onPress={() => setCustomDays(n)}
-              style={[styles.dayPill, { borderRadius: radius.pill, borderColor: customDays === n ? colors.accentFrom : colors.surfaceBorder, backgroundColor: customDays === n ? colors.accentSoft : 'transparent' }]}
-            >
-              <Text style={{ color: customDays === n ? colors.accentFrom : colors.textSecondary, fontWeight: '700', fontSize: 12 }}>{n}</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
-
-      <TextInput
-        value={amountText}
-        onChangeText={setAmountText}
-        keyboardType="decimal-pad"
-        placeholder={periodicity === 'day' && frequency === 'one_time' ? 'Monto del evento' : `Monto por ${PERIODICITY_LABELS[periodicity].toLowerCase()}`}
-        placeholderTextColor={colors.textTertiary}
-        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      />
-
-      {baseAmount > 0 && (
-        <View style={{ backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.accentFrom }]}>
-            Equivale a {formatCurrency(monthlyAmount, currency)} al mes
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.rowEnd}>
-        <Pressable onPress={onCancel}>
-          <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
-        </Pressable>
-        <Pressable
-          disabled={!canSave}
-          onPress={() => onSave({ baseAmount, periodicity, frequency: periodicity === 'day' ? frequency : undefined, customDaysPerWeek: customDays })}
-          style={[styles.saveBtn, { borderRadius: radius.pill, backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder }]}
-        >
-          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Guardar</Text>
-        </Pressable>
-      </View>
-    </GlassCard>
-  );
-}
-
 const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
-  rowEnd: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center' },
   groupHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 },
   scopeToggle: { flexDirection: 'row', borderWidth: 1, padding: 3, alignSelf: 'flex-start' },
   scopeBtn: { paddingHorizontal: 18, paddingVertical: 8 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  chipRow: { flexDirection: 'row', gap: 8 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
-  dayPill: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, marginRight: 6 },
-  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15 },
-  saveBtn: { paddingHorizontal: 20, paddingVertical: 10 },
 });
