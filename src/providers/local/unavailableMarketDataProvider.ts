@@ -10,4 +10,7 @@ export const unavailableMarketDataProvider: MarketDataProvider = {
   async getQuotes(tickers: string[]) {
     return Object.fromEntries(tickers.map((t) => [t, null]));
   },
+  async getCetesRates() {
+    return null;
+  },
 };

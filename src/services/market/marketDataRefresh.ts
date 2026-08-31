@@ -11,13 +11,19 @@ import { isUsMarketOpenNow } from '@/utils/marketHours';
 // única excepción es la primera vez (para mostrar al menos el último
 // cierre) o cuando el usuario pide actualizar a mano (`force`).
 export async function refreshMarketData(force = false): Promise<void> {
-  const { investments, liveQuotes, setLiveQuotes } = useAppStore.getState();
-  const tickers = Array.from(new Set(selectActiveInvestments(investments).map((i) => i.ticker)));
+  const { investments, liveQuotes, setLiveQuotes, setCetesRates } = useAppStore.getState();
+  const active = selectActiveInvestments(investments);
+  const tickers = Array.from(new Set(active.map((i) => i.ticker)));
   if (tickers.length === 0) return;
 
   const missingAny = tickers.some((t) => !liveQuotes[t]);
   if (!force && !isUsMarketOpenNow() && !missingAny) return;
 
-  const quotes = await providers.marketData.getQuotes(tickers);
+  const hasCetes = active.some((i) => i.assetClass === 'cetes');
+  const [quotes, cetesRates] = await Promise.all([
+    providers.marketData.getQuotes(tickers),
+    hasCetes ? providers.marketData.getCetesRates() : Promise.resolve(null),
+  ]);
   setLiveQuotes(quotes);
+  if (cetesRates) setCetesRates(cetesRates);
 }

@@ -23,7 +23,7 @@ import type {
   UserProfile,
 } from '@/data/types';
 import type { SyncQueueEntry, SyncTable } from '@/services/sync/types';
-import type { MarketQuote } from '@/providers/types';
+import type { CetesRates, MarketQuote } from '@/providers/types';
 import { generateId } from '@/utils/id';
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -82,6 +82,10 @@ interface AppState {
   liveQuotes: Record<string, MarketQuote>;
   lastQuotesFetchedAt: string | null;
   setLiveQuotes: (quotes: Record<string, MarketQuote | null>) => void;
+  // Tasa CETES (Banxico) — misma lógica que liveQuotes: un valor de
+  // "ahora mismo" que nunca se acumula como historial.
+  cetesRates: CetesRates | null;
+  setCetesRates: (rates: CetesRates | null) => void;
 
   setHasHydrated: (v: boolean) => void;
   completeOnboarding: (profile: Partial<UserProfile>) => void;
@@ -164,6 +168,7 @@ export const useAppStore = create<AppState>()(
         hasHydrated: false,
         liveQuotes: {},
         lastQuotesFetchedAt: null,
+        cetesRates: null,
 
         setLiveQuotes: (quotes) =>
           set((s) => {
@@ -184,6 +189,8 @@ export const useAppStore = create<AppState>()(
               lastQuotesFetchedAt: updatedAny ? new Date().toISOString() : s.lastQuotesFetchedAt,
             };
           }),
+
+        setCetesRates: (rates) => set(() => (rates ? { cetesRates: rates } : {})),
 
         setHasHydrated: (v) => set({ hasHydrated: v }),
 
@@ -420,11 +427,11 @@ export const useAppStore = create<AppState>()(
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },
-      // liveQuotes/lastQuotesFetchedAt quedan fuera a propósito — son un
-      // valor de "ahora mismo" que se vuelve a pedir al abrir la app,
-      // nunca algo que deba sobrevivir como historial guardado.
+      // liveQuotes/lastQuotesFetchedAt/cetesRates quedan fuera a propósito
+      // — son un valor de "ahora mismo" que se vuelve a pedir al abrir la
+      // app, nunca algo que deba sobrevivir como historial guardado.
       partialize: (state) => {
-        const { liveQuotes: _liveQuotes, lastQuotesFetchedAt: _lastQuotesFetchedAt, ...rest } = state;
+        const { liveQuotes: _liveQuotes, lastQuotesFetchedAt: _lastQuotesFetchedAt, cetesRates: _cetesRates, ...rest } = state;
         return rest;
       },
     }

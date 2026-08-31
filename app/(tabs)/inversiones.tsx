@@ -14,7 +14,7 @@ import { refreshMarketData } from '@/services/market/marketDataRefresh';
 import { selectActiveInvestments } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { todayISO } from '@/utils/date';
+import { formatDateDMY, todayISO } from '@/utils/date';
 import {
   applyInvestmentTransaction,
   investmentCurrentValue,
@@ -39,6 +39,7 @@ export default function Inversiones() {
   const deleteInvestment = useAppStore((s) => s.deleteInvestment);
   const liveQuotes = useAppStore((s) => s.liveQuotes);
   const lastQuotesFetchedAt = useAppStore((s) => s.lastQuotesFetchedAt);
+  const cetesRates = useAppStore((s) => s.cetesRates);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export default function Inversiones() {
   const totalUnrealizedPercent = totalInvested > 0 ? (totalUnrealizedPnL / totalInvested) * 100 : 0;
   const totalDailyChange = investments.reduce((sum, i) => sum + (investmentDailyChange(i, liveQuotes) ?? 0), 0);
   const marketOpen = isUsMarketOpenNow();
+  const hasCetesPosition = investments.some((i) => i.assetClass === 'cetes');
 
   const handleRefreshPrices = async () => {
     setRefreshing(true);
@@ -194,6 +196,38 @@ export default function Inversiones() {
           </GlassCard>
         )}
 
+        {hasCetesPosition && cetesRates && (
+          <GlassCard style={{ gap: spacing.sm }}>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>Tasa CETES vigente</Text>
+            <Text style={[typography.caption, { color: colors.textSecondary, marginTop: -4 }]}>
+              Tasa oficial de rendimiento (Banxico) — no es un precio de mercado por unidad: los CETES se liquidan a
+              su valor nominal al vencimiento, así que no calculamos una ganancia o pérdida que no existe.
+            </Text>
+            <View style={styles.cetesGrid}>
+              {(
+                [
+                  ['28 DÍAS', cetesRates.d28],
+                  ['91 DÍAS', cetesRates.d91],
+                  ['182 DÍAS', cetesRates.d182],
+                  ['364 DÍAS', cetesRates.d364],
+                ] as const
+              ).map(([label, rate]) => (
+                <View key={label} style={styles.cetesCell}>
+                  <Text style={[typography.micro, { color: colors.textTertiary }]}>{label}</Text>
+                  <Text style={[typography.headline, { color: colors.textPrimary }]}>
+                    {rate !== null ? `${rate.toFixed(2)}%` : '—'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            {cetesRates.asOf && (
+              <Text style={[typography.caption, { color: colors.textTertiary }]}>
+                Última subasta: {/^\d{4}-\d{2}-\d{2}$/.test(cetesRates.asOf) ? formatDateDMY(cetesRates.asOf) : cetesRates.asOf}
+              </Text>
+            )}
+          </GlassCard>
+        )}
+
         {investments.length > 0 && (
           <GlassCard style={{ gap: spacing.sm }}>
             <Text style={[typography.headline, { color: colors.textPrimary }]}>Diversificación</Text>
@@ -320,7 +354,9 @@ export default function Inversiones() {
                 </View>
               ) : (
                 <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 52 }]}>
-                  Precio en vivo no disponible para {inv.ticker}.
+                  {inv.assetClass === 'cetes'
+                    ? 'Los CETES no tienen precio de mercado por unidad — revisa la tasa vigente arriba.'
+                    : `Precio en vivo no disponible para ${inv.ticker}.`}
                 </Text>
               )}
               {!!inv.realizedPnL && (
@@ -639,6 +675,8 @@ const styles = StyleSheet.create({
   tickerBadge: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   refreshBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
+  cetesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  cetesCell: { minWidth: '22%', gap: 2 },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', paddingVertical: 14 },
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   notesInput: { minHeight: 60, textAlignVertical: 'top' },

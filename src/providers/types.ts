@@ -31,13 +31,31 @@ export interface MarketQuote {
   stale: boolean;
 }
 
+// Tasa oficial de CETES por término (Banxico) — no es un precio de
+// mercado por unidad: los CETES no cotizan de forma continua como una
+// acción, se liquidan a su valor nominal al vencimiento. Se muestra como
+// tasa, nunca como un "precio inventado" para poder calcular una
+// ganancia/pérdida que no existe.
+export interface CetesRates {
+  d28: number | null;
+  d91: number | null;
+  d182: number | null;
+  d364: number | null;
+  asOf: string | null;
+  source: string;
+}
+
 export interface MarketDataProvider {
   name: string;
   // Cotiza varios tickers de una sola vez (más eficiente que uno por
   // uno). Cada entrada es null cuando no hay una fuente real conectada
   // todavía o el ticker no se pudo resolver — nunca se inventa un precio
-  // (spec 17, 42).
+  // (spec 17, 42). Puede combinar más de un proveedor por dentro (spec:
+  // "quiero que sean dos proveedores diferentes que corran... al mismo
+  // tiempo") — a la app solo le importa el resultado final.
   getQuotes(tickers: string[]): Promise<Record<string, MarketQuote | null>>;
+  // Tasa vigente de CETES, o null si no hay fuente conectada todavía.
+  getCetesRates(): Promise<CetesRates | null>;
 }
 
 export interface ExchangeRateInfo {
