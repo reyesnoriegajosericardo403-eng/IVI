@@ -48,7 +48,6 @@ export default function Onboarding() {
   const rawAccounts = useAppStore((s) => s.accounts);
   const updateProfileDraft = useAppStore((s) => s.updateProfileDraft);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
-  const loadDemoData = useAppStore((s) => s.loadDemoData);
   const setBudget = useAppStore((s) => s.setBudget);
   const deleteBudget = useAppStore((s) => s.deleteBudget);
   const addAccount = useAppStore((s) => s.addAccount);
@@ -62,16 +61,14 @@ export default function Onboarding() {
 
   const [step, setStep] = useState<Step>('profile');
 
-  // ---------- Paso 1: perfil (nombre, moneda, datos demo) ----------
+  // ---------- Paso 1: perfil (nombre, moneda) ----------
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<Currency>('MXN');
-  const [wantsDemo, setWantsDemo] = useState(true);
 
   const handleProfileNext = () => {
     // Se guarda ya (sin marcar onboardingComplete todavía) para que la
     // moneda elegida se refleje de una vez en los pasos que siguen.
     updateProfileDraft({ name: name.trim() || 'Tú', primaryCurrency: currency });
-    if (wantsDemo) loadDemoData();
     setStep('survey');
   };
 
@@ -250,31 +247,6 @@ export default function Onboarding() {
               ))}
             </View>
           </View>
-
-          <Pressable
-            onPress={() => setWantsDemo((v) => !v)}
-            style={[
-              styles.demoToggle,
-              { borderRadius: radius.md, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceSolid },
-            ]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={[typography.headline, { color: colors.textPrimary }]}>Explorar con datos de ejemplo</Text>
-              <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                Verás movimientos y cifras ficticias, claramente marcadas como demo, para conocer la app.
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.checkbox,
-                {
-                  borderRadius: radius.sm,
-                  borderColor: colors.accentFrom,
-                  backgroundColor: wantsDemo ? colors.accentFrom : 'transparent',
-                },
-              ]}
-            />
-          </Pressable>
 
           <Pressable onPress={handleProfileNext} style={[styles.cta, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}>
             <Text style={[typography.headline, { color: '#FFFFFF' }]}>Listo</Text>
@@ -491,6 +463,16 @@ export default function Onboarding() {
               </View>
             </Pressable>
           )}
+
+          {bankAccounts.length === 0 && !showBankForm && (
+            <View style={styles.hintRow}>
+              <Ionicons name="bulb-outline" size={14} color={colors.textTertiary} />
+              <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 6, flex: 1 }]}>
+                Dale en "Agregar" y escribe el nombre de tu banco, su color representativo y el saldo que tengas
+                ahora mismo en él.
+              </Text>
+            </View>
+          )}
         </ScrollView>
         <View style={{ padding: spacing.lg }}>
           <Pressable
@@ -634,8 +616,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16 },
   row: { flexDirection: 'row', gap: 10 },
   pill: { paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1 },
-  demoToggle: { flexDirection: 'row', alignItems: 'center', padding: 16, borderWidth: 1, gap: 12 },
-  checkbox: { width: 24, height: 24, borderWidth: 2 },
   cta: { paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   surveyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   optionBtn: { borderWidth: 1, paddingVertical: 16, paddingHorizontal: 18 },
@@ -648,6 +628,7 @@ const styles = StyleSheet.create({
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   transportBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 2 },
   addCardTile: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderStyle: 'dashed', padding: 16 },
+  hintRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 4, marginTop: 4 },
   cashFormActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center' },
   formSave: { paddingVertical: 10, paddingHorizontal: 20 },
 });

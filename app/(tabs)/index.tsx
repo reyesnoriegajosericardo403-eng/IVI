@@ -49,7 +49,6 @@ export default function Dashboard() {
   const rawTransactions = useAppStore((s) => s.transactions);
   const rawBudgets = useAppStore((s) => s.budgets);
   const rawNetWorthHistory = useAppStore((s) => s.netWorthHistory);
-  const demoDataLoaded = useAppStore((s) => s.demoDataLoaded);
   const liveQuotes = useAppStore((s) => s.liveQuotes);
   const budgetPeriods = useAppStore((s) => s.budgetPeriods);
   const ackBudgetPeriod = useAppStore((s) => s.ackBudgetPeriod);
@@ -72,7 +71,13 @@ export default function Dashboard() {
 
   // ---- "¿En qué gastaste tu dinero?" (siempre del mes en curso) ----
   const monthlyBudgetLines = buildBudgetLines(budgets, transactions, profile.budgetThresholds, new Date(), 'month');
-  const monthBudgeted = monthlyBudgetLines.reduce((s, b) => s + b.budgeted, 0);
+  // Solo presupuesto de GASTO — el presupuesto de ingresos no tiene nada
+  // que ver con "cuánto te queda disponible de tu presupuesto de gastos"
+  // (mismo principio que "Tu resumen": nunca mezclar ingreso presupuestado
+  // con gasto real).
+  const monthBudgeted = monthlyBudgetLines
+    .filter((l) => !findIncomeConcept(l.categoryId))
+    .reduce((s, b) => s + b.budgeted, 0);
   const hasBudget = monthBudgeted > 0;
   const spendSlices = topSpendCategories(transactions, new Date(), 'month', 3);
   const SLICE_COLORS = [colors.success, colors.danger, colors.info, colors.accentFrom];
@@ -138,13 +143,13 @@ export default function Dashboard() {
       const key = s === 'week' ? weekKey : monthKey;
       const state = budgetPeriods[s];
       if (state.lastPeriodKey && state.lastPeriodKey !== key) {
-        const leftover = previousPeriodAvailable(budgets, transactions, profile.budgetThresholds, s, new Date());
+        const leftover = previousPeriodAvailable(transactions, s, new Date());
         if (leftover > 0) out.push({ scope: s, key, leftover });
       }
     });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekKey, monthKey, budgetPeriods.week.lastPeriodKey, budgetPeriods.month.lastPeriodKey, budgets, transactions]);
+  }, [weekKey, monthKey, budgetPeriods.week.lastPeriodKey, budgetPeriods.month.lastPeriodKey, transactions]);
 
   useEffect(() => {
     (['week', 'month'] as Scope[]).forEach((s) => {
@@ -155,20 +160,24 @@ export default function Dashboard() {
         return;
       }
       if (state.lastPeriodKey !== key) {
-        const leftover = previousPeriodAvailable(budgets, transactions, profile.budgetThresholds, s, new Date());
+        const leftover = previousPeriodAvailable(transactions, s, new Date());
         if (leftover <= 0) ackBudgetPeriod(s, key, 0);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekKey, monthKey]);
 
-  // ---- "Tu resumen" (con toggle semana/mes) ----
-  const summaryBudgetLines = buildBudgetLines(budgets, transactions, profile.budgetThresholds, new Date(), summaryScope);
-  const summaryBudgeted = summaryBudgetLines.reduce((s, b) => s + b.budgeted, 0);
+  // ---- "Tu resumen" (con toggle semana/mes) — SOLO ingresos reales menos
+  // gastos reales del periodo, nunca montos presupuestados (spec: "no le
+  // restes ni le sumes los gastos que están en el presupuesto porque eso
+  // no tiene sentido"). ----
+  const summaryIncomeByKind = incomeByKind(transactions, new Date(), summaryScope);
+  const summaryIncome = summaryIncomeByKind.fixed + summaryIncomeByKind.variable;
   const summarySpent = spendInPeriod(transactions, new Date(), summaryScope);
   const summarySaved = sumByTypeInPeriod(transactions, 'saving', new Date(), summaryScope);
-  const summaryAvailable = summaryBudgeted > 0 ? Math.max(0, summaryBudgeted - summarySpent) + currentCarryOver : 0;
-  const summaryTotal = summaryAvailable + summarySpent + summarySaved;
+  const summaryAvailable = summaryIncome - summarySpent + currentCarryOver;
+  const summaryAvailableForBar = Math.max(0, summaryAvailable);
+  const summaryTotal = summaryAvailableForBar + summarySpent + summarySaved;
 
   // ---- Recordatorios reales (deudas por vencer) ----
   const reminders = upcomingLiabilityReminders(liabilities, 14).slice(0, 3);
@@ -220,14 +229,6 @@ export default function Dashboard() {
             </Pressable>
           </View>
         </View>
-
-        {demoDataLoaded && (
-          <View style={[styles.demoBanner, { backgroundColor: colors.accentSoft, borderRadius: radius.md }]}>
-            <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>
-              MODO DEMO — estos datos son de ejemplo
-            </Text>
-          </View>
-        )}
 
         {/* ---------- ¿Seguimos con el mismo sobrante disponible? ---------- */}
         {pendingRollovers.map((p) => (
@@ -367,8 +368,13 @@ export default function Dashboard() {
           <View style={styles.summaryRow}>
             <GlassCard style={{ flex: 1, gap: 2 }}>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>Disponible</Text>
-              <Text style={[typography.headline, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
-                {formatCurrency(summaryAvailable, profile.primaryCurrency)}
+              <Text
+                style={[typography.headline, { color: summaryAvailable >= 0 ? colors.success : colors.danger }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {summaryAvailable < 0 ? '-' : ''}
+                {formatCurrency(Math.abs(summaryAvailable), profile.primaryCurrency)}
               </Text>
             </GlassCard>
             <GlassCard style={{ flex: 1, gap: 2 }}>
@@ -387,7 +393,7 @@ export default function Dashboard() {
 
           {summaryTotal > 0 && (
             <View style={[styles.segmentedBar, { borderRadius: radius.pill }]}>
-              {summaryAvailable > 0 && <View style={{ flex: summaryAvailable, backgroundColor: colors.success }} />}
+              {summaryAvailableForBar > 0 && <View style={{ flex: summaryAvailableForBar, backgroundColor: colors.success }} />}
               {summarySpent > 0 && <View style={{ flex: summarySpent, backgroundColor: colors.danger }} />}
               {summarySaved > 0 && <View style={{ flex: summarySaved, backgroundColor: colors.info }} />}
             </View>
@@ -475,7 +481,6 @@ const styles = StyleSheet.create({
   greetingRow: { flexDirection: 'row', alignItems: 'flex-start' },
   headerActions: { flexDirection: 'row', gap: 10, marginLeft: 12 },
   iconButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  demoBanner: { paddingVertical: 8, paddingHorizontal: 12, alignSelf: 'flex-start' },
   spaceBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
   rolloverCard: { padding: 18, gap: 10 },

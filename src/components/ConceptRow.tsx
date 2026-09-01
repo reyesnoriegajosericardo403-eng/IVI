@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { BudgetConcept } from '@/data/budgetConcepts';
+import { conceptExampleText, type BudgetConcept } from '@/data/budgetConcepts';
 import type { Account, Currency } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { BudgetLine, BudgetStatus } from '@/utils/finance';
@@ -47,6 +47,7 @@ export function ConceptRow({
   const excludedNames = (line?.excludedAccountIds ?? [])
     .map((id) => accounts?.find((a) => a.id === id)?.name)
     .filter((name): name is string => !!name);
+  const exampleText = conceptExampleText(concept);
   const { colors, typography, spacing } = useTheme();
   const budgeted = line ? scopedBudgeted(line.budgeted) : 0;
   const percentUsed = line && budgeted > 0 ? Math.round((actualNoBudget / budgeted) * 100) : 0;
@@ -54,9 +55,16 @@ export function ConceptRow({
   return (
     <GlassCard style={{ gap: spacing.sm }}>
       <View style={styles.rowBetween}>
-        <View style={styles.rowCenter}>
+        <View style={[styles.rowCenter, { flex: 1 }]}>
           <CategoryIcon categoryId={concept.icon} size={16} />
-          <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: spacing.sm }]}>{concept.name}</Text>
+          <View style={{ marginLeft: spacing.sm, flex: 1 }}>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>{concept.name}</Text>
+            {!!exampleText && (
+              <Text style={[typography.micro, { color: colors.textTertiary }]} numberOfLines={1}>
+                Ej: {exampleText}
+              </Text>
+            )}
+          </View>
         </View>
         <View style={styles.rowCenter}>
           <Pressable accessibilityLabel={`Editar ${concept.name}`} onPress={onEdit} style={{ marginRight: line ? spacing.sm : 0 }}>

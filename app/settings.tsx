@@ -28,9 +28,6 @@ export default function Settings() {
   const profile = useAppStore((s) => s.profile);
   const setThemePreference = useAppStore((s) => s.setThemePreference);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
-  const demoDataLoaded = useAppStore((s) => s.demoDataLoaded);
-  const loadDemoData = useAppStore((s) => s.loadDemoData);
-  const clearDemoData = useAppStore((s) => s.clearDemoData);
   const pendingSyncCount = useAppStore((s) => s.pendingSync.length);
   const lastSyncedAt = useAppStore((s) => s.lastSyncedAt);
   const { userId, email } = useAuthSession();
@@ -100,7 +97,7 @@ export default function Settings() {
             ) : (
               <Pressable
                 onPress={() => router.push('/auth')}
-                style={[styles.demoBtn, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}
+                style={[styles.fullWidthBtn, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Iniciar sesión / Crear cuenta</Text>
               </Pressable>
@@ -182,23 +179,6 @@ export default function Settings() {
             </GlassCard>
           </Pressable>
         </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>DATOS DE DEMOSTRACIÓN</Text>
-          <GlassCard>
-            <Text style={[typography.body, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-              {demoDataLoaded ? 'Los datos de ejemplo están activos.' : 'No hay datos de ejemplo cargados.'}
-            </Text>
-            <Pressable
-              onPress={() => (demoDataLoaded ? clearDemoData() : loadDemoData())}
-              style={[styles.demoBtn, { borderRadius: radius.pill, backgroundColor: demoDataLoaded ? 'transparent' : colors.accentFrom, borderColor: colors.danger, borderWidth: demoDataLoaded ? 1 : 0 }]}
-            >
-              <Text style={{ color: demoDataLoaded ? colors.danger : '#FFFFFF', fontWeight: '700' }}>
-                {demoDataLoaded ? 'Quitar datos de ejemplo' : 'Cargar datos de ejemplo'}
-              </Text>
-            </Pressable>
-          </GlassCard>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -206,7 +186,7 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
-  demoBtn: { paddingVertical: 12, alignItems: 'center' },
   rowGap: { flexDirection: 'row', gap: 10, marginTop: 4 },
   secondaryBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderWidth: 1 },
+  fullWidthBtn: { paddingVertical: 12, alignItems: 'center' },
 });

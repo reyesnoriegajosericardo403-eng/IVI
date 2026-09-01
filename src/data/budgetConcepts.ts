@@ -1,3 +1,4 @@
+import { findCategory, findSubcategory } from './categories';
 import type { CategoryIconKey } from './iconMap';
 
 // Taxonomía de presupuesto personal (spec: orden Ingresos → Gastos en
@@ -172,6 +173,33 @@ export function findBudgetConcept(id: string): BudgetConcept | undefined {
 
 export function budgetConceptsByGroup(group: BudgetGroupId): BudgetConcept[] {
   return BUDGET_CONCEPTS.filter((c) => c.group === group);
+}
+
+// Nombres de subcategorías reales que caen bajo un match — se usan como
+// ejemplos ("ej: súper, restaurante, café...") para que a nadie se le
+// olvide dónde registrar algo (spec: "por si se le va algo a alguien").
+// "Otros"/"Otros ingresos" se excluyen porque no son un ejemplo útil.
+function exampleNamesForMatch(match: ConceptMatch): string[] {
+  const names = match.subcategoryIds
+    ? match.subcategoryIds.map((id) => findSubcategory(match.categoryId, id)?.name)
+    : (findCategory(match.categoryId)?.subcategories ?? []).map((s) => s.name);
+  return names.filter((name): name is string => !!name && !/^otr/i.test(name));
+}
+
+const MAX_CONCEPT_EXAMPLES = 5;
+
+// Texto corto de ejemplos reales para un concepto de presupuesto (gasto o
+// ingreso) — deriva de las subcategorías reales que ya existen, nunca de
+// una lista aparte que se pueda desactualizar.
+export function conceptExampleText(concept: { matches: ConceptMatch[] }): string {
+  const names: string[] = [];
+  outer: for (const match of concept.matches) {
+    for (const name of exampleNamesForMatch(match)) {
+      if (names.length >= MAX_CONCEPT_EXAMPLES) break outer;
+      if (!names.includes(name)) names.push(name);
+    }
+  }
+  return names.join(', ');
 }
 
 function matchesCategory(match: ConceptMatch, categoryId: string, subcategoryId?: string): boolean {

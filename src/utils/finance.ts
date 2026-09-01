@@ -398,26 +398,19 @@ export function periodKey(scope: 'month' | 'week', ref = new Date()): string {
   return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
 }
 
-// Cuánto quedó "Disponible" (presupuestado - gastado) en el periodo ANTERIOR
-// al que contiene `ref` — usado para preguntarle al usuario si ese sobrante
-// sigue contando como dinero disponible en el periodo nuevo (spec: "¿seguimos
-// con el mismo sobrante de dinero disponible?"). 0 si no había presupuesto
-// ese periodo — nunca se inventa un sobrante.
-export function previousPeriodAvailable(
-  budgets: Budget[],
-  transactions: Transaction[],
-  thresholds: { attention: number; warning: number; exceeded: number },
-  scope: 'month' | 'week',
-  ref = new Date()
-): number {
+// Cuánto quedó "Disponible" (ingresos reales - gastos reales, NUNCA
+// montos presupuestados) en el periodo ANTERIOR al que contiene `ref` —
+// usado para preguntarle al usuario si ese sobrante sigue contando como
+// dinero disponible en el periodo nuevo (spec: "¿seguimos con el mismo
+// sobrante de dinero disponible?" / "no le restes ni le sumes los gastos
+// que están en el presupuesto porque eso no tiene sentido").
+export function previousPeriodAvailable(transactions: Transaction[], scope: 'month' | 'week', ref = new Date()): number {
   const prevRef = new Date(ref);
   if (scope === 'month') prevRef.setMonth(prevRef.getMonth() - 1);
   else prevRef.setDate(prevRef.getDate() - 7);
-  const lines = buildBudgetLines(budgets, transactions, thresholds, prevRef, scope);
-  const budgeted = lines.reduce((s, b) => s + b.budgeted, 0);
-  if (budgeted <= 0) return 0;
+  const income = incomeByKind(transactions, prevRef, scope);
   const spent = spendInPeriod(transactions, prevRef, scope);
-  return Math.max(0, budgeted - spent);
+  return Math.max(0, income.fixed + income.variable - spent);
 }
 
 // Busca el snapshot más cercano a "hace N días" y devuelve el % de cambio

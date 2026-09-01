@@ -2,14 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import {
-  buildDemoAccounts,
-  buildDemoGoals,
-  buildDemoInvestments,
-  buildDemoLiabilities,
-  buildDemoNetWorthHistory,
-  buildDemoTransactions,
-} from '@/data/demoData';
 import type {
   Account,
   AuditLogEntry,
@@ -89,7 +81,6 @@ interface AppState {
   auditLog: AuditLogEntry[];
   pendingSync: SyncQueueEntry[];
   lastSyncedAt: string | null;
-  demoDataLoaded: boolean;
   hasHydrated: boolean;
 
   budgetPeriods: { week: BudgetPeriodState; month: BudgetPeriodState };
@@ -146,8 +137,6 @@ interface AppState {
   setLastSyncedAt: (iso: string) => void;
   mergeRemoteRecords: (table: SyncTable, records: unknown[]) => void;
 
-  loadDemoData: () => void;
-  clearDemoData: () => void;
   resetAll: () => void;
 }
 
@@ -209,7 +198,6 @@ export const useAppStore = create<AppState>()(
         auditLog: [],
         pendingSync: [],
         lastSyncedAt: null,
-        demoDataLoaded: false,
         hasHydrated: false,
         liveQuotes: {},
         lastQuotesFetchedAt: null,
@@ -442,28 +430,6 @@ export const useAppStore = create<AppState>()(
             }
           }),
 
-        loadDemoData: () =>
-          set(() => ({
-            demoDataLoaded: true,
-            accounts: buildDemoAccounts(),
-            transactions: buildDemoTransactions(),
-            investments: buildDemoInvestments(),
-            goals: buildDemoGoals(),
-            liabilities: buildDemoLiabilities(),
-            netWorthHistory: buildDemoNetWorthHistory(),
-          })),
-
-        clearDemoData: () =>
-          set((s) => ({
-            demoDataLoaded: false,
-            accounts: s.accounts.filter((a) => !a.isDemo),
-            transactions: s.transactions.filter((t) => !t.isDemo),
-            investments: s.investments.filter((i) => !i.isDemo),
-            goals: s.goals.filter((g) => !g.isDemo),
-            liabilities: s.liabilities.filter((l) => !l.isDemo),
-            netWorthHistory: s.netWorthHistory.filter((h) => !h.isDemo),
-          })),
-
         resetAll: () =>
           set({
             profile: DEFAULT_PROFILE,
@@ -477,7 +443,6 @@ export const useAppStore = create<AppState>()(
             auditLog: [],
             pendingSync: [],
             lastSyncedAt: null,
-            demoDataLoaded: false,
             budgetPeriods: DEFAULT_BUDGET_PERIODS,
           }),
       };
