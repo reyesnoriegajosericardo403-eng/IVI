@@ -165,6 +165,22 @@ export default function Settings() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>COMPARTIR</Text>
+          <Pressable accessibilityLabel="Instalar VALU" onPress={() => router.push('/instalar')}>
+            <GlassCard style={styles.row}>
+              <Ionicons name="download-outline" size={18} color={colors.accentFrom} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Text style={[typography.body, { color: colors.textPrimary }]}>Instalar VALU en tu pantalla</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                  Para ti o para compartir con tus amigos, sin pasar por el navegador
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </GlassCard>
+          </Pressable>
+        </View>
+
+        <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>PRIVACIDAD Y DATOS</Text>
           <Pressable accessibilityLabel="Privacidad y datos" onPress={() => router.push('/privacidad')}>
             <GlassCard style={styles.row}>

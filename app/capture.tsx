@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +22,7 @@ const QUICK_CATEGORIES = ['food', 'transport', 'entertainment', 'health', 'misce
 
 export default function Capture() {
   const { colors, typography, spacing, radius } = useTheme();
+  const { autostart } = useLocalSearchParams<{ autostart?: string }>();
   const addTransaction = useAppStore((s) => s.addTransaction);
   const rawAccounts = useAppStore((s) => s.accounts);
   const rawBudgets = useAppStore((s) => s.budgets);
@@ -211,6 +212,16 @@ export default function Capture() {
   };
 
   const handleMicPress = () => beginListening();
+
+  // Llegar aquí desde el acceso directo "Grabar por voz" de la pantalla de
+  // inicio del celular (manifest.json shortcuts, url "/capture?autostart=1")
+  // arranca a escuchar de una vez — un solo toque, sin tener que abrir la
+  // app y tocar el micrófono otra vez (spec: "solo presione el widget
+  // micrófono y se grabe automáticamente").
+  useEffect(() => {
+    if (autostart === '1') beginListening();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autostart]);
 
   // Se llama desde el botón de "mantener presionado". Devuelve una promesa
   // que se resuelve solo cuando el guardado de verdad ocurrió, y truena si
