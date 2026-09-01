@@ -72,6 +72,10 @@ export async function establishSessionFromUrl(): Promise<AuthResult> {
   const code = queryParams.get('code');
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // El código es de un solo uso — se quita de la URL para que un refresh
+    // de la página no intente canjearlo otra vez (fallaría con "invalid
+    // request" al segundo intento).
+    window.history.replaceState({}, '', window.location.pathname);
     return error ? { ok: false, error: error.message } : { ok: true };
   }
 
@@ -79,6 +83,7 @@ export async function establishSessionFromUrl(): Promise<AuthResult> {
   const refreshToken = hashParams.get('refresh_token');
   if (accessToken && refreshToken) {
     const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    window.history.replaceState({}, '', window.location.pathname);
     return error ? { ok: false, error: error.message } : { ok: true };
   }
 

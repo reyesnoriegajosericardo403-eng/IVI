@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { establishSessionFromUrl } from '@/services/auth/actions';
 import { isSupabaseConfigured, supabase } from '@/services/supabase/client';
 
 export interface AuthState {
@@ -24,17 +25,25 @@ export function useAuthSession(): AuthState {
       setState({ loading: false, userId: null, email: null });
       return;
     }
+    const client = supabase;
 
-    supabase.auth.getSession().then(({ data }) => {
-      setState({
-        loading: false,
-        userId: data.session?.user.id ?? null,
-        email: data.session?.user.email ?? null,
-      });
+    const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
+      setState({ loading: false, userId: session?.user.id ?? null, email: session?.user.email ?? null });
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState({ loading: false, userId: session?.user.id ?? null, email: session?.user.email ?? null });
+    // Si venimos de un redirect de OAuth (Google/Apple), la URL trae un
+    // "?code=" (PKCE) o tokens en el hash — el cliente se creó con
+    // detectSessionInUrl:false, así que hay que resolverlo a mano antes de
+    // preguntar si ya hay una sesión guardada; si no, esta llamada no hace
+    // nada (no hay código/hash que procesar).
+    establishSessionFromUrl().finally(() => {
+      client.auth.getSession().then(({ data }) => {
+        setState((prev) => (prev.userId ? prev : {
+          loading: false,
+          userId: data.session?.user.id ?? null,
+          email: data.session?.user.email ?? null,
+        }));
+      });
     });
 
     return () => subscription.subscription.unsubscribe();
