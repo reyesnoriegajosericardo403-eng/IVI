@@ -21,8 +21,8 @@ export interface FinancialInsight {
 }
 
 interface InsightInputs {
-  gastosHoy: number;
-  gastosLuego: number;
+  gastosNecesidadesDeseos: number;
+  gastosAhorro: number;
   ingresoMensual: number;
   currentDay: number;
   totalDaysInMonth: number;
@@ -32,41 +32,41 @@ interface InsightInputs {
 const PRIORITY_WEIGHT: Record<FinancialInsight['priority'], number> = { high: 3, medium: 2, low: 1 };
 
 export function evaluateFinancialInsights(input: InsightInputs): FinancialInsight[] {
-  const { gastosHoy, gastosLuego, ingresoMensual, currentDay, totalDaysInMonth, currency } = input;
+  const { gastosNecesidadesDeseos, gastosAhorro, ingresoMensual, currentDay, totalDaysInMonth, currency } = input;
   const insights: FinancialInsight[] = [];
 
   // Sin un ingreso mensual conocido (ni presupuestado ni real) no hay base
   // confiable para ninguna de estas reglas — nunca se inventa un porcentaje.
   if (ingresoMensual <= 0) return insights;
 
-  const pctHoy = gastosHoy / ingresoMensual;
+  const pctGastos = gastosNecesidadesDeseos / ingresoMensual;
   const pctMonthElapsed = currentDay / totalDaysInMonth;
 
   // regla_50_30_20_hoy_avanzada
-  if (pctHoy > 0.55 && pctMonthElapsed < 0.7) {
+  if (pctGastos > 0.55 && pctMonthElapsed < 0.7) {
     insights.push({
       id: 'regla_50_30_20_hoy_avanzada',
       priority: 'medium',
       tone: 'caution',
       title: 'Oye, tranqui con la cartera 🛑',
-      message: `Tus gastos de Hoy ya van en el ${Math.round(pctHoy * 100)}% de tus ingresos y todavía falta mes. ¿Qué tal si bajamos un cambio a las salidas y antojitos este fin de semana?`,
+      message: `Tus gastos ya van en el ${Math.round(pctGastos * 100)}% de tus ingresos y todavía falta mes. ¿Qué tal si bajamos un cambio a las salidas y antojitos este fin de semana?`,
     });
   }
 
   // contabilidad_mental_luego_optimizada
-  if (pctHoy < 0.4 && gastosLuego === 0 && currentDay > 10) {
+  if (pctGastos < 0.4 && gastosAhorro === 0 && currentDay > 10) {
     insights.push({
       id: 'contabilidad_mental_luego_optimizada',
       priority: 'low',
       tone: 'opportunity',
       title: 'Traes buen margen hoy 🚀',
-      message: 'Tus cuentas diarias van al corriente y sobra un respiro. Si mandas un cachito a tu bolsa de "Luego", tu futuro yo te lo va a agradecer macizo.',
+      message: 'Tus cuentas diarias van al corriente y sobra un respiro. Si mandas un cachito a tu Ahorro, tu futuro yo te lo va a agradecer macizo.',
     });
   }
 
   // burn_rate_predictivo_inteligente
   if (currentDay >= 15 && currentDay <= 25) {
-    const proyectado = (gastosHoy / currentDay) * totalDaysInMonth;
+    const proyectado = (gastosNecesidadesDeseos / currentDay) * totalDaysInMonth;
     if (proyectado > ingresoMensual) {
       const diferencia = proyectado - ingresoMensual;
       insights.push({
@@ -80,7 +80,7 @@ export function evaluateFinancialInsights(input: InsightInputs): FinancialInsigh
   }
 
   // premio_disciplina_quincenal
-  if ((currentDay === 15 || currentDay === totalDaysInMonth) && pctHoy < 0.45) {
+  if ((currentDay === 15 || currentDay === totalDaysInMonth) && pctGastos < 0.45) {
     insights.push({
       id: 'premio_disciplina_quincenal',
       priority: 'low',

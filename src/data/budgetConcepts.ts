@@ -2,23 +2,23 @@ import { findCategory, findSubcategory } from './categories';
 import type { CategoryIconKey } from './iconMap';
 
 // Taxonomía de presupuesto personal (spec: orden Ingresos → Gastos en
-// HOY/LUEGO/COMPARTIR). Cada concepto es un "renglón" de presupuesto que
-// agrupa una o varias categorías/subcategorías YA EXISTENTES — nunca se
+// NECESIDADES/DESEOS/AHORRO). Cada concepto es un "renglón" de presupuesto
+// que agrupa una o varias categorías/subcategorías YA EXISTENTES — nunca se
 // renombran ni se eliminan ids de categoría/subcategoría reales, porque
 // ya hay transacciones guardadas que las usan. Esto es solo una capa de
 // organización encima de las categorías reales.
-export type BudgetGroupId = 'hoy' | 'luego' | 'compartir';
+export type BudgetGroupId = 'necesidades' | 'deseos' | 'ahorro';
 
 export const BUDGET_GROUP_LABELS: Record<BudgetGroupId, string> = {
-  hoy: 'Hoy',
-  luego: 'Luego',
-  compartir: 'Compartir',
+  necesidades: 'Necesidades',
+  deseos: 'Deseos',
+  ahorro: 'Ahorro',
 };
 
 export const BUDGET_GROUP_DESCRIPTIONS: Record<BudgetGroupId, string> = {
-  hoy: 'Gastos indispensables y estilo de vida',
-  luego: 'Ahorro e inversión',
-  compartir: 'Dar y apoyar',
+  necesidades: 'Gastos indispensables para vivir',
+  deseos: 'Gustos, salidas y estilo de vida',
+  ahorro: 'Ahorro e inversión',
 };
 
 export interface ConceptMatch {
@@ -36,18 +36,18 @@ export interface BudgetConcept {
 }
 
 export const BUDGET_CONCEPTS: BudgetConcept[] = [
-  // ---------- HOY: gastos indispensables y estilo de vida ----------
+  // ---------- NECESIDADES: gastos indispensables para vivir ----------
   {
     id: 'concept_housing',
     name: 'Vivienda y servicios básicos',
-    group: 'hoy',
+    group: 'necesidades',
     icon: 'housing',
     matches: [{ categoryId: 'housing' }],
   },
   {
     id: 'concept_food',
     name: 'Alimentación y súper',
-    group: 'hoy',
+    group: 'necesidades',
     icon: 'food',
     matches: [
       {
@@ -59,14 +59,37 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
   {
     id: 'concept_transport',
     name: 'Transporte cotidiano',
-    group: 'hoy',
+    group: 'necesidades',
     icon: 'transport',
     matches: [{ categoryId: 'transport' }],
   },
   {
+    id: 'concept_health',
+    name: 'Salud y bienestar',
+    group: 'necesidades',
+    icon: 'health',
+    matches: [{ categoryId: 'health' }, { categoryId: 'miscellaneous', subcategoryIds: ['misc_wellness', 'misc_personal_care'] }],
+  },
+  {
+    id: 'concept_debt',
+    name: 'Pagos de deudas',
+    group: 'necesidades',
+    icon: 'debt',
+    matches: [{ categoryId: 'debt' }],
+  },
+  {
+    id: 'concept_education',
+    name: 'Educación y desarrollo',
+    group: 'necesidades',
+    icon: 'education',
+    matches: [{ categoryId: 'education' }],
+  },
+
+  // ---------- DESEOS: gustos, salidas y estilo de vida ----------
+  {
     id: 'concept_leisure',
     name: 'Salidas, ocio y antojos',
-    group: 'hoy',
+    group: 'deseos',
     icon: 'entertainment',
     matches: [
       {
@@ -83,7 +106,7 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
   {
     id: 'concept_subscriptions',
     name: 'Suscripciones, telefonía y tecnología',
-    group: 'hoy',
+    group: 'deseos',
     icon: 'entertainment',
     matches: [
       { categoryId: 'entertainment', subcategoryIds: ['ent_streaming', 'ent_subscriptions'] },
@@ -92,78 +115,55 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     ],
   },
   {
-    id: 'concept_health',
-    name: 'Salud y bienestar',
-    group: 'hoy',
-    icon: 'health',
-    matches: [{ categoryId: 'health' }, { categoryId: 'miscellaneous', subcategoryIds: ['misc_wellness', 'misc_personal_care'] }],
-  },
-  {
-    id: 'concept_debt',
-    name: 'Pagos de deudas',
-    group: 'hoy',
-    icon: 'debt',
-    matches: [{ categoryId: 'debt' }],
-  },
-  {
-    id: 'concept_education',
-    name: 'Educación y desarrollo',
-    group: 'hoy',
-    icon: 'education',
-    matches: [{ categoryId: 'education' }],
-  },
-
-  // ---------- LUEGO: ahorro e inversión ----------
-  {
-    id: 'concept_goals_short',
-    name: 'Metas a corto plazo',
-    group: 'luego',
-    icon: 'savings',
-    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_short', 'sav_goals', 'sav_vacation'] }],
-  },
-  {
-    id: 'concept_goals_long',
-    name: 'Metas a mediano/largo plazo',
-    group: 'luego',
-    icon: 'savings',
-    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_long', 'sav_retirement', 'sav_house_downpayment'] }],
-  },
-  {
-    id: 'concept_emergency',
-    name: 'Fondo de emergencia',
-    group: 'luego',
-    icon: 'savings',
-    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_emergency', 'sav_other'] }],
-  },
-  {
-    id: 'concept_investing',
-    name: 'Inversiones',
-    group: 'luego',
-    icon: 'investments',
-    matches: [{ categoryId: 'investments' }],
-  },
-
-  // ---------- COMPARTIR: dar y apoyar ----------
-  {
     id: 'concept_gifts',
     name: 'Regalos e intercambios',
-    group: 'compartir',
+    group: 'deseos',
     icon: 'lifestyle',
     matches: [{ categoryId: 'lifestyle', subcategoryIds: ['life_gifts'] }],
   },
   {
     id: 'concept_family_support',
     name: 'Apoyo familiar',
-    group: 'compartir',
+    group: 'deseos',
     icon: 'lifestyle',
     matches: [{ categoryId: 'lifestyle', subcategoryIds: ['life_family_support', 'life_celebration'] }],
   },
   {
     id: 'concept_donations',
     name: 'Donaciones y causas sociales',
-    group: 'compartir',
+    group: 'deseos',
     icon: 'lifestyle',
     matches: [{ categoryId: 'lifestyle', subcategoryIds: ['life_donations', 'life_community'] }],
+  },
+
+  // ---------- AHORRO: ahorro e inversión ----------
+  {
+    id: 'concept_goals_short',
+    name: 'Metas a corto plazo',
+    group: 'ahorro',
+    icon: 'savings',
+    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_short', 'sav_goals', 'sav_vacation'] }],
+  },
+  {
+    id: 'concept_goals_long',
+    name: 'Metas a mediano/largo plazo',
+    group: 'ahorro',
+    icon: 'savings',
+    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_long', 'sav_retirement', 'sav_house_downpayment'] }],
+  },
+  {
+    id: 'concept_emergency',
+    name: 'Fondo de emergencia',
+    group: 'ahorro',
+    icon: 'savings',
+    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_emergency', 'sav_other'] }],
+  },
+  {
+    id: 'concept_investing',
+    name: 'Inversiones',
+    group: 'ahorro',
+    icon: 'investments',
+    matches: [{ categoryId: 'investments' }],
   },
 ];
 

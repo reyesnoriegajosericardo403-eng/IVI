@@ -73,10 +73,8 @@ export const ONBOARDING_SURVEY: SurveyQuestion[] = [
     id: 'challenge',
     prompt: 'La verdad, ¿qué es lo que más te está quitando el sueño ahorita?',
     options: [
-      { value: 'olvido_anotar', label: 'Se me olvida anotar lo que gasto: falta de hábito' },
       { value: 'numeros_rojos', label: 'Llego a fin de mes en números rojos' },
       { value: 'odio_excel', label: 'Odio las hojas de Excel aburridas y laboriosas' },
-      { value: 'gastos_hormiga', label: 'Siento que gasto en cosas estúpidas, necesito ver a dónde se va mi dinero' },
       { value: 'desidia', label: 'Me gana la desidia a los dos días, odio las apps complejas' },
     ],
   },

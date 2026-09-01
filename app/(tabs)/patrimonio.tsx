@@ -260,15 +260,7 @@ export default function Patrimonio() {
               <View style={[styles.accountColorDot, { backgroundColor: a.type === 'cash' ? CASH_ACCOUNT_COLOR : a.color ?? colors.accentFrom }]} />
               <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={18} color={colors.accentFrom} />
               <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <View style={styles.accountNameRow}>
-                  <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
-                  {a.isTransportCard && (
-                    <View style={[styles.transportBadge, { backgroundColor: colors.accentSoft, borderRadius: radius.pill }]}>
-                      <Ionicons name="bus-outline" size={11} color={colors.accentFrom} />
-                      <Text style={[typography.micro, { color: colors.accentFrom, fontWeight: '700', marginLeft: 3 }]}>Transporte</Text>
-                    </View>
-                  )}
-                </View>
+                <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>{ACCOUNT_TYPE_LABELS[a.type]}</Text>
               </View>
               <Text style={[typography.headline, { color: a.isLiability ? colors.danger : colors.textPrimary, marginRight: spacing.sm }]}>
@@ -507,11 +499,7 @@ const styles = StyleSheet.create({
   addLink: { flexDirection: 'row', alignItems: 'center' },
   listRow: { flexDirection: 'row', alignItems: 'center' },
   accountColorDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  accountNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  transportBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 2 },
   colorSwatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderWidth: 1 },
-  checkbox: { width: 22, height: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   notesInput: { minHeight: 60, textAlignVertical: 'top' },
   typeChip: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },

@@ -220,6 +220,56 @@ export default function NewTransaction() {
           </View>
         </View>
 
+        {/* ---------- Cuenta destino: primero se elige la cuenta (spec: "las
+            cuentas de destino aparezcan en la parte superior para
+            seleccionar una y ya después en su caso la categoría") ---------- */}
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            {type === 'income' ? '¿A QUÉ CUENTA ENTRA?' : '¿DE QUÉ CUENTA SALE?'}
+          </Text>
+          {availableAccounts.length === 0 ? (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>
+              Aún no tienes cuentas registradas — puedes agregarlas en Patrimonio.
+            </Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <Pressable
+                accessibilityLabel="Sin especificar cuenta"
+                onPress={() => selectAccount(undefined)}
+                style={[
+                  styles.accountChip,
+                  { borderRadius: radius.pill, borderColor: !accountId ? colors.accentFrom : colors.surfaceBorder, backgroundColor: !accountId ? colors.accentSoft : colors.surfaceSolid },
+                ]}
+              >
+                <Text style={{ color: !accountId ? colors.accentFrom : colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Sin especificar</Text>
+              </Pressable>
+              {availableAccounts.map((a) => {
+                const selected = accountId === a.id;
+                return (
+                  <Pressable
+                    key={a.id}
+                    accessibilityLabel={`Cuenta ${a.name}`}
+                    onPress={() => selectAccount(a.id)}
+                    style={[
+                      styles.accountChip,
+                      { borderRadius: radius.pill, borderColor: selected ? colors.accentFrom : colors.surfaceBorder, backgroundColor: selected ? colors.accentSoft : colors.surfaceSolid },
+                    ]}
+                  >
+                    <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
+                    <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={13} color={selected ? colors.accentFrom : colors.textSecondary} />
+                    <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 13, fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
+                      {a.name}
+                    </Text>
+                    <Text style={{ color: selected ? colors.accentFrom : colors.textTertiary, fontSize: 12, marginLeft: 6 }}>
+                      {formatCurrency(a.balance, a.currency)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+
         {/* ---------- Categoría/subcategoría: selección actual + buscador ---------- */}
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>CATEGORÍA</Text>
@@ -319,53 +369,6 @@ export default function NewTransaction() {
                 );
               })}
             </View>
-          )}
-        </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>
-            {type === 'income' ? '¿A QUÉ CUENTA ENTRA?' : '¿DE QUÉ CUENTA SALE?'}
-          </Text>
-          {availableAccounts.length === 0 ? (
-            <Text style={[typography.caption, { color: colors.textTertiary }]}>
-              Aún no tienes cuentas registradas — puedes agregarlas en Patrimonio.
-            </Text>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              <Pressable
-                accessibilityLabel="Sin especificar cuenta"
-                onPress={() => selectAccount(undefined)}
-                style={[
-                  styles.accountChip,
-                  { borderRadius: radius.pill, borderColor: !accountId ? colors.accentFrom : colors.surfaceBorder, backgroundColor: !accountId ? colors.accentSoft : colors.surfaceSolid },
-                ]}
-              >
-                <Text style={{ color: !accountId ? colors.accentFrom : colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Sin especificar</Text>
-              </Pressable>
-              {availableAccounts.map((a) => {
-                const selected = accountId === a.id;
-                return (
-                  <Pressable
-                    key={a.id}
-                    accessibilityLabel={`Cuenta ${a.name}`}
-                    onPress={() => selectAccount(a.id)}
-                    style={[
-                      styles.accountChip,
-                      { borderRadius: radius.pill, borderColor: selected ? colors.accentFrom : colors.surfaceBorder, backgroundColor: selected ? colors.accentSoft : colors.surfaceSolid },
-                    ]}
-                  >
-                    <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
-                    <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={13} color={selected ? colors.accentFrom : colors.textSecondary} />
-                    <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 13, fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
-                      {a.name}
-                    </Text>
-                    <Text style={{ color: selected ? colors.accentFrom : colors.textTertiary, fontSize: 12, marginLeft: 6 }}>
-                      {formatCurrency(a.balance, a.currency)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
           )}
         </View>
 

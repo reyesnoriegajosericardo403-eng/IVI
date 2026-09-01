@@ -8,12 +8,13 @@ import { splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { HoldToConfirmButton } from '@/components/HoldToConfirmButton';
 import { ValuMark } from '@/components/ValuMark';
+import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
 import { providers } from '@/providers/registry';
 import { selectActiveAccounts, selectActiveBudgets } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { resolveDefaultAccountId } from '@/utils/accounts';
+import { accountsForCategory, resolveDefaultAccountId } from '@/utils/accounts';
 import { formatCurrency } from '@/utils/format';
 
 type Stage = 'idle' | 'listening' | 'processing' | 'needsAmount' | 'needsCategory' | 'confirm' | 'error';
@@ -38,6 +39,7 @@ export default function Capture() {
   const [registered, setRegistered] = useState<ParsedCapture[]>([]);
   const [amountInput, setAmountInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [accountOverride, setAccountOverride] = useState<string | undefined>(undefined);
 
   const stopListeningRef = useRef<(() => void) | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,16 +66,16 @@ export default function Capture() {
     setRegistered(registeredRef.current);
   };
 
-  const saveTransaction = (result: ParsedCapture) => {
+  const saveTransaction = (result: ParsedCapture, accountIdOverride?: string) => {
     const categoryId = result.categoryId ?? 'miscellaneous';
     const subcategoryId = result.subcategoryId ?? fallbackSubcategoryId(categoryId);
-    // Asigna sola la cuenta de la que sale/entra el dinero — tarjeta de
-    // transporte para transporte público, la cuenta destino que se
-    // configuró en Presupuesto para ese ingreso, o efectivo de respaldo
+    // Si la persona confirmó/cambió la cuenta en la pantalla intermedia se
+    // respeta esa elección; si no, se asigna sola — la cuenta destino que
+    // se configuró en Presupuesto para ese ingreso, o efectivo de respaldo
     // (spec: "no sabía exactamente si lo había gastado de mi monedero...
     // o mi cuenta de BBVA"). Si se equivocó, se corrige después en
     // Movimientos.
-    const accountId = resolveDefaultAccountId(result.type, categoryId, subcategoryId, accounts, budgets);
+    const accountId = accountIdOverride ?? resolveDefaultAccountId(result.type, categoryId, subcategoryId, accounts, budgets);
     addTransaction({
       type: result.type,
       amount: result.amount ?? 0,
@@ -105,6 +107,7 @@ export default function Capture() {
     const next = queue[0];
     setParsed(next);
     setPendingQueue(queue);
+    setAccountOverride(undefined);
     if (next.missing.includes('amount')) {
       setStage('needsAmount');
     } else if (next.missing.includes('category')) {
@@ -277,7 +280,7 @@ export default function Capture() {
       setStage('needsCategory');
       setPendingQueue((q) => [updated, ...q.slice(1)]);
     } else {
-      const saved = saveTransaction(updated);
+      const saved = saveTransaction(updated, accountOverride);
       pushRegistered(saved);
       goToNextPending(pendingQueue.slice(1));
     }
@@ -291,12 +294,59 @@ export default function Capture() {
       subcategoryId: fallbackSubcategoryId(categoryId),
       missing: parsed.missing.filter((m) => m !== 'category'),
     };
-    const saved = saveTransaction(updated);
+    const saved = saveTransaction(updated, accountOverride);
     pushRegistered(saved);
     goToNextPending(pendingQueue.slice(1));
   };
 
   const pendingPosition = pendingTotal > 0 ? pendingTotal - pendingQueue.length + 1 : 1;
+
+  // Cuentas disponibles para el movimiento pendiente (quita las que el
+  // usuario excluyó en Presupuesto para esa categoría) y cuál va
+  // seleccionada ahora — la elegida a mano o, si no ha tocado nada, la que
+  // se asignaría sola (spec: "las cuentas de destino aparezcan en la parte
+  // superior para seleccionar una").
+  const pendingCategoryId = parsed?.categoryId ?? 'miscellaneous';
+  const pendingSubcategoryId = parsed?.subcategoryId ?? fallbackSubcategoryId(pendingCategoryId);
+  const pendingAvailableAccounts = useMemo(
+    () => accountsForCategory(parsed?.type ?? 'expense', pendingCategoryId, pendingSubcategoryId, accounts, budgets),
+    [parsed?.type, pendingCategoryId, pendingSubcategoryId, accounts, budgets]
+  );
+  const pendingSelectedAccountId =
+    accountOverride ?? resolveDefaultAccountId(parsed?.type ?? 'expense', pendingCategoryId, pendingSubcategoryId, accounts, budgets);
+
+  const renderAccountPicker = () => {
+    if (pendingAvailableAccounts.length === 0) return null;
+    return (
+      <View style={{ width: '100%', maxWidth: 340, marginBottom: spacing.lg }}>
+        <Text style={[typography.caption, { color: colors.textTertiary, marginBottom: 6, textAlign: 'center' }]}>
+          {parsed?.type === 'income' ? '¿A QUÉ CUENTA ENTRA?' : '¿DE QUÉ CUENTA SALE?'}
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, justifyContent: 'center' }}>
+          {pendingAvailableAccounts.map((a) => {
+            const selected = pendingSelectedAccountId === a.id;
+            return (
+              <Pressable
+                key={a.id}
+                accessibilityLabel={`Cuenta ${a.name}`}
+                onPress={() => setAccountOverride(a.id)}
+                style={[
+                  styles.accountChip,
+                  { borderRadius: radius.pill, borderColor: selected ? colors.accentFrom : colors.surfaceBorder, backgroundColor: selected ? colors.accentSoft : colors.surfaceSolid },
+                ]}
+              >
+                <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
+                <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={13} color={selected ? colors.accentFrom : colors.textSecondary} />
+                <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 13, fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
+                  {a.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -334,6 +384,7 @@ export default function Capture() {
           </View>
         ) : stage === 'needsAmount' ? (
           <View style={styles.center}>
+            {renderAccountPicker()}
             {pendingTotal > 1 && (
               <Text style={[typography.caption, { color: colors.textTertiary, marginBottom: spacing.sm }]}>
                 Movimiento {pendingPosition} de {pendingTotal}
@@ -367,6 +418,7 @@ export default function Capture() {
           </View>
         ) : stage === 'needsCategory' ? (
           <View style={styles.center}>
+            {renderAccountPicker()}
             {pendingTotal > 1 && (
               <Text style={[typography.caption, { color: colors.textTertiary, marginBottom: spacing.sm }]}>
                 Movimiento {pendingPosition} de {pendingTotal}
@@ -495,4 +547,6 @@ const styles = StyleSheet.create({
   micBtn: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
   textInput: { width: '100%', maxWidth: 320, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 12, fontSize: 15 },
   liveTextBox: { width: '100%', maxWidth: 340, maxHeight: 140, marginTop: 20 },
+  accountChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },
+  accountDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
 });

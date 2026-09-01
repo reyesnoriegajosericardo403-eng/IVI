@@ -25,7 +25,7 @@ import { buildBudgetLines, incomeByConcept, spendByConcept } from '@/utils/finan
 import { formatCurrency } from '@/utils/format';
 
 const CURRENCIES: Currency[] = ['MXN', 'USD'];
-const GROUPS: BudgetGroupId[] = ['hoy', 'luego', 'compartir'];
+const GROUPS: BudgetGroupId[] = ['necesidades', 'deseos', 'ahorro'];
 const BANK_ACCOUNT_TYPES: AccountType[] = ['bank', 'savings', 'credit_card'];
 
 // Copia específica del onboarding — más explicativa que la de la
@@ -33,9 +33,9 @@ const BANK_ACCOUNT_TYPES: AccountType[] = ['bank', 'savings', 'credit_card'];
 // alguien ve estos grupos (spec: "en el de hoy debe señalar que ahí
 // están tus fijos").
 const ONBOARDING_GROUP_EXPLANATIONS: Record<BudgetGroupId, string> = {
-  hoy: 'Aquí van tus gastos fijos y del día a día: renta, súper, transporte, salidas.',
-  luego: 'Aquí va lo que separas para el futuro: ahorro, fondo de emergencia e inversiones.',
-  compartir: 'Aquí va lo que das a otros: regalos, apoyo familiar y donaciones.',
+  necesidades: 'Aquí van tus gastos indispensables: renta, súper, transporte, salud, deudas.',
+  deseos: 'Aquí van tus gustos y estilo de vida: salidas, suscripciones, regalos, apoyo familiar.',
+  ahorro: 'Aquí va lo que separas para el futuro: ahorro, fondo de emergencia e inversiones.',
 };
 
 type Step = 'profile' | 'survey' | 'accounts' | 'budgetAd' | 'budgetIncome' | 'budgetExpenses';
@@ -419,12 +419,6 @@ export default function Onboarding() {
                 <View style={{ flex: 1, marginLeft: spacing.sm }}>
                   <View style={styles.rowCenter}>
                     <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
-                    {a.isTransportCard && (
-                      <View style={[styles.transportBadge, { backgroundColor: colors.accentSoft, borderRadius: radius.pill }]}>
-                        <Ionicons name="bus-outline" size={11} color={colors.accentFrom} />
-                        <Text style={[typography.micro, { color: colors.accentFrom, fontWeight: '700', marginLeft: 3 }]}>Transporte</Text>
-                      </View>
-                    )}
                   </View>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
                     {ACCOUNT_TYPE_LABELS[a.type]} · {formatCurrency(a.balance, a.currency)}
@@ -469,7 +463,7 @@ export default function Onboarding() {
               <Ionicons name="bulb-outline" size={14} color={colors.textTertiary} />
               <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 6, flex: 1 }]}>
                 Dale en "Agregar" y escribe el nombre de tu banco, su color representativo y el saldo que tengas
-                ahora mismo en él.
+                ahora mismo en él. No olvides agregar tu tarjeta de transporte de la CDMX o tu entidad.
               </Text>
             </View>
           )}
@@ -626,7 +620,6 @@ const styles = StyleSheet.create({
   accountCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, padding: 14 },
   accountColorDot: { width: 10, height: 10, borderRadius: 5 },
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  transportBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 2 },
   addCardTile: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderStyle: 'dashed', padding: 16 },
   hintRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 4, marginTop: 4 },
   cashFormActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center' },

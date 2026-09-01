@@ -91,13 +91,16 @@ export default function Dashboard() {
   // ---- Insights financieros (nudging empático) — mismo lugar que el
   // banner de presupuesto, pero un aviso de comportamiento real le gana
   // al recordatorio genérico cuando aplica (spec: "esa ficha es donde van
-  // a salir los anuncios"). Gastos_De_Hoy/Gastos_De_Luego = lo que de
-  // verdad se ha gastado este mes en los grupos HOY/LUEGO del presupuesto;
-  // Ingreso_Mensual = lo presupuestado como ingreso si existe, si no, lo
-  // que ya se recibió realmente este mes — nunca un número inventado.
+  // a salir los anuncios"). Gastos_Necesidades_Deseos/Gastos_Ahorro = lo
+  // que de verdad se ha gastado/ahorrado este mes en esos grupos del
+  // presupuesto; Ingreso_Mensual = lo presupuestado como ingreso si
+  // existe, si no, lo que ya se recibió realmente este mes — nunca un
+  // número inventado.
   const conceptSpendMonth = spendByConcept(transactions, new Date(), 'month');
-  const gastosHoy = budgetConceptsByGroup('hoy').reduce((s, c) => s + (conceptSpendMonth[c.id] ?? 0), 0);
-  const gastosLuego = budgetConceptsByGroup('luego').reduce((s, c) => s + (conceptSpendMonth[c.id] ?? 0), 0);
+  const gastosNecesidadesDeseos =
+    budgetConceptsByGroup('necesidades').reduce((s, c) => s + (conceptSpendMonth[c.id] ?? 0), 0) +
+    budgetConceptsByGroup('deseos').reduce((s, c) => s + (conceptSpendMonth[c.id] ?? 0), 0);
+  const gastosAhorro = budgetConceptsByGroup('ahorro').reduce((s, c) => s + (conceptSpendMonth[c.id] ?? 0), 0);
   const plannedIncome = monthlyBudgetLines
     .filter((l) => !!findIncomeConcept(l.categoryId))
     .reduce((s, l) => s + l.budgeted, 0);
@@ -109,8 +112,8 @@ export default function Dashboard() {
   const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
   const financialInsights = evaluateFinancialInsights({
-    gastosHoy,
-    gastosLuego,
+    gastosNecesidadesDeseos,
+    gastosAhorro,
     ingresoMensual,
     currentDay,
     totalDaysInMonth,

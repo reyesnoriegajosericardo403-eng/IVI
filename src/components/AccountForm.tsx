@@ -17,9 +17,9 @@ const ALL_ACCOUNT_TYPES: AccountType[] = ['cash', 'bank', 'savings', 'credit_car
 // Deudas) como el paso "Cuentas" del onboarding, para que agregar/editar
 // una cuenta se comporte exactamente igual en los dos lados. El efectivo
 // siempre es verde fijo (spec: "en el caso de efectivo debe ser un
-// verde") y cualquier cuenta puede marcarse como la tarjeta de transporte
-// (spec: "importantísima... los primeros a los que se deben realizar los
-// cargos" de transporte público).
+// verde"). La tarjeta de transporte se agrega igual que cualquier otra
+// tarjeta — sin marcarla especial (spec: "en ningún momento debe verse...
+// porque en sí es otra tarjeta").
 export function AccountForm({
   onSave,
   onCancel,
@@ -39,7 +39,6 @@ export function AccountForm({
   const [balance, setBalance] = useState(initial ? String(initial.balance) : '');
   const [adjustAmount, setAdjustAmount] = useState('');
   const [color, setColor] = useState(initial?.color ?? ACCOUNT_COLOR_SWATCHES[0]);
-  const [isTransportCard, setIsTransportCard] = useState(initial?.isTransportCard ?? false);
 
   const canSave = name.trim().length > 0 && balance.length > 0 && !Number.isNaN(parseFloat(balance));
 
@@ -134,27 +133,6 @@ export function AccountForm({
         </View>
       )}
 
-      <Pressable
-        accessibilityLabel="Es tu tarjeta de transporte"
-        onPress={() => setIsTransportCard((v) => !v)}
-        style={[styles.toggleRow, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>Es tu tarjeta de transporte</Text>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-            Los gastos de transporte público (metro, camión, microbús...) se cargarán aquí por default.
-          </Text>
-        </View>
-        <View
-          style={[
-            styles.checkbox,
-            { borderRadius: radius.sm, borderColor: colors.accentFrom, backgroundColor: isTransportCard ? colors.accentFrom : 'transparent' },
-          ]}
-        >
-          {isTransportCard && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-        </View>
-      </Pressable>
-
       <View style={styles.formActions}>
         <Pressable onPress={onCancel} style={styles.formCancel}>
           <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
@@ -169,7 +147,6 @@ export function AccountForm({
               balance: parseFloat(balance),
               isLiability: type === 'credit_card',
               color: type === 'cash' ? CASH_ACCOUNT_COLOR : color,
-              isTransportCard: isTransportCard || undefined,
             })
           }
           style={[styles.formSave, { backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.pill }]}
@@ -188,8 +165,6 @@ const styles = StyleSheet.create({
   adjustRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   adjustBtn: { width: 40, height: 40, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   colorSwatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderWidth: 1 },
-  checkbox: { width: 22, height: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
   formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, alignItems: 'center' },
   formCancel: { paddingVertical: 10, paddingHorizontal: 8 },
   formSave: { paddingVertical: 10, paddingHorizontal: 20 },
