@@ -175,6 +175,50 @@ export function budgetConceptsByGroup(group: BudgetGroupId): BudgetConcept[] {
   return BUDGET_CONCEPTS.filter((c) => c.group === group);
 }
 
+// "Fichas" por subcategoría dentro de un concepto de gasto — un concepto
+// como "Transporte cotidiano" agrupa Uber/Metro/Microbús/etc. en un solo
+// renglón, pero a veces eso no basta (spec: "es complicado tratar de
+// juntar... lo que gastas en conjunto en tren ligero, uber, microbús,
+// metro"). Cada ficha es su propio Budget, guardado con esta llave
+// compuesta como categoryId — nunca se toca el esquema de Budget ni se
+// renombra ningún id real de categoría/subcategoría.
+const SUB_BUDGET_SEPARATOR = '::';
+
+export function makeSubBudgetId(conceptId: string, subcategoryId: string): string {
+  return `${conceptId}${SUB_BUDGET_SEPARATOR}${subcategoryId}`;
+}
+
+export function parseSubBudgetId(id: string): { conceptId: string; subcategoryId: string } | null {
+  const idx = id.indexOf(SUB_BUDGET_SEPARATOR);
+  if (idx === -1) return null;
+  return { conceptId: id.slice(0, idx), subcategoryId: id.slice(idx + SUB_BUDGET_SEPARATOR.length) };
+}
+
+export interface ConceptSubcategoryOption {
+  subcategoryId: string;
+  categoryId: string;
+  name: string;
+}
+
+// Subcategorías reales disponibles para agregar como ficha dentro de un
+// concepto — resuelve los matches del concepto (que a veces cubren toda
+// una categoría sin listar subcategoryIds) a la lista real de opciones
+// que se muestran en el desplegable de "agregar ficha".
+export function subcategoryOptionsForConcept(concept: BudgetConcept): ConceptSubcategoryOption[] {
+  const out: ConceptSubcategoryOption[] = [];
+  const seen = new Set<string>();
+  for (const match of concept.matches) {
+    const subIds = match.subcategoryIds ?? (findCategory(match.categoryId)?.subcategories.map((s) => s.id) ?? []);
+    for (const subcategoryId of subIds) {
+      if (seen.has(subcategoryId)) continue;
+      seen.add(subcategoryId);
+      const sub = findSubcategory(match.categoryId, subcategoryId);
+      if (sub) out.push({ subcategoryId, categoryId: match.categoryId, name: sub.name });
+    }
+  }
+  return out;
+}
+
 // Nombres de subcategorías reales que caen bajo un match — se usan como
 // ejemplos ("ej: súper, restaurante, café...") para que a nadie se le
 // olvide dónde registrar algo (spec: "por si se le va algo a alguien").

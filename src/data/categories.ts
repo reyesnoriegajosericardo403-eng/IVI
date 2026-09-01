@@ -1,4 +1,4 @@
-import type { CategoryDef } from './types';
+import type { CategoryDef, SubcategoryDef } from './types';
 
 // Catálogo inicial de categorías (spec sección 10). El usuario puede
 // agregar, editar, eliminar y reordenar — esto es el set por defecto.
@@ -310,6 +310,20 @@ export function findCategory(categoryId: string): CategoryDef | undefined {
 
 export function findSubcategory(categoryId: string, subcategoryId: string) {
   return findCategory(categoryId)?.subcategories.find((s) => s.id === subcategoryId);
+}
+
+// Busca una subcategoría por id sin conocer de antemano su categoría real
+// — seguro porque cada id de subcategoría ya trae su propio prefijo único
+// (trans_, food_, ent_...), así que nunca hay dos categorías con el mismo
+// id de subcategoría. Se usa para mostrar el nombre real de una "ficha"
+// de presupuesto por subcategoría (spec: fichas dentro de un concepto,
+// ej. Uber/Microbús/Metro dentro de "Transporte cotidiano").
+export function findSubcategoryAnyCategory(subcategoryId: string): { category: CategoryDef; subcategory: SubcategoryDef } | undefined {
+  for (const category of DEFAULT_CATEGORIES) {
+    const subcategory = category.subcategories.find((s) => s.id === subcategoryId);
+    if (subcategory) return { category, subcategory };
+  }
+  return undefined;
 }
 
 // Subcategoría razonable cuando el usuario elige solo la categoría general

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AccountForm } from '@/components/AccountForm';
 import { ConceptBudgetForm } from '@/components/ConceptBudgetForm';
 import { ConceptRow } from '@/components/ConceptRow';
+import { ConceptSubBudgets } from '@/components/ConceptSubBudgets';
 import { IncomeConceptRow } from '@/components/IncomeConceptRow';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ValuMark } from '@/components/ValuMark';
@@ -21,7 +22,7 @@ import { selectActiveAccounts, selectActiveBudgets, selectActiveTransactions } f
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { computeMonthlyAmount } from '@/utils/budgetCalculator';
-import { buildBudgetLines, incomeByConcept, spendByConcept } from '@/utils/finance';
+import { buildBudgetLines, incomeByConcept, spendByConcept, spendBySubBudget } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
 
 const CURRENCIES: Currency[] = ['MXN', 'USD'];
@@ -122,6 +123,7 @@ export default function Onboarding() {
   const lines = buildBudgetLines(budgets, transactions, profile.budgetThresholds);
   const lineByConcept = new Map(lines.map((l) => [l.categoryId, l]));
   const conceptSpend = spendByConcept(transactions);
+  const subcategorySpend = spendBySubBudget(transactions);
   const incomeConceptActual = incomeByConcept(transactions);
   const scopedBudgeted = (monthlyAmount: number) => monthlyAmount;
 
@@ -560,33 +562,47 @@ export default function Onboarding() {
             <View key={group} style={{ gap: spacing.sm }}>
               <Text style={[typography.title, { color: colors.textPrimary }]}>{BUDGET_GROUP_LABELS[group]}</Text>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>{ONBOARDING_GROUP_EXPLANATIONS[group]}</Text>
-              {concepts.map((concept) =>
-                editingConceptId === concept.id ? (
-                  <ConceptBudgetForm
-                    key={concept.id}
+              {concepts.map((concept) => (
+                <View key={concept.id} style={{ gap: spacing.sm }}>
+                  {editingConceptId === concept.id ? (
+                    <ConceptBudgetForm
+                      concept={concept}
+                      initial={budgets.find((b) => b.categoryId === concept.id)}
+                      currency={profile.primaryCurrency}
+                      accounts={accounts}
+                      showAccountExclude
+                      onCancel={() => setEditingConceptId(null)}
+                      onSave={(input) => handleSaveConcept(concept.id, input)}
+                    />
+                  ) : (
+                    <ConceptRow
+                      concept={concept}
+                      line={lineByConcept.get(concept.id)}
+                      scope="month"
+                      scopedBudgeted={scopedBudgeted}
+                      actualNoBudget={conceptSpend[concept.id] ?? 0}
+                      currency={profile.primaryCurrency}
+                      accounts={accounts}
+                      onEdit={() => setEditingConceptId(concept.id)}
+                      onDelete={(budgetId) => deleteBudget(budgetId)}
+                    />
+                  )}
+                  <ConceptSubBudgets
                     concept={concept}
-                    initial={budgets.find((b) => b.categoryId === concept.id)}
-                    currency={profile.primaryCurrency}
-                    accounts={accounts}
-                    showAccountExclude
-                    onCancel={() => setEditingConceptId(null)}
-                    onSave={(input) => handleSaveConcept(concept.id, input)}
-                  />
-                ) : (
-                  <ConceptRow
-                    key={concept.id}
-                    concept={concept}
-                    line={lineByConcept.get(concept.id)}
+                    budgets={budgets}
+                    lineByConcept={lineByConcept}
+                    subcategorySpend={subcategorySpend}
                     scope="month"
                     scopedBudgeted={scopedBudgeted}
-                    actualNoBudget={conceptSpend[concept.id] ?? 0}
                     currency={profile.primaryCurrency}
                     accounts={accounts}
-                    onEdit={() => setEditingConceptId(concept.id)}
-                    onDelete={(budgetId) => deleteBudget(budgetId)}
+                    editingConceptId={editingConceptId}
+                    setEditingConceptId={setEditingConceptId}
+                    onSaveConcept={handleSaveConcept}
+                    onDeleteBudget={(budgetId) => deleteBudget(budgetId)}
                   />
-                )
-              )}
+                </View>
+              ))}
             </View>
           );
         })}

@@ -1,5 +1,5 @@
-import { BUDGET_CONCEPTS, findBudgetConcept, findIncomeConcept, INCOME_CONCEPTS } from '@/data/budgetConcepts';
-import { DEFAULT_CATEGORIES, findCategory, findSubcategory } from '@/data/categories';
+import { BUDGET_CONCEPTS, findBudgetConcept, findIncomeConcept, INCOME_CONCEPTS, makeSubBudgetId, parseSubBudgetId } from '@/data/budgetConcepts';
+import { DEFAULT_CATEGORIES, findCategory, findSubcategory, findSubcategoryAnyCategory } from '@/data/categories';
 import { getUsdMxnRate } from '@/data/exchangeRate';
 import type {
   Account,
@@ -274,6 +274,28 @@ export function spendByConcept(transactions: Transaction[], ref = new Date(), sc
   return result;
 }
 
+// Gasto real por SUBCATEGORÍA dentro de un concepto — para las "fichas"
+// que se pueden agregar dentro de un concepto de gasto (ej. Uber,
+// Microbús, Metro dentro de "Transporte cotidiano"), cada una con su
+// propio seguimiento (spec: "es complicado tratar de juntar... lo que
+// gastas en conjunto"). La llave es la misma que arma
+// `makeSubBudgetId(conceptId, subcategoryId)`, así que buildBudgetLines
+// puede usarla directo sin volver a parsear nada.
+export function spendBySubBudget(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): Record<string, number> {
+  const inScope = scope === 'month' ? isSameMonth : isSameWeek;
+  const expenses = transactions.filter((t) => SPEND_TYPES.includes(t.type) && countsForBudget(t) && inScope(t.date, ref));
+  const result: Record<string, number> = {};
+  for (const concept of BUDGET_CONCEPTS) {
+    for (const t of expenses) {
+      const matched = concept.matches.some((m) => m.categoryId === t.categoryId && (!m.subcategoryIds || m.subcategoryIds.includes(t.subcategoryId)));
+      if (!matched) continue;
+      const key = makeSubBudgetId(concept.id, t.subcategoryId);
+      result[key] = (result[key] ?? 0) + t.amount;
+    }
+  }
+  return result;
+}
+
 // Ingresos reales (nunca proyectados) del periodo, separados en fijos y
 // variables/eventuales según la subcategoría (spec 41, sección Ingresos).
 export function incomeByKind(transactions: Transaction[], ref = new Date(), scope: 'month' | 'week' = 'month'): { fixed: number; variable: number } {
@@ -348,27 +370,34 @@ export function buildBudgetLines(
   scope: 'month' | 'week' = 'month'
 ): BudgetLine[] {
   // b.categoryId puede ser un id de categoría (presupuestos guardados con
-  // el esquema anterior), un id de concepto de gasto, o un id de concepto
-  // de ingreso — se reconocen los tres para que ningún presupuesto ya
-  // guardado se quede huérfano al pasar a la nueva taxonomía. `scope` se
-  // respeta en los tres casos: antes esta función siempre calculaba el
-  // gasto/ingreso real del MES aunque la pantalla estuviera en modo
-  // semanal, lo que desalineaba el % y el color mostrados contra el
-  // monto real de esa semana.
+  // el esquema anterior), un id de concepto de gasto, un id de concepto
+  // de ingreso, o la llave compuesta de una ficha por subcategoría dentro
+  // de un concepto (esquema nuevo, `concepto::subcategoría`) — se
+  // reconocen los cuatro para que ningún presupuesto ya guardado se quede
+  // huérfano al pasar a la nueva taxonomía. `scope` se respeta en todos
+  // los casos: antes esta función siempre calculaba el gasto/ingreso real
+  // del MES aunque la pantalla estuviera en modo semanal, lo que
+  // desalineaba el % y el color mostrados contra el monto real de esa
+  // semana.
   const spend = spendByCategory(transactions, ref);
   const conceptSpend = spendByConcept(transactions, ref, scope);
   const incomeConceptActual = incomeByConcept(transactions, ref, scope);
+  const subBudgetSpend = spendBySubBudget(transactions, ref, scope);
   return budgets.map((b) => {
-    const expenseConcept = findBudgetConcept(b.categoryId);
-    const incomeConcept = findIncomeConcept(b.categoryId);
-    const actual = incomeConcept
-      ? incomeConceptActual[b.categoryId] ?? 0
-      : expenseConcept
-        ? conceptSpend[b.categoryId] ?? 0
-        : spend[b.categoryId] ?? 0;
+    const subBudget = parseSubBudgetId(b.categoryId);
+    const expenseConcept = subBudget ? findBudgetConcept(subBudget.conceptId) : findBudgetConcept(b.categoryId);
+    const incomeConcept = subBudget ? undefined : findIncomeConcept(b.categoryId);
+    const actual = subBudget
+      ? subBudgetSpend[b.categoryId] ?? 0
+      : incomeConcept
+        ? incomeConceptActual[b.categoryId] ?? 0
+        : expenseConcept
+          ? conceptSpend[b.categoryId] ?? 0
+          : spend[b.categoryId] ?? 0;
     const percentUsed = b.monthlyAmount > 0 ? Math.round((actual / b.monthlyAmount) * 100) : 0;
-    const categoryName =
-      expenseConcept?.name ?? incomeConcept?.name ?? DEFAULT_CATEGORIES.find((c) => c.id === b.categoryId)?.name ?? b.categoryId;
+    const categoryName = subBudget
+      ? findSubcategoryAnyCategory(subBudget.subcategoryId)?.subcategory.name ?? b.categoryId
+      : expenseConcept?.name ?? incomeConcept?.name ?? DEFAULT_CATEGORIES.find((c) => c.id === b.categoryId)?.name ?? b.categoryId;
     return {
       budgetId: b.id,
       categoryId: b.categoryId,
