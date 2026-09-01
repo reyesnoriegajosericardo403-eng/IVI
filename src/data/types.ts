@@ -41,6 +41,12 @@ export interface SubcategoryDef {
   // (salario, mesada) de variables/eventuales (spec: presupuesto por
   // ingresos fijos vs. variables).
   incomeKind?: 'fixed' | 'variable';
+  // Esta subcategoría no pertenece a ningún concepto de Presupuesto
+  // (Necesidades/Deseos/Ahorro) a propósito — el gasto se sigue guardando
+  // normal en Movimientos, solo no cuenta en las barras de presupuesto.
+  // Se usa como valor por defecto de "excluir de presupuesto" al registrar
+  // manualmente (spec: catálogo v7, "afecta_presupuesto"/"excluido_presupuesto").
+  excludedFromBudget?: boolean;
 }
 
 export interface Transaction extends SyncMeta {

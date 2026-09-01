@@ -8,16 +8,16 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
     name: 'Miscelánea',
     icon: 'miscellaneous',
     subcategories: [
-      { id: 'misc_clothing', name: 'Ropa', keywords: ['ropa', 'playera', 'pantalón', 'zapatos', 'tienda de ropa', 'tenis', 'shein', 'zara', 'h&m', 'pull and bear'] },
+      { id: 'misc_clothing', name: 'Ropa', keywords: ['ropa', 'playera', 'pantalón', 'zapatos', 'tienda de ropa', 'tenis', 'shein', 'zara', 'h&m', 'pull and bear'], excludedFromBudget: true },
       { id: 'misc_wellness', name: 'Bienestar', keywords: ['bienestar', 'spa', 'masaje'] },
       {
         id: 'misc_personal_care',
         name: 'Cuidado personal',
         keywords: ['cuidado personal', 'barbería', 'salón', 'estética', 'corte de pelo', 'uñas', 'maquillaje', 'skincare', 'perfume'],
       },
-      { id: 'misc_shopping', name: 'Compras', keywords: ['compras', 'compré', 'tienda'] },
+      { id: 'misc_shopping', name: 'Compras', keywords: ['compras', 'compré', 'tienda'], excludedFromBudget: true },
       { id: 'misc_electronics', name: 'Electrónica', keywords: ['electrónica', 'celular', 'laptop', 'audífonos'] },
-      { id: 'misc_other', name: 'Otros', keywords: [] },
+      { id: 'misc_other', name: 'Otros', keywords: [], excludedFromBudget: true },
       {
         id: 'misc_software',
         name: 'Apps y software',
@@ -310,6 +310,14 @@ export function findCategory(categoryId: string): CategoryDef | undefined {
 
 export function findSubcategory(categoryId: string, subcategoryId: string) {
   return findCategory(categoryId)?.subcategories.find((s) => s.id === subcategoryId);
+}
+
+// Valor por defecto del toggle "excluir de presupuesto" al elegir esta
+// categoría/subcategoría en el registro manual o por voz — algunas
+// subcategorías (ej. Ropa/Compras/Otros de Miscelánea) no pertenecen a
+// ningún concepto de Presupuesto a propósito (catálogo v7).
+export function isExcludedFromBudgetByDefault(categoryId: string, subcategoryId: string): boolean {
+  return findSubcategory(categoryId, subcategoryId)?.excludedFromBudget ?? false;
 }
 
 // Busca una subcategoría por id sin conocer de antemano su categoría real

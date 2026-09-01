@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
-import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
+import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory, isExcludedFromBudgetByDefault } from '@/data/categories';
 import type { Currency, TransactionType } from '@/data/types';
 import { selectActiveAccounts, selectActiveBudgets } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
@@ -55,6 +55,7 @@ export default function NewTransaction() {
   const [merchant, setMerchant] = useState('');
   const [note, setNote] = useState('');
   const [excludeFromBudget, setExcludeFromBudget] = useState(false);
+  const [excludeFromBudgetTouched, setExcludeFromBudgetTouched] = useState(false);
   const [query, setQuery] = useState('');
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | undefined>(undefined);
@@ -76,9 +77,25 @@ export default function NewTransaction() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, categoryId, subcategoryId, accounts, budgets]);
 
+  // Ropa/Compras/Otros de Miscelánea nacen excluidas de Presupuesto (spec:
+  // catálogo v7) — se precarga el toggle así al elegir esa subcategoría,
+  // pero el usuario lo puede desmarcar y esa elección manual ya no se
+  // pisa mientras siga en la misma subcategoría.
+  useEffect(() => {
+    if (excludeFromBudgetTouched) return;
+    if (!subcategoryId) return;
+    setExcludeFromBudget(isExcludedFromBudgetByDefault(categoryId, subcategoryId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, subcategoryId]);
+
   const selectAccount = (id: string | undefined) => {
     setAccountId(id);
     setAccountTouched(true);
+  };
+
+  const toggleExcludeFromBudget = () => {
+    setExcludeFromBudget((v) => !v);
+    setExcludeFromBudgetTouched(true);
   };
 
   // Solo se ofrecen las categorías que tienen sentido para el tipo elegido
@@ -120,6 +137,7 @@ export default function NewTransaction() {
     setQuery('');
     setOpenCategoryId(null);
     setAccountTouched(false);
+    setExcludeFromBudgetTouched(false);
   };
 
   const selectSuggestion = (entry: SearchEntry) => {
@@ -404,7 +422,7 @@ export default function NewTransaction() {
 
         <Pressable
           accessibilityLabel="Excluir del presupuesto"
-          onPress={() => setExcludeFromBudget((v) => !v)}
+          onPress={toggleExcludeFromBudget}
           style={[styles.excludeRow, { borderRadius: radius.md, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceSolid }]}
         >
           <View style={{ flex: 1 }}>
