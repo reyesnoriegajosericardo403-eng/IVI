@@ -174,6 +174,20 @@ export function budgetConceptsByGroup(group: BudgetGroupId): BudgetConcept[] {
   return BUDGET_CONCEPTS.filter((c) => c.group === group);
 }
 
+function matchesCategory(match: ConceptMatch, categoryId: string, subcategoryId?: string): boolean {
+  if (match.categoryId !== categoryId) return false;
+  if (!match.subcategoryIds) return true;
+  return !!subcategoryId && match.subcategoryIds.includes(subcategoryId);
+}
+
+// Encuentra a qué concepto de GASTO pertenece una categoría/subcategoría
+// real — se usa para saber qué cuentas excluyó el usuario para ese tipo de
+// gasto en Presupuesto (spec: "excluir las tarjetas con las cuales nunca
+// vas a realizar ese gasto").
+export function findBudgetConceptForCategory(categoryId: string, subcategoryId?: string): BudgetConcept | undefined {
+  return BUDGET_CONCEPTS.find((c) => c.matches.some((m) => matchesCategory(m, categoryId, subcategoryId)));
+}
+
 // Un concepto por cada subcategoría de ingreso — a diferencia de los
 // gastos (que agrupan varias subcategorías por concepto para que no sean
 // demasiados renglones), aquí solo hay 10 en total, así que mostrarlas
@@ -207,4 +221,11 @@ export const INCOME_CONCEPTS: IncomeConcept[] = [
 
 export function findIncomeConcept(id: string): IncomeConcept | undefined {
   return INCOME_CONCEPTS.find((c) => c.id === id);
+}
+
+// Encuentra a qué concepto de INGRESO pertenece una categoría/subcategoría
+// real — se usa para saber a qué cuenta destino se configuró ese ingreso
+// en Presupuesto (spec: "hacia dónde va a ir ese ingreso").
+export function findIncomeConceptForCategory(categoryId: string, subcategoryId?: string): IncomeConcept | undefined {
+  return INCOME_CONCEPTS.find((c) => c.matches.some((m) => matchesCategory(m, categoryId, subcategoryId)));
 }

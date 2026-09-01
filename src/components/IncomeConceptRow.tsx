@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { IncomeConcept } from '@/data/budgetConcepts';
-import type { Currency } from '@/data/types';
+import type { Account, Currency } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { BudgetLine } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
@@ -22,6 +22,7 @@ export function IncomeConceptRow({
   scopedBudgeted,
   actualNoBudget,
   currency,
+  accounts,
   onEdit,
   onDelete,
 }: {
@@ -31,9 +32,11 @@ export function IncomeConceptRow({
   scopedBudgeted: (monthlyAmount: number) => number;
   actualNoBudget: number;
   currency: Currency;
+  accounts?: Account[];
   onEdit: () => void;
   onDelete: (budgetId: string) => void;
 }) {
+  const targetAccount = line?.targetAccountId ? accounts?.find((a) => a.id === line.targetAccountId) : undefined;
   const { colors, typography, spacing } = useTheme();
   const budgeted = line ? scopedBudgeted(line.budgeted) : 0;
   const percentUsed = line && budgeted > 0 ? Math.round((actualNoBudget / budgeted) * 100) : 0;
@@ -72,6 +75,9 @@ export function IncomeConceptRow({
             <Text style={[typography.caption, { color: colors.textTertiary }]}>
               Normalmente te llega el día {line.incomeDayOfMonth} de cada mes.
             </Text>
+          )}
+          {!!targetAccount && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>→ Entra a {targetAccount.name}</Text>
           )}
         </>
       ) : (

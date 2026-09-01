@@ -1,14 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
 import type { Currency, TransactionType } from '@/data/types';
+import { selectActiveAccounts, selectActiveBudgets } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { accountsForCategory, resolveDefaultAccountId } from '@/utils/accounts';
+import { formatCurrency } from '@/utils/format';
 
 const TYPES: Array<{ id: TransactionType; label: string }> = [
   { id: 'expense', label: 'Gasto' },
@@ -38,6 +42,10 @@ export default function NewTransaction() {
   const { colors, typography, spacing, radius } = useTheme();
   const addTransaction = useAppStore((s) => s.addTransaction);
   const primaryCurrency = useAppStore((s) => s.profile.primaryCurrency);
+  const rawAccounts = useAppStore((s) => s.accounts);
+  const rawBudgets = useAppStore((s) => s.budgets);
+  const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -49,6 +57,29 @@ export default function NewTransaction() {
   const [excludeFromBudget, setExcludeFromBudget] = useState(false);
   const [query, setQuery] = useState('');
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState<string | undefined>(undefined);
+  const [accountTouched, setAccountTouched] = useState(false);
+
+  // Cuentas válidas para esta categoría (quita las que el usuario excluyó
+  // en Presupuesto) y la cuenta que se preselecciona sola — tarjeta de
+  // transporte para transporte público, la cuenta destino configurada en
+  // Presupuesto para ingresos, o efectivo de respaldo (spec: "no sabía
+  // exactamente de dónde había salido el gasto").
+  const availableAccounts = useMemo(
+    () => accountsForCategory(type, categoryId, subcategoryId || undefined, accounts, budgets),
+    [type, categoryId, subcategoryId, accounts, budgets]
+  );
+
+  useEffect(() => {
+    if (accountTouched) return;
+    setAccountId(resolveDefaultAccountId(type, categoryId, subcategoryId || undefined, accounts, budgets));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, categoryId, subcategoryId, accounts, budgets]);
+
+  const selectAccount = (id: string | undefined) => {
+    setAccountId(id);
+    setAccountTouched(true);
+  };
 
   // Solo se ofrecen las categorías que tienen sentido para el tipo elegido
   // — ya no se puede, por accidente, meter un gasto dentro de "Ingresos"
@@ -88,6 +119,7 @@ export default function NewTransaction() {
     setSubcategoryId('');
     setQuery('');
     setOpenCategoryId(null);
+    setAccountTouched(false);
   };
 
   const selectSuggestion = (entry: SearchEntry) => {
@@ -114,6 +146,7 @@ export default function NewTransaction() {
       categoryId,
       subcategoryId: subcategoryId || fallbackSubcategoryId(categoryId),
       merchant: merchant.trim() || undefined,
+      accountId,
       date: new Date().toISOString(),
       notes: note.trim() || undefined,
       origin: 'manual',
@@ -290,6 +323,53 @@ export default function NewTransaction() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            {type === 'income' ? '¿A QUÉ CUENTA ENTRA?' : '¿DE QUÉ CUENTA SALE?'}
+          </Text>
+          {availableAccounts.length === 0 ? (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>
+              Aún no tienes cuentas registradas — puedes agregarlas en Patrimonio.
+            </Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <Pressable
+                accessibilityLabel="Sin especificar cuenta"
+                onPress={() => selectAccount(undefined)}
+                style={[
+                  styles.accountChip,
+                  { borderRadius: radius.pill, borderColor: !accountId ? colors.accentFrom : colors.surfaceBorder, backgroundColor: !accountId ? colors.accentSoft : colors.surfaceSolid },
+                ]}
+              >
+                <Text style={{ color: !accountId ? colors.accentFrom : colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Sin especificar</Text>
+              </Pressable>
+              {availableAccounts.map((a) => {
+                const selected = accountId === a.id;
+                return (
+                  <Pressable
+                    key={a.id}
+                    accessibilityLabel={`Cuenta ${a.name}`}
+                    onPress={() => selectAccount(a.id)}
+                    style={[
+                      styles.accountChip,
+                      { borderRadius: radius.pill, borderColor: selected ? colors.accentFrom : colors.surfaceBorder, backgroundColor: selected ? colors.accentSoft : colors.surfaceSolid },
+                    ]}
+                  >
+                    <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
+                    <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={13} color={selected ? colors.accentFrom : colors.textSecondary} />
+                    <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 13, fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
+                      {a.name}
+                    </Text>
+                    <Text style={{ color: selected ? colors.accentFrom : colors.textTertiary, fontSize: 12, marginLeft: 6 }}>
+                      {formatCurrency(a.balance, a.currency)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>COMERCIO (OPCIONAL)</Text>
           <TextInput
             value={merchant}
@@ -368,4 +448,6 @@ const styles = StyleSheet.create({
   notesField: { minHeight: 70, textAlignVertical: 'top' },
   excludeRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, padding: 14 },
   checkbox: { width: 22, height: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
+  accountChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },
+  accountDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
 });

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,8 +10,10 @@ import { HoldToConfirmButton } from '@/components/HoldToConfirmButton';
 import { ValuMark } from '@/components/ValuMark';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
 import { providers } from '@/providers/registry';
+import { selectActiveAccounts, selectActiveBudgets } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { resolveDefaultAccountId } from '@/utils/accounts';
 import { formatCurrency } from '@/utils/format';
 
 type Stage = 'idle' | 'listening' | 'processing' | 'needsAmount' | 'needsCategory' | 'confirm' | 'error';
@@ -21,6 +23,10 @@ const QUICK_CATEGORIES = ['food', 'transport', 'entertainment', 'health', 'misce
 export default function Capture() {
   const { colors, typography, spacing, radius } = useTheme();
   const addTransaction = useAppStore((s) => s.addTransaction);
+  const rawAccounts = useAppStore((s) => s.accounts);
+  const rawBudgets = useAppStore((s) => s.budgets);
+  const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
 
   const [stage, setStage] = useState<Stage>('idle');
   const [text, setText] = useState('');
@@ -60,6 +66,13 @@ export default function Capture() {
   const saveTransaction = (result: ParsedCapture) => {
     const categoryId = result.categoryId ?? 'miscellaneous';
     const subcategoryId = result.subcategoryId ?? fallbackSubcategoryId(categoryId);
+    // Asigna sola la cuenta de la que sale/entra el dinero — tarjeta de
+    // transporte para transporte público, la cuenta destino que se
+    // configuró en Presupuesto para ese ingreso, o efectivo de respaldo
+    // (spec: "no sabía exactamente si lo había gastado de mi monedero...
+    // o mi cuenta de BBVA"). Si se equivocó, se corrige después en
+    // Movimientos.
+    const accountId = resolveDefaultAccountId(result.type, categoryId, subcategoryId, accounts, budgets);
     addTransaction({
       type: result.type,
       amount: result.amount ?? 0,
@@ -67,13 +80,14 @@ export default function Capture() {
       categoryId,
       subcategoryId,
       merchant: result.merchant,
+      accountId,
       date: new Date().toISOString(),
       origin: 'voice',
       // Respaldo textual de lo que se dijo — si la categorización
       // automática se equivocó, aquí queda lo que realmente se dijo.
       notes: result.rawText || undefined,
     });
-    return { ...result, categoryId, subcategoryId };
+    return { ...result, categoryId, subcategoryId, accountId };
   };
 
   const finishSession = () => {
@@ -289,18 +303,22 @@ export default function Capture() {
               {registered.length > 1 ? `Se registraron ${registered.length} movimientos` : 'Registrado'}
             </Text>
             <ScrollView style={{ maxHeight: 260, marginTop: spacing.md, width: '100%' }} contentContainerStyle={{ gap: 10 }}>
-              {registered.map((item, idx) => (
-                <View key={idx} style={[styles.rowCenter, { justifyContent: 'center' }]}>
-                  <CategoryIcon categoryId={item.categoryId ?? 'miscellaneous'} size={14} />
-                  <Text style={[typography.body, { color: colors.textPrimary, marginLeft: spacing.sm }]}>
-                    {formatCurrency(item.amount ?? 0, item.currency)}
-                    {' · '}
-                    {findCategory(item.categoryId ?? '')?.name}
-                    {item.subcategoryId ? ` · ${findSubcategory(item.categoryId ?? '', item.subcategoryId)?.name}` : ''}
-                    {item.merchant ? ` · ${item.merchant}` : ''}
-                  </Text>
-                </View>
-              ))}
+              {registered.map((item, idx) => {
+                const account = item.accountId ? accounts.find((a) => a.id === item.accountId) : undefined;
+                return (
+                  <View key={idx} style={[styles.rowCenter, { justifyContent: 'center' }]}>
+                    <CategoryIcon categoryId={item.categoryId ?? 'miscellaneous'} size={14} />
+                    <Text style={[typography.body, { color: colors.textPrimary, marginLeft: spacing.sm }]}>
+                      {formatCurrency(item.amount ?? 0, item.currency)}
+                      {' · '}
+                      {findCategory(item.categoryId ?? '')?.name}
+                      {item.subcategoryId ? ` · ${findSubcategory(item.categoryId ?? '', item.subcategoryId)?.name}` : ''}
+                      {item.merchant ? ` · ${item.merchant}` : ''}
+                      {account ? ` · ${account.name}` : ''}
+                    </Text>
+                  </View>
+                );
+              })}
             </ScrollView>
           </View>
         ) : stage === 'needsAmount' ? (

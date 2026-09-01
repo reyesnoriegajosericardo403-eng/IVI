@@ -18,6 +18,10 @@ export interface ParsedCapture {
   merchant?: string;
   missing: Array<'amount' | 'category'>;
   rawText: string;
+  // Cuenta asignada al guardar (tarjeta de transporte, cuenta destino de
+  // presupuesto o efectivo de respaldo) — se llena en app/capture.tsx,
+  // nunca aquí, porque el parser no conoce las cuentas del usuario.
+  accountId?: string;
 }
 
 const NUMBER_WORDS: Record<string, number> = {

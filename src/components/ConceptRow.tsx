@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { BudgetConcept } from '@/data/budgetConcepts';
-import type { Currency } from '@/data/types';
+import type { Account, Currency } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { BudgetLine, BudgetStatus } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
@@ -30,6 +30,7 @@ export function ConceptRow({
   scopedBudgeted,
   actualNoBudget,
   currency,
+  accounts,
   onEdit,
   onDelete,
 }: {
@@ -39,9 +40,13 @@ export function ConceptRow({
   scopedBudgeted: (monthlyAmount: number) => number;
   actualNoBudget: number;
   currency: Currency;
+  accounts?: Account[];
   onEdit: () => void;
   onDelete: (budgetId: string) => void;
 }) {
+  const excludedNames = (line?.excludedAccountIds ?? [])
+    .map((id) => accounts?.find((a) => a.id === id)?.name)
+    .filter((name): name is string => !!name);
   const { colors, typography, spacing } = useTheme();
   const budgeted = line ? scopedBudgeted(line.budgeted) : 0;
   const percentUsed = line && budgeted > 0 ? Math.round((actualNoBudget / budgeted) * 100) : 0;
@@ -85,6 +90,9 @@ export function ConceptRow({
               {percentUsed}% · {STATUS_LABEL[line.status]}
             </Text>
           </View>
+          {excludedNames.length > 0 && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>Excluye: {excludedNames.join(', ')}</Text>
+          )}
         </>
       ) : (
         <Text style={[typography.caption, { color: colors.textTertiary }]}>

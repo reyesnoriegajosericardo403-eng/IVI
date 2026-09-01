@@ -12,7 +12,7 @@ import { IncomeConceptRow } from '@/components/IncomeConceptRow';
 import { SectionToggle } from '@/components/SectionToggle';
 import { BUDGET_GROUP_DESCRIPTIONS, BUDGET_GROUP_LABELS, budgetConceptsByGroup, INCOME_CONCEPTS, type BudgetGroupId, type IncomeConcept } from '@/data/budgetConcepts';
 import type { BudgetFrequency, BudgetPeriodicity } from '@/data/types';
-import { selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
+import { selectActiveAccounts, selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { computeMonthlyAmount, WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
@@ -33,11 +33,13 @@ export default function Presupuesto() {
   const profile = useAppStore((s) => s.profile);
   const rawBudgets = useAppStore((s) => s.budgets);
   const rawTransactions = useAppStore((s) => s.transactions);
+  const rawAccounts = useAppStore((s) => s.accounts);
   const setBudget = useAppStore((s) => s.setBudget);
   const deleteBudget = useAppStore((s) => s.deleteBudget);
 
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
+  const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
 
   const [scope, setScope] = useState<Scope>('month');
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
@@ -67,7 +69,15 @@ export default function Presupuesto() {
 
   const handleSaveConcept = (
     categoryId: string,
-    input: { baseAmount: number; periodicity: BudgetPeriodicity; frequency?: BudgetFrequency; customDaysPerWeek?: number; incomeDayOfMonth?: number }
+    input: {
+      baseAmount: number;
+      periodicity: BudgetPeriodicity;
+      frequency?: BudgetFrequency;
+      customDaysPerWeek?: number;
+      incomeDayOfMonth?: number;
+      targetAccountId?: string;
+      excludedAccountIds?: string[];
+    }
   ) => {
     const monthlyAmount = computeMonthlyAmount(input);
     if (monthlyAmount <= 0) return;
@@ -81,6 +91,8 @@ export default function Presupuesto() {
       customDaysPerWeek: input.customDaysPerWeek,
       baseAmount: input.baseAmount,
       incomeDayOfMonth: input.incomeDayOfMonth,
+      targetAccountId: input.targetAccountId,
+      excludedAccountIds: input.excludedAccountIds,
     });
     setEditingConceptId(null);
   };
@@ -96,6 +108,8 @@ export default function Presupuesto() {
         initial={budgets.find((b) => b.categoryId === concept.id)}
         currency={profile.primaryCurrency}
         showDayOfMonth={concept.kind === 'fixed'}
+        accounts={accounts}
+        showAccountTarget
         onCancel={() => setEditingConceptId(null)}
         onSave={(input) => handleSaveConcept(concept.id, input)}
       />
@@ -108,6 +122,7 @@ export default function Presupuesto() {
         scopedBudgeted={scopedBudgeted}
         actualNoBudget={incomeConceptActual[concept.id] ?? 0}
         currency={profile.primaryCurrency}
+        accounts={accounts}
         onEdit={() => setEditingConceptId(concept.id)}
         onDelete={(budgetId) => deleteBudget(budgetId)}
       />
@@ -239,6 +254,8 @@ export default function Presupuesto() {
                         concept={concept}
                         initial={budgets.find((b) => b.categoryId === concept.id)}
                         currency={profile.primaryCurrency}
+                        accounts={accounts}
+                        showAccountExclude
                         onCancel={() => setEditingConceptId(null)}
                         onSave={(input) => handleSaveConcept(concept.id, input)}
                       />
@@ -251,6 +268,7 @@ export default function Presupuesto() {
                         scopedBudgeted={scopedBudgeted}
                         actualNoBudget={conceptSpend[concept.id] ?? 0}
                         currency={profile.primaryCurrency}
+                        accounts={accounts}
                         onEdit={() => setEditingConceptId(concept.id)}
                         onDelete={(budgetId) => deleteBudget(budgetId)}
                       />

@@ -25,6 +25,7 @@ import type {
 import type { SyncQueueEntry, SyncTable } from '@/services/sync/types';
 import type { CetesRates, MarketQuote } from '@/providers/types';
 import { generateId } from '@/utils/id';
+import { accountDeltasForTransaction, mergeDeltas, reverseDeltas } from '@/utils/ledger';
 
 const DEFAULT_PROFILE: UserProfile = {
   name: '',
@@ -176,6 +177,26 @@ export const useAppStore = create<AppState>()(
         enqueue('audit_log', record.id, 'upsert', record as unknown as Record<string, unknown>);
       }
 
+      // Mueve saldo REAL entre cuentas cuando se crea, edita o borra un
+      // movimiento — así el saldo de Patrimonio siempre refleja lo que de
+      // verdad se registró (spec: "sentido lógico real de cómo se mueve el
+      // dinero"). No genera entradas de auditoría propias — el movimiento
+      // en sí ya queda registrado en Transacciones.
+      function applyAccountDeltas(deltasList: ReturnType<typeof accountDeltasForTransaction>) {
+        const merged = mergeDeltas(deltasList);
+        if (merged.size === 0) return;
+        set((s) => ({
+          accounts: s.accounts.map((a) =>
+            merged.has(a.id) ? touch(a, { balance: a.balance + (merged.get(a.id) ?? 0) } as Partial<Account>) : a
+          ),
+        }));
+        const accounts = get().accounts;
+        for (const accountId of merged.keys()) {
+          const acc = accounts.find((a) => a.id === accountId);
+          if (acc) enqueue('accounts', acc.id, 'upsert', acc as unknown as Record<string, unknown>, acc.isDemo);
+        }
+      }
+
       return {
         profile: DEFAULT_PROFILE,
         transactions: [],
@@ -236,6 +257,7 @@ export const useAppStore = create<AppState>()(
           const tx = withNewMeta(draft);
           set((s) => ({ transactions: [tx, ...s.transactions] }));
           enqueue('transactions', tx.id, 'upsert', tx as unknown as Record<string, unknown>, tx.isDemo);
+          applyAccountDeltas(accountDeltasForTransaction(tx));
         },
         updateTransaction: (id, patch) => {
           const current = get().transactions.find((t) => t.id === id);
@@ -243,6 +265,11 @@ export const useAppStore = create<AppState>()(
           const updated = touch(current, patch);
           set((s) => ({ transactions: s.transactions.map((t) => (t.id === id ? updated : t)) }));
           enqueue('transactions', id, 'upsert', updated as unknown as Record<string, unknown>, updated.isDemo);
+          // Revierte el efecto de la cuenta/monto/tipo anterior y aplica el
+          // nuevo — evita saldos fantasma al cambiar de cuenta o corregir
+          // un movimiento (spec: registro de voz mal asignado se corrige
+          // después en Movimientos).
+          applyAccountDeltas([...reverseDeltas(accountDeltasForTransaction(current)), ...accountDeltasForTransaction(updated)]);
         },
         deleteTransaction: (id) => {
           const current = get().transactions.find((t) => t.id === id);
@@ -250,6 +277,7 @@ export const useAppStore = create<AppState>()(
           const updated = touch(current, { deletedAt: new Date().toISOString() } as Partial<Transaction>);
           set((s) => ({ transactions: s.transactions.map((t) => (t.id === id ? updated : t)) }));
           enqueue('transactions', id, 'delete', updated as unknown as Record<string, unknown>, updated.isDemo);
+          applyAccountDeltas(reverseDeltas(accountDeltasForTransaction(current)));
         },
 
         addAccount: (draft) => {

@@ -324,6 +324,10 @@ export interface BudgetLine {
   status: BudgetStatus;
   // Solo presente en conceptos de ingreso FIJO con día de cobro capturado.
   incomeDayOfMonth?: number;
+  // Solo en conceptos de INGRESO: cuenta a la que entra ese dinero.
+  targetAccountId?: string;
+  // Solo en conceptos de GASTO: cuentas excluidas para ese gasto (opcional).
+  excludedAccountIds?: string[];
 }
 
 export function computeBudgetStatus(
@@ -374,6 +378,8 @@ export function buildBudgetLines(
       percentUsed,
       status: computeBudgetStatus(percentUsed, thresholds),
       incomeDayOfMonth: incomeConcept ? b.incomeDayOfMonth : undefined,
+      targetAccountId: incomeConcept ? b.targetAccountId : undefined,
+      excludedAccountIds: expenseConcept ? b.excludedAccountIds : undefined,
     };
   });
 }

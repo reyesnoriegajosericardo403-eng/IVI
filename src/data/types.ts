@@ -73,6 +73,15 @@ export interface Account extends SyncMeta {
   balance: number;
   isLiability?: boolean;
   isDemo?: boolean;
+  // Color de la ficha en Cuentas/Patrimonio — el efectivo siempre es verde
+  // fijo, las demás cuentas eligen entre una paleta de colores (spec:
+  // "en el caso de efectivo debe ser un verde").
+  color?: string;
+  // Marca la cuenta a la que se cargan por default los gastos de transporte
+  // público (metro, camión, microbús...) al registrar por voz o manual —
+  // spec: "importantísima para que... los primeros a los que se deben
+  // realizar los cargos".
+  isTransportCard?: boolean;
 }
 
 export type BudgetPeriodicity = 'day' | 'week' | 'month';
@@ -101,6 +110,15 @@ export interface Budget extends SyncMeta {
   // cada mes recibo mi mesada") — solo tiene sentido para ingresos FIJOS,
   // nunca para variables/eventuales como Freelance, que no tienen fecha fija.
   incomeDayOfMonth?: number;
+  // Solo aplica a conceptos de INGRESO: a qué cuenta entra ese dinero — se
+  // usa para preseleccionar la cuenta al registrar ese ingreso por voz o
+  // manual (spec: "hacia dónde va a ir ese ingreso").
+  targetAccountId?: string;
+  // Solo aplica a conceptos de GASTO: cuentas que NUNCA se usan para este
+  // tipo de gasto (opcional) — se quitan de las opciones al registrar y de
+  // la preselección automática (spec: "excluir las tarjetas con las cuales
+  // nunca vas a realizar ese gasto").
+  excludedAccountIds?: string[];
 }
 
 export interface Goal extends SyncMeta {

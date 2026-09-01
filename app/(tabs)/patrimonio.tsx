@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { router } from 'expo-router';
 
+import { AccountForm } from '@/components/AccountForm';
 import { DualLineChart } from '@/components/DualLineChart';
 import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
@@ -12,7 +13,8 @@ import { HealthGradientBar } from '@/components/HealthGradientBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Sparkline } from '@/components/Sparkline';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS, LIABILITY_TYPE_LABELS } from '@/data/accountMeta';
-import type { Account, AccountType, Currency, Liability, LiabilityType, SyncMeta } from '@/data/types';
+import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
+import type { Currency, Liability, LiabilityType, SyncMeta } from '@/data/types';
 import { useContentMaxWidth } from '@/hooks/useBreakpoint';
 import {
   selectActiveAccounts,
@@ -28,7 +30,6 @@ import { formatDateDMY } from '@/utils/date';
 import { formatCurrency, formatPercent } from '@/utils/format';
 import { buildBudgetLines, computeFinancialHealth, computeNetWorth, getNetWorthTrend, investmentCurrentValue, spendInPeriod } from '@/utils/finance';
 
-const ACCOUNT_TYPES: AccountType[] = ['cash', 'bank', 'savings', 'credit_card'];
 const LIABILITY_TYPES: LiabilityType[] = ['credit_card', 'student_loan', 'personal_loan', 'mortgage', 'other'];
 
 type Draft<T> = Omit<T, keyof SyncMeta>;
@@ -256,9 +257,18 @@ export default function Patrimonio() {
             />
           ) : (
             <GlassCard key={a.id} style={styles.listRow}>
+              <View style={[styles.accountColorDot, { backgroundColor: a.type === 'cash' ? CASH_ACCOUNT_COLOR : a.color ?? colors.accentFrom }]} />
               <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={18} color={colors.accentFrom} />
               <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
+                <View style={styles.accountNameRow}>
+                  <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
+                  {a.isTransportCard && (
+                    <View style={[styles.transportBadge, { backgroundColor: colors.accentSoft, borderRadius: radius.pill }]}>
+                      <Ionicons name="bus-outline" size={11} color={colors.accentFrom} />
+                      <Text style={[typography.micro, { color: colors.accentFrom, fontWeight: '700', marginLeft: 3 }]}>Transporte</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>{ACCOUNT_TYPE_LABELS[a.type]}</Text>
               </View>
               <Text style={[typography.headline, { color: a.isLiability ? colors.danger : colors.textPrimary, marginRight: spacing.sm }]}>
@@ -358,116 +368,6 @@ function SectionHeader({ title, onAdd, colors, typography }: any) {
         <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700', marginLeft: 4 }]}>Agregar</Text>
       </Pressable>
     </View>
-  );
-}
-
-function AccountForm({
-  onSave,
-  onCancel,
-  defaultCurrency,
-  initial,
-}: {
-  onSave: (a: Draft<Account>) => void;
-  onCancel: () => void;
-  defaultCurrency: Currency;
-  initial?: Account;
-}) {
-  const { colors, typography, spacing, radius } = useTheme();
-  const [name, setName] = useState(initial?.name ?? '');
-  const [type, setType] = useState<AccountType>(initial?.type ?? 'bank');
-  const [balance, setBalance] = useState(initial ? String(initial.balance) : '');
-  const [adjustAmount, setAdjustAmount] = useState('');
-
-  const canSave = name.trim().length > 0 && balance.length > 0 && !Number.isNaN(parseFloat(balance));
-
-  const applyAdjust = (sign: 1 | -1) => {
-    const delta = parseFloat(adjustAmount.replace(',', '.'));
-    if (Number.isNaN(delta) || delta <= 0) return;
-    const current = parseFloat(balance) || 0;
-    setBalance(String(current + sign * delta));
-    setAdjustAmount('');
-  };
-
-  return (
-    <GlassCard style={{ gap: spacing.md }}>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="Nombre de la cuenta"
-        placeholderTextColor={colors.textTertiary}
-        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {ACCOUNT_TYPES.map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => setType(t)}
-            style={[
-              styles.typeChip,
-              { borderRadius: radius.pill, borderColor: type === t ? colors.accentFrom : colors.surfaceBorder, backgroundColor: type === t ? colors.accentSoft : 'transparent' },
-            ]}
-          >
-            <Text style={{ color: type === t ? colors.accentFrom : colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-              {ACCOUNT_TYPE_LABELS[t]}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <TextInput
-        value={balance}
-        onChangeText={setBalance}
-        keyboardType="decimal-pad"
-        placeholder="Saldo actual"
-        placeholderTextColor={colors.textTertiary}
-        style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-      />
-      {initial && (
-        <View style={styles.adjustRow}>
-          <TextInput
-            value={adjustAmount}
-            onChangeText={setAdjustAmount}
-            keyboardType="decimal-pad"
-            placeholder="Sumar o restar al saldo"
-            placeholderTextColor={colors.textTertiary}
-            style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-          />
-          <Pressable
-            accessibilityLabel="Sumar al saldo"
-            onPress={() => applyAdjust(1)}
-            style={[styles.adjustBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-          >
-            <Ionicons name="add" size={18} color={colors.success} />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="Restar al saldo"
-            onPress={() => applyAdjust(-1)}
-            style={[styles.adjustBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
-          >
-            <Ionicons name="remove" size={18} color={colors.danger} />
-          </Pressable>
-        </View>
-      )}
-      <View style={styles.formActions}>
-        <Pressable onPress={onCancel} style={styles.formCancel}>
-          <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
-        </Pressable>
-        <Pressable
-          disabled={!canSave}
-          onPress={() =>
-            onSave({
-              name: name.trim(),
-              type,
-              currency: defaultCurrency,
-              balance: parseFloat(balance),
-              isLiability: type === 'credit_card',
-            })
-          }
-          style={[styles.formSave, { backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.pill }]}
-        >
-          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Guardar</Text>
-        </Pressable>
-      </View>
-    </GlassCard>
   );
 }
 
@@ -606,6 +506,12 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   addLink: { flexDirection: 'row', alignItems: 'center' },
   listRow: { flexDirection: 'row', alignItems: 'center' },
+  accountColorDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
+  accountNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  transportBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 2 },
+  colorSwatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderWidth: 1 },
+  checkbox: { width: 22, height: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   notesInput: { minHeight: 60, textAlignVertical: 'top' },
   typeChip: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },

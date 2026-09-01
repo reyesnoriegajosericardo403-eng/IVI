@@ -1,7 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import type { Budget, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
+import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
+import type { Account, Budget, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { computeMonthlyAmount, FREQUENCY_LABELS, PERIODICITY_LABELS } from '@/utils/budgetCalculator';
 import { formatCurrency } from '@/utils/format';
@@ -18,6 +20,9 @@ export function ConceptBudgetForm({
   initial,
   currency,
   showDayOfMonth,
+  accounts,
+  showAccountTarget,
+  showAccountExclude,
   onSave,
   onCancel,
 }: {
@@ -29,12 +34,25 @@ export function ConceptBudgetForm({
   // "las categorías de freelancer pues no tienen caso porque esos no
   // tienen fecha fija").
   showDayOfMonth?: boolean;
+  // Cuentas del usuario — si no hay ninguna, ambas secciones de abajo se
+  // omiten (no tiene caso elegir entre cero cuentas).
+  accounts?: Account[];
+  // Solo para conceptos de INGRESO: a qué cuenta entra ese dinero (spec:
+  // "hacia dónde va a ir ese ingreso... un menú desplegable verticalmente
+  // de las cuentas que tienes").
+  showAccountTarget?: boolean;
+  // Solo para conceptos de GASTO: cuentas que nunca se usan para este
+  // gasto, opcional (spec: "excluir las tarjetas con las cuales nunca vas
+  // a realizar ese gasto").
+  showAccountExclude?: boolean;
   onSave: (input: {
     baseAmount: number;
     periodicity: BudgetPeriodicity;
     frequency?: BudgetFrequency;
     customDaysPerWeek?: number;
     incomeDayOfMonth?: number;
+    targetAccountId?: string;
+    excludedAccountIds?: string[];
   }) => void;
   onCancel: () => void;
 }) {
@@ -44,10 +62,18 @@ export function ConceptBudgetForm({
   const [customDays, setCustomDays] = useState(initial?.customDaysPerWeek ?? 3);
   const [amountText, setAmountText] = useState(initial?.baseAmount ? String(initial.baseAmount) : '');
   const [dayOfMonthText, setDayOfMonthText] = useState(initial?.incomeDayOfMonth ? String(initial.incomeDayOfMonth) : '');
+  const [targetAccountId, setTargetAccountId] = useState<string | undefined>(initial?.targetAccountId);
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const [excludedAccountIds, setExcludedAccountIds] = useState<string[]>(initial?.excludedAccountIds ?? []);
 
   const baseAmount = parseFloat(amountText.replace(',', '.')) || 0;
   const monthlyAmount = computeMonthlyAmount({ baseAmount, periodicity, frequency, customDaysPerWeek: customDays });
   const canSave = baseAmount > 0;
+  const targetAccount = accounts?.find((a) => a.id === targetAccountId);
+
+  const toggleExcluded = (accountId: string) => {
+    setExcludedAccountIds((prev) => (prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]));
+  };
 
   return (
     <GlassCard style={{ gap: spacing.md }}>
@@ -142,6 +168,74 @@ export function ConceptBudgetForm({
         </View>
       )}
 
+      {showAccountTarget && !!accounts?.length && (
+        <View>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>¿A qué cuenta entra? (opcional)</Text>
+          <Pressable
+            accessibilityLabel="Elegir cuenta destino"
+            onPress={() => setAccountDropdownOpen((v) => !v)}
+            style={[styles.dropdownHeader, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+          >
+            <Text style={[typography.body, { color: targetAccount ? colors.textPrimary : colors.textTertiary, flex: 1 }]}>
+              {targetAccount ? targetAccount.name : 'Elegir cuenta'}
+            </Text>
+            <Ionicons name={accountDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textTertiary} />
+          </Pressable>
+          {accountDropdownOpen && (
+            <View style={[styles.dropdownList, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}>
+              {accounts.map((a) => (
+                <Pressable
+                  key={a.id}
+                  accessibilityLabel={`Cuenta destino ${a.name}`}
+                  onPress={() => {
+                    setTargetAccountId(a.id);
+                    setAccountDropdownOpen(false);
+                  }}
+                  style={styles.dropdownRow}
+                >
+                  <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
+                  <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={14} color={colors.textSecondary} />
+                  <Text style={[typography.body, { color: colors.textPrimary, marginLeft: 8, flex: 1 }]}>{a.name}</Text>
+                  {targetAccountId === a.id && <Ionicons name="checkmark" size={16} color={colors.accentFrom} />}
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {showAccountExclude && !!accounts?.length && (
+        <View>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>
+            Excluir cuentas para este gasto (opcional)
+          </Text>
+          <View style={[styles.dropdownList, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}>
+            {accounts.map((a) => {
+              const excluded = excludedAccountIds.includes(a.id);
+              return (
+                <Pressable
+                  key={a.id}
+                  accessibilityLabel={`Excluir cuenta ${a.name}`}
+                  onPress={() => toggleExcluded(a.id)}
+                  style={styles.dropdownRow}
+                >
+                  <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
+                  <Text style={[typography.body, { color: colors.textPrimary, marginLeft: 8, flex: 1 }]}>{a.name}</Text>
+                  <View
+                    style={[
+                      styles.checkbox,
+                      { borderRadius: radius.sm, borderColor: colors.accentFrom, backgroundColor: excluded ? colors.accentFrom : 'transparent' },
+                    ]}
+                  >
+                    {excluded && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       <View style={styles.rowEnd}>
         <Pressable onPress={onCancel}>
           <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
@@ -151,7 +245,15 @@ export function ConceptBudgetForm({
           onPress={() => {
             const dayNum = parseInt(dayOfMonthText, 10);
             const incomeDayOfMonth = showDayOfMonth && dayNum >= 1 && dayNum <= 31 ? dayNum : undefined;
-            onSave({ baseAmount, periodicity, frequency: periodicity === 'day' ? frequency : undefined, customDaysPerWeek: customDays, incomeDayOfMonth });
+            onSave({
+              baseAmount,
+              periodicity,
+              frequency: periodicity === 'day' ? frequency : undefined,
+              customDaysPerWeek: customDays,
+              incomeDayOfMonth,
+              targetAccountId: showAccountTarget ? targetAccountId : undefined,
+              excludedAccountIds: showAccountExclude && excludedAccountIds.length > 0 ? excludedAccountIds : undefined,
+            });
           }}
           style={[styles.saveBtn, { borderRadius: radius.pill, backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder }]}
         >
@@ -171,4 +273,9 @@ const styles = StyleSheet.create({
   dayPill: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 1, marginRight: 6 },
   input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15 },
   saveBtn: { paddingHorizontal: 20, paddingVertical: 10 },
+  dropdownHeader: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  dropdownList: { borderWidth: 1, overflow: 'hidden' },
+  dropdownRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10 },
+  accountDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  checkbox: { width: 18, height: 18, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });
