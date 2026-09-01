@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
-import React from 'react';
+import { Redirect, router } from 'expo-router';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuthSession } from '@/services/auth/useAuthSession';
@@ -18,7 +18,22 @@ export default function Index() {
   // decidir a dónde navegar — nunca confía en el estado local a ciegas,
   // que puede venir de un intento de registro anterior con otra cuenta
   // en este mismo navegador (spec 76, 77).
-  if (isSupabaseConfigured && (loading || (userId && !ready))) {
+  const authPending = isSupabaseConfigured && (loading || (userId && !ready));
+  const needsAuth = isSupabaseConfigured && !userId;
+  const goesStraightToCapture = !authPending && !needsAuth && onboardingComplete;
+
+  // Reducir fricción al máximo: si ya hay sesión y el onboarding está
+  // hecho, abrir la app manda directo a "Grabar por voz" (el Dashboard
+  // queda detrás — cerrar la captura regresa ahí). Se hace con navegación
+  // imperativa porque son DOS pasos (entrar a las tabs y luego abrir el
+  // modal de captura encima), algo que <Redirect> no puede expresar solo.
+  useEffect(() => {
+    if (!goesStraightToCapture) return;
+    router.replace('/(tabs)');
+    router.push('/capture');
+  }, [goesStraightToCapture]);
+
+  if (authPending || goesStraightToCapture) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator color={colors.accentFrom} />
@@ -26,9 +41,11 @@ export default function Index() {
     );
   }
 
-  if (isSupabaseConfigured && !userId) {
+  if (needsAuth) {
     return <Redirect href="/auth" />;
   }
 
-  return <Redirect href={onboardingComplete ? '/(tabs)' : '/onboarding'} />;
+  // Solo queda el caso onboardingComplete === false — el caso true ya se
+  // resolvió arriba (goesStraightToCapture).
+  return <Redirect href="/onboarding" />;
 }
