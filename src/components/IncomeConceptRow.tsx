@@ -9,6 +9,7 @@ import type { BudgetLine } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
 
 import { CategoryIcon } from './CategoryIcon';
+import { WEEKDAY_FULL_LABELS } from './ConceptBudgetForm';
 import { GlassCard } from './GlassCard';
 import { ProgressBar } from './ProgressBar';
 
@@ -79,9 +80,14 @@ export function IncomeConceptRow({
             </Text>
             <Text style={[typography.caption, { fontWeight: '700', color: met ? colors.success : colors.warning }]}>{percentUsed}%</Text>
           </View>
-          {!!line.incomeDayOfMonth && (
+          {!!line.dayOfMonth && (
             <Text style={[typography.caption, { color: colors.textTertiary }]}>
-              Normalmente te llega el día {line.incomeDayOfMonth} de cada mes.
+              Normalmente te llega el día {line.dayOfMonth} de cada mes.
+            </Text>
+          )}
+          {line.dayOfWeek !== undefined && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>
+              Normalmente te llega cada {WEEKDAY_FULL_LABELS[line.dayOfWeek]}.
             </Text>
           )}
           {!!targetAccount && (

@@ -5,10 +5,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { conceptExampleText, type BudgetConcept } from '@/data/budgetConcepts';
 import type { Account, Currency } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
+import { formatDateDMY } from '@/utils/date';
 import type { BudgetLine, BudgetStatus } from '@/utils/finance';
 import { formatCurrency } from '@/utils/format';
 
 import { CategoryIcon } from './CategoryIcon';
+import { WEEKDAY_FULL_LABELS } from './ConceptBudgetForm';
 import { GlassCard } from './GlassCard';
 import { ProgressBar } from './ProgressBar';
 
@@ -44,7 +46,7 @@ export function ConceptRow({
   onEdit: () => void;
   onDelete: (budgetId: string) => void;
 }) {
-  const excludedNames = (line?.excludedAccountIds ?? [])
+  const includedNames = (line?.includedAccountIds ?? [])
     .map((id) => accounts?.find((a) => a.id === id)?.name)
     .filter((name): name is string => !!name);
   const exampleText = conceptExampleText(concept);
@@ -98,8 +100,17 @@ export function ConceptRow({
               {percentUsed}% · {STATUS_LABEL[line.status]}
             </Text>
           </View>
-          {excludedNames.length > 0 && (
-            <Text style={[typography.caption, { color: colors.textTertiary }]}>Excluye: {excludedNames.join(', ')}</Text>
+          {!!line.dayOfMonth && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>Se cobra el día {line.dayOfMonth} de cada mes.</Text>
+          )}
+          {line.dayOfWeek !== undefined && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>Se cobra cada {WEEKDAY_FULL_LABELS[line.dayOfWeek]}.</Text>
+          )}
+          {!!line.oneTimeDate && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>Ocurre el {formatDateDMY(line.oneTimeDate)}.</Text>
+          )}
+          {includedNames.length > 0 && (
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>Pagas con: {includedNames.join(', ')}</Text>
           )}
         </>
       ) : (

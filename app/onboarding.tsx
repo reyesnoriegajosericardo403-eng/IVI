@@ -134,9 +134,11 @@ export default function Onboarding() {
       periodicity: BudgetPeriodicity;
       frequency?: BudgetFrequency;
       customDaysPerWeek?: number;
-      incomeDayOfMonth?: number;
+      dayOfWeek?: number;
+      dayOfMonth?: number;
+      oneTimeDate?: string;
       targetAccountId?: string;
-      excludedAccountIds?: string[];
+      includedAccountIds?: string[];
     }
   ) => {
     const monthlyAmount = computeMonthlyAmount(input);
@@ -150,9 +152,11 @@ export default function Onboarding() {
       frequency: input.frequency,
       customDaysPerWeek: input.customDaysPerWeek,
       baseAmount: input.baseAmount,
-      incomeDayOfMonth: input.incomeDayOfMonth,
+      dayOfWeek: input.dayOfWeek,
+      dayOfMonth: input.dayOfMonth,
+      oneTimeDate: input.oneTimeDate,
       targetAccountId: input.targetAccountId,
-      excludedAccountIds: input.excludedAccountIds,
+      includedAccountIds: input.includedAccountIds,
     });
     setEditingConceptId(null);
   };
@@ -167,7 +171,7 @@ export default function Onboarding() {
         concept={concept}
         initial={budgets.find((b) => b.categoryId === concept.id)}
         currency={profile.primaryCurrency}
-        showDayOfMonth={concept.kind === 'fixed'}
+        allowDateQuestion={concept.kind === 'fixed'}
         accounts={accounts}
         showAccountTarget
         onCancel={() => setEditingConceptId(null)}
@@ -487,6 +491,11 @@ export default function Onboarding() {
   if (step === 'budgetAd') {
     return (
       <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]}>
+        <View style={{ padding: spacing.lg, paddingBottom: 0 }}>
+          <Pressable accessibilityLabel="Regresar a tus cuentas" onPress={() => setStep('accounts')}>
+            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
+          </Pressable>
+        </View>
         <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.xl, justifyContent: 'center', gap: spacing.xl }}>
           <Text style={[typography.display, { color: colors.textPrimary, textAlign: 'center' }]}>
             Eyy pero antes de entrar a lo mero bueno
@@ -570,7 +579,7 @@ export default function Onboarding() {
                       initial={budgets.find((b) => b.categoryId === concept.id)}
                       currency={profile.primaryCurrency}
                       accounts={accounts}
-                      showAccountExclude
+                      showAccountInclude
                       onCancel={() => setEditingConceptId(null)}
                       onSave={(input) => handleSaveConcept(concept.id, input)}
                     />

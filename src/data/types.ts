@@ -106,19 +106,27 @@ export interface Budget extends SyncMeta {
   frequency?: BudgetFrequency;
   customDaysPerWeek?: number;
   baseAmount?: number;
-  // Día del mes en que normalmente llega este ingreso (ej. 3 = "cada 3 de
-  // cada mes recibo mi mesada") — solo tiene sentido para ingresos FIJOS,
-  // nunca para variables/eventuales como Freelance, que no tienen fecha fija.
-  incomeDayOfMonth?: number;
+  // Día del mes en que normalmente llega/se cobra (periodicidad "Mes") —
+  // aplica tanto a ingresos como a gastos (ej. "la renta se carga el 5 de
+  // cada mes"). Nunca mayor al número real de días de ese mes.
+  dayOfMonth?: number;
+  // Día de la semana en que normalmente llega/se cobra (periodicidad
+  // "Semana") — 0 = domingo … 6 = sábado (mismo criterio que Date#getDay).
+  dayOfWeek?: number;
+  // Fecha exacta del gasto/ingreso único (periodicidad "Día" + frecuencia
+  // "Extemporáneo") — ISO AAAA-MM-DD, nunca un día de mes reciclado entre
+  // meses porque es un evento de una sola vez.
+  oneTimeDate?: string;
   // Solo aplica a conceptos de INGRESO: a qué cuenta entra ese dinero — se
   // usa para preseleccionar la cuenta al registrar ese ingreso por voz o
   // manual (spec: "hacia dónde va a ir ese ingreso").
   targetAccountId?: string;
-  // Solo aplica a conceptos de GASTO: cuentas que NUNCA se usan para este
-  // tipo de gasto (opcional) — se quitan de las opciones al registrar y de
-  // la preselección automática (spec: "excluir las tarjetas con las cuales
-  // nunca vas a realizar ese gasto").
-  excludedAccountIds?: string[];
+  // Solo aplica a conceptos de GASTO: cuentas con las que normalmente se
+  // paga este tipo de gasto (opcional) — se usan como opciones al
+  // registrar y para la preselección automática (spec: "seleccionar las
+  // cuentas con las que normalmente pagas eso"). Vacío/undefined = todas
+  // las cuentas activas son válidas.
+  includedAccountIds?: string[];
 }
 
 export interface Goal extends SyncMeta {

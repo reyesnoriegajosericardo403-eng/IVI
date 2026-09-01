@@ -40,6 +40,12 @@ export default function Capture() {
   const [amountInput, setAmountInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [accountOverride, setAccountOverride] = useState<string | undefined>(undefined);
+  // Cuenta elegida ANTES de grabar (spec: "antes de presionar el botón de
+  // grabar arriba debe aparecer las cuentas... y a esa cuenta realizar el
+  // cargo") — se usa como punto de partida para todo lo que se registre en
+  // esta sesión de voz, aunque cada movimiento individual se pueda seguir
+  // ajustando después en su propia pantalla intermedia.
+  const [preSelectedAccountId, setPreSelectedAccountId] = useState<string | undefined>(undefined);
 
   const stopListeningRef = useRef<(() => void) | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -107,7 +113,7 @@ export default function Capture() {
     const next = queue[0];
     setParsed(next);
     setPendingQueue(queue);
-    setAccountOverride(undefined);
+    setAccountOverride(preSelectedAccountId);
     if (next.missing.includes('amount')) {
       setStage('needsAmount');
     } else if (next.missing.includes('category')) {
@@ -123,7 +129,7 @@ export default function Capture() {
     const queue: ParsedCapture[] = [];
     for (const r of results) {
       if (r.missing.length === 0) {
-        pushRegistered(saveTransaction(r));
+        pushRegistered(saveTransaction(r, preSelectedAccountId));
       } else {
         queue.push(r);
       }
@@ -487,10 +493,39 @@ export default function Capture() {
             )}
             {(stage === 'idle' || stage === 'error') && (
               <>
+                {accounts.length > 0 && (
+                  <View style={{ width: '100%', maxWidth: 340, marginTop: spacing.xl }}>
+                    <Text style={[typography.caption, { color: colors.textTertiary, marginBottom: 6, textAlign: 'center' }]}>
+                      ¿DE QUÉ CUENTA VA A SALIR?
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, justifyContent: 'center' }}>
+                      {accounts.map((a) => {
+                        const selected = preSelectedAccountId === a.id;
+                        return (
+                          <Pressable
+                            key={a.id}
+                            accessibilityLabel={`Usar cuenta ${a.name}`}
+                            onPress={() => setPreSelectedAccountId(selected ? undefined : a.id)}
+                            style={[
+                              styles.accountChip,
+                              { borderRadius: radius.pill, borderColor: selected ? colors.accentFrom : colors.surfaceBorder, backgroundColor: selected ? colors.accentSoft : colors.surfaceSolid },
+                            ]}
+                          >
+                            <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
+                            <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={13} color={selected ? colors.accentFrom : colors.textSecondary} />
+                            <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 13, fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
+                              {a.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
                 <Pressable
                   accessibilityLabel="Grabar por voz"
                   onPress={handleMicPress}
-                  style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, marginTop: spacing.xl }]}
+                  style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, marginTop: spacing.lg }]}
                 >
                   <Ionicons name="mic" size={30} color="#FFFFFF" />
                 </Pressable>

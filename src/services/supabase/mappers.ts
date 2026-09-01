@@ -105,7 +105,7 @@ export function budgetToRow(userId: string, b: Budget) {
     custom_days_per_week: b.customDaysPerWeek ?? null,
     base_amount: b.baseAmount ?? null,
     target_account_id: b.targetAccountId ?? null,
-    excluded_account_ids: b.excludedAccountIds ?? [],
+    included_account_ids: b.includedAccountIds ?? [],
     created_at: b.createdAt,
     deleted_at: b.deletedAt ?? null,
   };
@@ -127,7 +127,7 @@ export function budgetFromRow(row: any): Budget {
     customDaysPerWeek: row.custom_days_per_week ?? undefined,
     baseAmount: row.base_amount != null ? Number(row.base_amount) : undefined,
     targetAccountId: row.target_account_id ?? undefined,
-    excludedAccountIds: row.excluded_account_ids && row.excluded_account_ids.length > 0 ? row.excluded_account_ids : undefined,
+    includedAccountIds: row.included_account_ids && row.included_account_ids.length > 0 ? row.included_account_ids : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at ?? undefined,

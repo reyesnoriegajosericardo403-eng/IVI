@@ -50,7 +50,10 @@ export function ConceptSubBudgets({
       periodicity: BudgetPeriodicity;
       frequency?: BudgetFrequency;
       customDaysPerWeek?: number;
-      excludedAccountIds?: string[];
+      dayOfWeek?: number;
+      dayOfMonth?: number;
+      oneTimeDate?: string;
+      includedAccountIds?: string[];
     }
   ) => void;
   onDeleteBudget: (budgetId: string) => void;
@@ -87,7 +90,7 @@ export function ConceptSubBudgets({
             initial={budgets.find((b) => b.categoryId === subId)}
             currency={currency}
             accounts={accounts}
-            showAccountExclude
+            showAccountInclude
             onCancel={() => setEditingConceptId(null)}
             onSave={(input) => onSaveConcept(subId, input)}
           />

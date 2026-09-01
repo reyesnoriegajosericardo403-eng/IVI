@@ -43,6 +43,25 @@ export function monthLabel(iso: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+export function daysInMonth(ref: Date): number {
+  return new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+}
+
+// Cuenta cuántos días de un mes caen en alguno de los días de semana que
+// cumplan `matches` (recibe el día de semana de Date#getDay: 0=domingo…
+// 6=sábado) — para presupuestos por día (entre semana, fines de semana)
+// que ya no usan un promedio fijo sino los días reales de ESE mes (spec:
+// "septiembre tiene 30 días", "depende de los días de entre semana que
+// tenga el mes específico").
+export function countMonthDaysMatching(ref: Date, matches: (dayOfWeek: number) => boolean): number {
+  const total = daysInMonth(ref);
+  let count = 0;
+  for (let day = 1; day <= total; day++) {
+    if (matches(new Date(ref.getFullYear(), ref.getMonth(), day).getDay())) count++;
+  }
+  return count;
+}
+
 export interface CalendarCell {
   iso: string;
   day: number;

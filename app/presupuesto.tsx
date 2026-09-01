@@ -108,9 +108,11 @@ export default function Presupuesto() {
       periodicity: BudgetPeriodicity;
       frequency?: BudgetFrequency;
       customDaysPerWeek?: number;
-      incomeDayOfMonth?: number;
+      dayOfWeek?: number;
+      dayOfMonth?: number;
+      oneTimeDate?: string;
       targetAccountId?: string;
-      excludedAccountIds?: string[];
+      includedAccountIds?: string[];
     }
   ) => {
     const monthlyAmount = computeMonthlyAmount(input);
@@ -124,9 +126,11 @@ export default function Presupuesto() {
       frequency: input.frequency,
       customDaysPerWeek: input.customDaysPerWeek,
       baseAmount: input.baseAmount,
-      incomeDayOfMonth: input.incomeDayOfMonth,
+      dayOfWeek: input.dayOfWeek,
+      dayOfMonth: input.dayOfMonth,
+      oneTimeDate: input.oneTimeDate,
       targetAccountId: input.targetAccountId,
-      excludedAccountIds: input.excludedAccountIds,
+      includedAccountIds: input.includedAccountIds,
     });
     setEditingConceptId(null);
   };
@@ -141,7 +145,7 @@ export default function Presupuesto() {
         concept={concept}
         initial={budgets.find((b) => b.categoryId === concept.id)}
         currency={profile.primaryCurrency}
-        showDayOfMonth={concept.kind === 'fixed'}
+        allowDateQuestion={concept.kind === 'fixed'}
         accounts={accounts}
         showAccountTarget
         onCancel={() => setEditingConceptId(null)}
@@ -300,7 +304,7 @@ export default function Presupuesto() {
                         initial={budgets.find((b) => b.categoryId === concept.id)}
                         currency={profile.primaryCurrency}
                         accounts={accounts}
-                        showAccountExclude
+                        showAccountInclude
                         onCancel={() => setEditingConceptId(null)}
                         onSave={(input) => handleSaveConcept(concept.id, input)}
                       />
