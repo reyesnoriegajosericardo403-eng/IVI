@@ -43,7 +43,7 @@ export const ONBOARDING_SURVEY: SurveyQuestion[] = [
       { value: 'ordenar_finanzas', label: 'A poner en orden mi desmadre financiero' },
       { value: 'acelerar_metas', label: 'A meterle velocidad a mis metas' },
       { value: 'aprender', label: 'A aprender sin que me duerma' },
-      { value: 'curiosidad', label: 'A probar a ver si es cierto, vine por curiosidad' },
+      { value: 'curiosidad', label: 'Vine por curiosidad' },
     ],
   },
   {
@@ -59,10 +59,14 @@ export const ONBOARDING_SURVEY: SurveyQuestion[] = [
     id: 'discovery',
     prompt: '¿Quién pasó el chisme de que existíamos? Suelta el dato:',
     options: [
-      { value: 'redes_sociales', label: 'Me salió en TikTok/IG' },
-      { value: 'recomendacion', label: 'Un compa me la recomendó' },
-      { value: 'tienda', label: 'Curiosidad pura en la tienda' },
-      { value: 'anuncio', label: 'Un anuncio por ahí' },
+      { value: 'instagram_tiktok', label: 'Instagram / TikTok' },
+      { value: 'recomendacion_amigo', label: 'Recomendación de un amigo' },
+      { value: 'busqueda_tienda', label: 'Búsqueda en la tienda de aplicaciones' },
+      { value: 'anuncio_publicitario', label: 'Anuncio publicitario' },
+      { value: 'twitter_youtube', label: 'X (Twitter) o YouTube' },
+      { value: 'blog_resena', label: 'Blog, artículo o reseña en internet' },
+      { value: 'universidad_escolar', label: 'Universidad o recomendación escolar' },
+      { value: 'otro_medio', label: 'Otro medio' },
     ],
   },
   {
