@@ -157,11 +157,32 @@ export default function Capture() {
   // Arranca (o reinicia) una sesión de escucha. Se separó de handleMicPress
   // para poder llamarla de nuevo automáticamente cuando un intento no captó
   // nada — así la persona puede volver a intentar sin salir de la pantalla.
-  const beginListening = () => {
+  const beginListening = async () => {
     if (!providers.speech.isAvailable()) {
       setErrorMsg('El micrófono en vivo llega en la siguiente fase. Escribe tu movimiento abajo.');
       setStage('error');
       return;
+    }
+    // Pide permiso de micrófono explícitamente ANTES de arrancar el
+    // reconocimiento de voz — en Android, sobre todo con la app instalada
+    // en la pantalla de inicio, SpeechRecognition a veces no pide el
+    // permiso correctamente por su cuenta y la grabación simplemente no
+    // hace nada, sin ningún aviso (spec: auditoría "el micrófono no
+    // sirvió para nada" en Android). Pedirlo así, con la API estándar de
+    // getUserMedia, obliga a que el navegador muestre el diálogo real.
+    if (navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err: any) {
+        setErrorMsg(
+          err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+            ? 'No tienes permiso de micrófono para VALU. Ve a los ajustes del sitio en tu navegador (candado junto a la URL) y actívalo.'
+            : 'No se pudo acceder al micrófono en este dispositivo. Escribe tu movimiento abajo.'
+        );
+        setStage('error');
+        return;
+      }
     }
     finalTextRef.current = '';
     interimTextRef.current = '';
@@ -177,7 +198,7 @@ export default function Capture() {
         interimTextRef.current = interim;
         setLiveTranscript(`${finalTextRef.current} ${interimTextRef.current}`.trim());
       },
-      onError: () => {
+      onError: (message) => {
         listeningRef.current = false;
         // Lo que ya se alcanzó a transcribir antes del error (silencio
         // largo, hipo de red, etc.) NUNCA se tira a la basura — se
@@ -192,7 +213,11 @@ export default function Capture() {
           runBatchParse(recovered);
           return;
         }
-        setErrorMsg('No entendí, intenta escribirlo.');
+        // Se muestra el motivo real (permiso, red, sin micrófono...) en
+        // vez de un mensaje genérico — así queda claro qué pasó en vez de
+        // que "no sirva para nada" sin explicación (spec: auditoría del
+        // micrófono en Android).
+        setErrorMsg(message);
         setStage('error');
       },
       onEnd: () => {

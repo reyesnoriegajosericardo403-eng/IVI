@@ -3,8 +3,22 @@
 // conexión a internet. Los datos financieros del usuario NO viven aquí —
 // esos ya se guardan localmente con AsyncStorage/Zustand y se sincronizan
 // con Supabase cuando hay conexión (arquitectura offline-first, spec 32).
-const CACHE_NAME = 'valu-shell-v1';
+// Subir este número cada vez que cambien el manifest o los íconos —
+// "activate" borra cualquier caché con un nombre distinto, así que un
+// número nuevo obliga a todos a bajar la versión fresca en vez de quedar
+// atorados con un manifest/ícono viejo cacheado (spec: auditoría de "no
+// funcionó la función de integrarlo a la pantalla" en Android — un
+// manifest o ícono viejo en caché puede tumbar la instalación).
+const CACHE_NAME = 'valu-shell-v2';
 const APP_SHELL = ['/', '/index.html', '/manifest.json'];
+
+// El manifest y los íconos son justo lo que Android revisa para decidir
+// si la app se puede "instalar" — nunca deben servirse desde una caché
+// vieja mientras haya internet, aunque el resto de archivos estáticos sí
+// puedan (esos ya cambian de nombre en cada build).
+function isInstallCritical(url) {
+  return url.pathname === '/manifest.json' || url.pathname.startsWith('/icons/');
+}
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -45,9 +59,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Resto de archivos estáticos (JS, íconos, manifest): responde de la
-  // caché al instante si ya existe, y de todos modos actualiza la caché en
-  // segundo plano para la próxima vez.
+  // Manifest e íconos: red primero, igual que la navegación — nunca se
+  // sirve una versión vieja en caché mientras haya internet.
+  if (isInstallCritical(url)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Resto de archivos estáticos (JS): responde de la caché al instante si
+  // ya existe, y de todos modos actualiza la caché en segundo plano para
+  // la próxima vez — estos ya cambian de nombre en cada build, así que no
+  // hay riesgo de quedarse con una versión vieja.
   event.respondWith(
     caches.match(request).then((cached) => {
       const networkFetch = fetch(request)

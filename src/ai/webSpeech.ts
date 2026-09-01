@@ -18,6 +18,25 @@ export function isWebSpeechAvailable(): boolean {
   return Boolean(w.SpeechRecognition || w.webkitSpeechRecognition);
 }
 
+// Traduce los códigos de error de la Web Speech API a un mensaje que de
+// verdad explique qué pasó — antes se perdía el código real y siempre se
+// mostraba el mismo mensaje genérico, lo que hacía imposible saber si el
+// micrófono estaba bloqueado, sin conexión, etc. (spec: auditoría de "el
+// micrófono no sirvió para nada" en Android).
+const SPEECH_ERROR_MESSAGES: Record<string, string> = {
+  'not-allowed': 'No tienes permiso de micrófono para VALU. Ve a los ajustes del sitio en tu navegador y actívalo.',
+  'service-not-allowed': 'El navegador bloqueó el acceso al micrófono. Intenta abrir VALU desde Chrome (no desde el ícono instalado) para revisar el permiso.',
+  'permission-denied': 'No tienes permiso de micrófono para VALU. Ve a los ajustes del sitio en tu navegador y actívalo.',
+  'audio-capture': 'No se encontró un micrófono disponible en este dispositivo.',
+  'network': 'Se perdió la conexión mientras se procesaba el audio. Revisa tu internet e intenta de nuevo.',
+  'no-speech': 'No se escuchó nada. Vuelve a intentar hablando más cerca del micrófono.',
+  'aborted': 'Se canceló la grabación.',
+};
+
+export function speechErrorMessage(code: string): string {
+  return SPEECH_ERROR_MESSAGES[code] ?? `No se pudo usar el micrófono (${code}). Escribe tu movimiento abajo.`;
+}
+
 interface StartListeningOptions {
   onResult: (transcript: string) => void;
   onInterim?: (transcript: string) => void;
@@ -51,7 +70,7 @@ export function startWebSpeechListening({ onResult, onInterim, onError, onEnd }:
     onInterim?.(interim);
   };
   recognition.onerror = (event: any) => {
-    onError(event.error ?? 'No se pudo escuchar');
+    onError(speechErrorMessage(event.error ?? 'unknown'));
   };
   recognition.onend = () => onEnd();
 
