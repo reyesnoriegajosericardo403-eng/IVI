@@ -415,6 +415,79 @@ export function applyCustomMapping(result: ParsedCapture, mappings: Record<strin
   return result;
 }
 
+export type AccountAdjustmentDirection = 'increment' | 'decrement';
+
+export interface AccountAdjustment {
+  direction: AccountAdjustmentDirection;
+  // Fragmento de texto con el nombre de cuenta mencionado ("Nu", "mi
+  // Morralla", "BBVA") — se resuelve contra las cuentas reales del
+  // usuario en app/capture.tsx, porque este archivo no las conoce.
+  accountNameHint: string;
+}
+
+// Todas las formas comunes de decir "le entró dinero a esta cuenta" —
+// verbo en infinitivo, imperativo (tú y con "-le"), y primera persona del
+// pretérito, sin acentos (ya normalizado). "cayo"/"cayeron" cubre el uso
+// coloquial "me cayeron 500 a mi Nu" (spec: catálogo v9, "verbos de
+// incremento positivo", ampliado con muchas más variantes reales).
+const ACCOUNT_INCREMENT_WORDS = new Set([
+  'agregar', 'agrega', 'agregale', 'agrego', 'agregue',
+  'sumar', 'suma', 'sumale', 'sumo', 'sume',
+  'depositar', 'deposita', 'depositale', 'deposito', 'deposite',
+  'abonar', 'abona', 'abonale', 'abono', 'abone',
+  'ingresar', 'ingresa', 'ingresale', 'ingreso', 'ingrese',
+  'meter', 'mete', 'metele', 'meti',
+  'echar', 'echa', 'echale', 'eche',
+  'incrementar', 'incrementa', 'incrementale',
+  'fondear', 'fondea', 'fondeale', 'fondeo', 'fondee',
+  'anadir', 'anade', 'anadele',
+  'cargar', 'carga', 'cargale',
+  'recargar', 'recarga', 'recargale',
+  'entraron', 'entro', 'entrando',
+  'cayo', 'cayeron', 'cayendo',
+]);
+
+// Todas las formas comunes de decir "le sacaron dinero a esta cuenta" —
+// sin traslape con verbos de gasto normal ("pagué", "gasté", "compré"),
+// que deben seguir clasificándose como gasto de categoría, no como este
+// ajuste genérico de saldo (spec: catálogo v9, "verbos de decremento
+// negativo").
+const ACCOUNT_DECREMENT_WORDS = new Set([
+  'quitar', 'quita', 'quitale', 'quito', 'quite',
+  'sacar', 'saca', 'sacale', 'saco', 'saque',
+  'restar', 'resta', 'restale', 'resto', 'reste',
+  'disminuir', 'disminuye', 'disminuyele', 'disminuyo',
+  'retirar', 'retira', 'retirale', 'retiro', 'retire',
+  'descontar', 'descuenta', 'descuentale', 'descuento', 'descuente',
+  'bajale', 'baje',
+  'reducir', 'reduce', 'reducele', 'reduzco',
+]);
+
+// Frase que de verdad nombra una cuenta ("a mi Nu", "de mi Morralla", "en
+// mi BBVA", "a la tarjeta de Santander") — exigir esto ADEMÁS del verbo
+// evita que una frase de gasto normal ("pagué 65 de café") se confunda
+// con un ajuste de cuenta, porque un gasto normal no trae esta forma.
+const ACCOUNT_REF_REGEX = /\b(?:(?:a|de|en)\s+)?(?:mi|la|el|tu)\s+([a-z0-9ñáéíóú][a-z0-9ñáéíóú\s]*?)(?=$|[.,;]| y | con )/;
+
+// Detecta si la frase describe agregarle o quitarle dinero a una cuenta
+// específica en vez de un gasto/ingreso categorizado normal — ej. "agrégale
+// 500 a mi Nu" o "sácale 200 a mi Morralla". Devuelve null si no hay un
+// verbo Y una cuenta mencionada con claridad; nunca adivina (catálogo v9).
+export function detectAccountAdjustment(rawText: string): AccountAdjustment | null {
+  const normalized = normalize(rawText);
+  const tokens = normalized.split(' ').filter(Boolean);
+  const hasIncrement = tokens.some((t) => ACCOUNT_INCREMENT_WORDS.has(t));
+  const hasDecrement = tokens.some((t) => ACCOUNT_DECREMENT_WORDS.has(t));
+  if (!hasIncrement && !hasDecrement) return null;
+
+  const accountMatch = normalized.match(ACCOUNT_REF_REGEX);
+  if (!accountMatch) return null;
+  const accountNameHint = accountMatch[1].trim();
+  if (accountNameHint.length < 2) return null;
+
+  return { direction: hasIncrement ? 'increment' : 'decrement', accountNameHint };
+}
+
 // Divide una sola grabación/nota en varios movimientos cuando el usuario
 // dijo/escribió más de uno de golpe (spec: "necesito anotar 3 cosas a la
 // vez"). Heurística simple por conectores comunes en español — cada

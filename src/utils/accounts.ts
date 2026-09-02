@@ -76,3 +76,36 @@ export function accountsForCategory(
   const budget = expenseBudgetForCategory(categoryId, subcategoryId, budgets);
   return allowedExpenseAccounts(active, budget);
 }
+
+function normalizeAccountName(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+// Resuelve el nombre de cuenta que alguien mencionó al hablar ("mi Nu",
+// "la Morralla") contra sus cuentas reales — nunca inventa una coincidencia:
+// si el nombre no aparece claramente en ninguna cuenta activa, o calza en
+// más de una sin que ninguna sea un calce exacto, devuelve undefined y
+// quien llama debe tratarlo como no resuelto (spec: catálogo v9, ajustes
+// de cuenta por voz — "nunca inventar el dato").
+export function resolveAccountByNameHint(nameHint: string, accounts: Account[]): Account | undefined {
+  const hint = normalizeAccountName(nameHint);
+  if (hint.length < 2) return undefined;
+  const active = activeAccounts(accounts);
+
+  const exact = active.find((a) => normalizeAccountName(a.name) === hint);
+  if (exact) return exact;
+
+  // "efectivo"/"cash" no es el nombre real de la ficha de Morralla, pero
+  // es como la gente la nombra al hablar.
+  if (hint === 'efectivo' || hint === 'cash' || hint === 'morralla') {
+    const cash = active.find((a) => a.type === 'cash');
+    if (cash) return cash;
+  }
+
+  const partialMatches = active.filter((a) => normalizeAccountName(a.name).includes(hint) || hint.includes(normalizeAccountName(a.name)));
+  return partialMatches.length === 1 ? partialMatches[0] : undefined;
+}

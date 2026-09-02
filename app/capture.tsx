@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { applyCustomMapping, splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
+import { applyCustomMapping, detectAccountAdjustment, splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { HoldToConfirmButton } from '@/components/HoldToConfirmButton';
 import { ValuMark } from '@/components/ValuMark';
@@ -14,7 +14,7 @@ import { providers } from '@/providers/registry';
 import { selectActiveAccounts, selectActiveBudgets } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { accountsForCategory, resolveDefaultAccountId } from '@/utils/accounts';
+import { accountsForCategory, resolveAccountByNameHint, resolveDefaultAccountId } from '@/utils/accounts';
 import { formatCurrency } from '@/utils/format';
 
 type Stage = 'idle' | 'listening' | 'processing' | 'needsAmount' | 'needsCategory' | 'confirm' | 'error';
@@ -77,13 +77,15 @@ export default function Capture() {
   const saveTransaction = (result: ParsedCapture, accountIdOverride?: string) => {
     const categoryId = result.categoryId ?? 'miscellaneous';
     const subcategoryId = result.subcategoryId ?? fallbackSubcategoryId(categoryId);
-    // Si la persona confirmó/cambió la cuenta en la pantalla intermedia se
-    // respeta esa elección; si no, se asigna sola — la cuenta destino que
-    // se configuró en Presupuesto para ese ingreso, o efectivo de respaldo
-    // (spec: "no sabía exactamente si lo había gastado de mi monedero...
-    // o mi cuenta de BBVA"). Si se equivocó, se corrige después en
-    // Movimientos.
-    const accountId = accountIdOverride ?? resolveDefaultAccountId(result.type, categoryId, subcategoryId, accounts, budgets);
+    // Orden de prioridad para la cuenta: 1) una cuenta ya resuelta con
+    // certeza en el propio resultado (ej. "agrégale 500 a mi Nu" ya trae
+    // la cuenta exacta que se nombró): 2) la que la persona confirmó/
+    // cambió en la pantalla intermedia; 3) se asigna sola — la cuenta
+    // destino que se configuró en Presupuesto para ese ingreso, o
+    // efectivo de respaldo (spec: "no sabía exactamente si lo había
+    // gastado de mi monedero... o mi cuenta de BBVA"). Si se equivocó, se
+    // corrige después en Movimientos.
+    const accountId = result.accountId ?? accountIdOverride ?? resolveDefaultAccountId(result.type, categoryId, subcategoryId, accounts, budgets);
     addTransaction({
       type: result.type,
       amount: result.amount ?? 0,
@@ -99,6 +101,28 @@ export default function Capture() {
       notes: result.rawText || undefined,
     });
     return { ...result, categoryId, subcategoryId, accountId };
+  };
+
+  // "Agrégale 500 a mi Nu" / "sácale 200 a mi Morralla" — dinero que entra
+  // o sale de una cuenta puntual, sin ser un gasto/ingreso de categoría
+  // específica. Se trata como ingreso/gasto genérico (Otros) apuntando
+  // directo a la cuenta que se nombró, solo si esa cuenta existe de
+  // verdad — si no se pudo resolver con certeza, se deja el resultado tal
+  // cual y sigue el flujo normal (nunca inventa a qué cuenta fue).
+  const applyAccountAdjustment = (result: ParsedCapture): ParsedCapture => {
+    const adjustment = detectAccountAdjustment(result.rawText);
+    if (!adjustment) return result;
+    const account = resolveAccountByNameHint(adjustment.accountNameHint, accounts);
+    if (!account) return result;
+    const isIncrement = adjustment.direction === 'increment';
+    return {
+      ...result,
+      type: isIncrement ? 'income' : 'expense',
+      categoryId: isIncrement ? 'income' : 'miscellaneous',
+      subcategoryId: isIncrement ? 'inc_other' : 'misc_other',
+      accountId: account.id,
+      missing: result.missing.filter((m) => m !== 'category'),
+    };
   };
 
   const finishSession = () => {
@@ -152,8 +176,10 @@ export default function Capture() {
         const rawResults = await Promise.all(segments.map((seg) => providers.ai.parseCaptureText(seg)));
         // Lo que la persona ya corrigió antes gana sobre cualquier
         // adivinanza del catálogo o del proveedor de IA conectado (spec:
-        // catálogo v7, "mapeo personal").
-        const results = rawResults.map((r) => applyCustomMapping(r, customCategoryMappings));
+        // catálogo v7, "mapeo personal"). Un ajuste directo de cuenta
+        // ("agrégale/sácale X a mi cuenta") tiene prioridad sobre ambos —
+        // ya trae la cuenta exacta que se nombró (spec: catálogo v9).
+        const results = rawResults.map((r) => applyAccountAdjustment(applyCustomMapping(r, customCategoryMappings)));
         processBatch(results);
         resolve();
       }, 380);
