@@ -2,6 +2,30 @@
 
 Ver también: [[README|Índice]]
 
+## Motor de intenciones financieras por voz (transferencias, deudas, metas) — NO implementado
+
+Un segundo JSON del usuario (catálogo v9, 2026-09-02) pedía que el
+registro por voz entendiera verbos de dirección ("pasé X de A a B",
+"le debo X a Y", "le metí X a mi meta de Z") para mover dinero entre
+cuentas, crear/abonar deudas y abonar a metas directamente. Se investigó
+antes de tocar código y se decidió NO implementarlo esta sesión:
+
+- El modelo de datos ya soporta transferencias (`Transaction.type =
+  'transfer'` + `toAccountId`, con la matemática de saldos ya correcta
+  en `src/utils/ledger.ts`) — pero **ninguna pantalla las crea hoy**, y
+  Movimientos (`app/(tabs)/movimientos.tsx`) no tiene una vista especial
+  para ese tipo: mostraría "Miscelánea -$500" en vez de una
+  transferencia real, aunque el saldo de las dos cuentas se mueva bien.
+  Activarlo por voz sin antes construir esa vista habría creado una
+  función a medias, viéndose rota aunque el dinero se calculara bien.
+- Crear/abonar una deuda o abonar a una meta por voz implica acoplar DOS
+  mutaciones a la vez (el pasivo/la meta + la cuenta de origen), con su
+  propio diseño de validaciones — no es una extensión chica del parser.
+
+Queda como una función completa aparte para una sesión dedicada:
+detección de intención + resolución de nombres de cuentas/acreedores/
+metas reales + la vista de Movimientos para transferencias.
+
 ## Sobre Obsidian y la base de datos real de la app
 
 El 2026-09-02 se planteó usar Obsidian como "base de datos... para el

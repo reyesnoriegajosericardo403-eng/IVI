@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountForm } from '@/components/AccountForm';
+import { BudgetSearchBar, type BudgetSearchEntry } from '@/components/BudgetSearchBar';
 import { ConceptBudgetForm } from '@/components/ConceptBudgetForm';
 import { ConceptRow } from '@/components/ConceptRow';
 import { ConceptSubBudgets } from '@/components/ConceptSubBudgets';
@@ -13,7 +14,18 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { ValuMark } from '@/components/ValuMark';
 import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
 import { ACCOUNT_TYPE_LABELS } from '@/data/accountMeta';
-import { BUDGET_GROUP_LABELS, budgetConceptsByGroup, INCOME_CONCEPTS, type BudgetGroupId, type IncomeConcept } from '@/data/budgetConcepts';
+import {
+  BUDGET_CONCEPTS,
+  BUDGET_GROUP_EXAMPLES,
+  BUDGET_GROUP_LABELS,
+  budgetConceptsByGroup,
+  INCOME_CONCEPTS,
+  makeSubBudgetId,
+  subcategoryOptionsForConcept,
+  type BudgetGroupId,
+  type IncomeConcept,
+} from '@/data/budgetConcepts';
+import { findSubcategory } from '@/data/categories';
 import type { AccountType, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
 import { ONBOARDING_SURVEY } from '@/data/onboardingSurvey';
 import { useAuthSession } from '@/services/auth/useAuthSession';
@@ -101,6 +113,7 @@ export default function Onboarding() {
   const [cashAmountText, setCashAmountText] = useState('');
   const [showBankForm, setShowBankForm] = useState(false);
   const [editingBankAccountId, setEditingBankAccountId] = useState<string | null>(null);
+  const [showConfirmContinue, setShowConfirmContinue] = useState(false);
 
   const openCashEditor = () => {
     setCashAmountText(cashAccount ? String(cashAccount.balance) : '');
@@ -120,6 +133,11 @@ export default function Onboarding() {
 
   // ---------- Pasos 4-5: presupuesto (mismos datos/componentes que Presupuesto) ----------
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
+  // Colapsado por grupo desde el inicio — igual que la pantalla normal de
+  // Presupuesto, para que armar el presupuesto por primera vez no se vea
+  // abrumador (spec: "que no se vea súper complejo... lo único que vea el
+  // encabezado, el buscador y las tres categorías").
+  const [openGroupId, setOpenGroupId] = useState<BudgetGroupId | null>(null);
   const lines = buildBudgetLines(budgets, transactions, profile.budgetThresholds);
   const lineByConcept = new Map(lines.map((l) => [l.categoryId, l]));
   const conceptSpend = spendByConcept(transactions);
@@ -191,6 +209,53 @@ export default function Onboarding() {
         onDelete={(budgetId) => deleteBudget(budgetId)}
       />
     );
+
+  // Buscadores de Ingresos/Gastos (mismo criterio que la pantalla normal
+  // de Presupuesto — spec: "función de dropdown para elegir lo que
+  // quieras" tanto en ingresos como en gastos).
+  const incomeSearchEntries: BudgetSearchEntry[] = useMemo(
+    () =>
+      INCOME_CONCEPTS.map((concept) => {
+        const subId = concept.matches[0]?.subcategoryIds?.[0];
+        const keywords = subId ? findSubcategory('income', subId)?.keywords : undefined;
+        return {
+          key: concept.id,
+          label: concept.name,
+          sublabel: concept.kind === 'fixed' ? 'Ingreso fijo' : 'Ingreso variable',
+          keywords,
+          onSelect: () => setEditingConceptId(concept.id),
+        };
+      }),
+    []
+  );
+
+  const expenseSearchEntries: BudgetSearchEntry[] = useMemo(() => {
+    const out: BudgetSearchEntry[] = [];
+    for (const concept of BUDGET_CONCEPTS) {
+      out.push({
+        key: concept.id,
+        label: concept.name,
+        sublabel: BUDGET_GROUP_LABELS[concept.group],
+        onSelect: () => {
+          setOpenGroupId(concept.group);
+          setEditingConceptId(concept.id);
+        },
+      });
+      for (const option of subcategoryOptionsForConcept(concept)) {
+        out.push({
+          key: `${concept.id}::${option.subcategoryId}`,
+          label: option.name,
+          sublabel: concept.name,
+          keywords: findSubcategory(option.categoryId, option.subcategoryId)?.keywords,
+          onSelect: () => {
+            setOpenGroupId(concept.group);
+            setEditingConceptId(makeSubBudgetId(concept.id, option.subcategoryId));
+          },
+        });
+      }
+    }
+    return out;
+  }, []);
 
   const handleFinish = () => {
     // Nombre y moneda ya se guardaron en el paso 1 — aquí solo se marca
@@ -361,6 +426,42 @@ export default function Onboarding() {
             puedes agregarlas o editarlas después en Patrimonio.
           </Text>
 
+          {/* ---------- Ficha 1: cómo se agrega una cuenta ---------- */}
+          <View style={[styles.instructionCard, { backgroundColor: `${colors.info}14`, borderColor: `${colors.info}33`, borderRadius: radius.lg }]}>
+            <View style={styles.rowCenter}>
+              <Ionicons name="information-circle" size={20} color={colors.info} />
+              <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: 8 }]}>Así se agrega una cuenta</Text>
+            </View>
+            <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+              Dale en <Text style={{ fontWeight: '800', color: colors.textPrimary }}>"Agregar tarjetas"</Text> aquí
+              abajo y ahí tienes que:
+            </Text>
+            <Text style={[typography.body, { color: colors.textSecondary }]}>
+              1. Poner<Text style={{ fontWeight: '800', color: colors.textPrimary }}> NOMBRE</Text> a la cuenta (ej.
+              "BBVA Débito", "Nu").{'\n'}
+              2. Seleccionar el<Text style={{ fontWeight: '800', color: colors.textPrimary }}> COLOR</Text>{' '}
+              representativo del banco.{'\n'}
+              3. Anotar el saldo que tienes ahora mismo en ella.
+            </Text>
+          </View>
+
+          {/* ---------- Ficha 2: no olvides transporte y becas ---------- */}
+          <View style={[styles.instructionCard, { backgroundColor: `${colors.warning}14`, borderColor: `${colors.warning}33`, borderRadius: radius.lg }]}>
+            <View style={styles.rowCenter}>
+              <Ionicons name="alert-circle" size={20} color={colors.warning} />
+              <Text style={[typography.headline, { color: colors.textPrimary, marginLeft: 8 }]}>No olvides estas dos</Text>
+            </View>
+            <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+              <Text style={{ fontWeight: '800', color: colors.textPrimary }}>Tu tarjeta de transporte de la CDMX</Text>{' '}
+              — guárdala como la reconozcas: "T. CDMX", "Movilidad", "Metro"...{'\n\n'}
+              <Text style={{ fontWeight: '800', color: colors.textPrimary }}>
+                Si tienes tarjetas de becas o programas de apoyo
+              </Text>{' '}
+              (Beca Benito Juárez, Bienestar, etc.) es indispensable que también las agregues — por ahí también
+              entra y sale dinero real.
+            </Text>
+          </View>
+
           {/* ---------- Efectivo: ficha fija "Morralla" ---------- */}
           {editingCash ? (
             <View style={[styles.accountCard, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, gap: spacing.sm }]}>
@@ -464,25 +565,41 @@ export default function Onboarding() {
             </Pressable>
           )}
 
-          {bankAccounts.length === 0 && !showBankForm && (
-            <View style={styles.hintRow}>
-              <Ionicons name="bulb-outline" size={14} color={colors.textTertiary} />
-              <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 6, flex: 1 }]}>
-                Dale en "Agregar" y escribe el nombre de tu banco, su color representativo y el saldo que tengas
-                ahora mismo en él. No olvides agregar tu tarjeta de transporte de la CDMX o tu entidad.
-              </Text>
-            </View>
-          )}
         </ScrollView>
         <View style={{ padding: spacing.lg }}>
           <Pressable
             accessibilityLabel="Continuar al presupuesto"
-            onPress={() => setStep('budgetAd')}
+            onPress={() => setShowConfirmContinue(true)}
             style={[styles.cta, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}
           >
             <Text style={[typography.headline, { color: '#FFFFFF' }]}>Continuar</Text>
           </Pressable>
         </View>
+
+        {showConfirmContinue && (
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, { backgroundColor: colors.surface, borderRadius: radius.lg }]}>
+              <Text style={[typography.title, { color: colors.textPrimary }]}>¿Ya están todas tus tarjetas?</Text>
+              <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.sm }]}>
+                Por si se te olvidaba alguna: BBVA, Mercado Pago, Nu, Klar, Movilidad CDMX, Banorte, Banco Azteca,
+                Santander, entre otras.
+              </Text>
+              <Pressable
+                accessibilityLabel="Sí, estoy seguro, continuemos"
+                onPress={() => {
+                  setShowConfirmContinue(false);
+                  setStep('budgetAd');
+                }}
+                style={[styles.cta, { borderRadius: radius.pill, backgroundColor: colors.accentFrom, marginTop: spacing.lg }]}
+              >
+                <Text style={[typography.headline, { color: '#FFFFFF' }]}>Sí, estoy seguro, continuemos</Text>
+              </Pressable>
+              <Pressable accessibilityLabel="Regresar a agregar más cuentas" onPress={() => setShowConfirmContinue(false)} style={{ marginTop: spacing.md, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Espera, quiero agregar otra</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     );
   }
@@ -534,6 +651,7 @@ export default function Onboarding() {
           <Text style={[typography.caption, { color: colors.textSecondary }]}>
             Anota cuánto esperas recibir de cada tipo de ingreso — es opcional, y lo puedes editar cuando quieras.
           </Text>
+          <BudgetSearchBar entries={incomeSearchEntries} placeholder="Buscar un tipo de ingreso…" />
           <Text style={[typography.headline, { color: colors.textPrimary, marginTop: spacing.xs }]}>Fijos</Text>
           {fixedIncomeConcepts.map(renderIncomeConcept)}
           <Text style={[typography.headline, { color: colors.textPrimary, marginTop: spacing.xs }]}>Variables / eventuales</Text>
@@ -565,13 +683,27 @@ export default function Onboarding() {
         </View>
       </View>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 140 }}>
+        <BudgetSearchBar entries={expenseSearchEntries} placeholder="Buscar un gasto (ej. Uber, corte de pelo…)" />
         {GROUPS.map((group) => {
           const concepts = budgetConceptsByGroup(group);
+          const isOpen = openGroupId === group;
           return (
             <View key={group} style={{ gap: spacing.sm }}>
-              <Text style={[typography.title, { color: colors.textPrimary }]}>{BUDGET_GROUP_LABELS[group]}</Text>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>{ONBOARDING_GROUP_EXPLANATIONS[group]}</Text>
-              {concepts.map((concept) => (
+              <Pressable
+                accessibilityLabel={`Mostrar/Ocultar ${BUDGET_GROUP_LABELS[group]}`}
+                onPress={() => setOpenGroupId(isOpen ? null : group)}
+                style={[styles.groupCard, { borderColor: colors.surfaceBorder, borderRadius: radius.lg }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[typography.title, { color: colors.textPrimary }]}>{BUDGET_GROUP_LABELS[group]}</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{ONBOARDING_GROUP_EXPLANATIONS[group]}</Text>
+                  <Text style={[typography.micro, { color: colors.textTertiary, fontWeight: '400', marginTop: 2 }]} numberOfLines={1}>
+                    {BUDGET_GROUP_EXAMPLES[group]}
+                  </Text>
+                </View>
+                <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textTertiary} />
+              </Pressable>
+              {isOpen && concepts.map((concept) => (
                 <View key={concept.id} style={{ gap: spacing.sm }}>
                   {editingConceptId === concept.id ? (
                     <ConceptBudgetForm
@@ -631,6 +763,7 @@ export default function Onboarding() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  groupCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, padding: 14 },
   header: { alignItems: 'center', marginTop: 24 },
   input: { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16 },
   row: { flexDirection: 'row', gap: 10 },
@@ -649,4 +782,17 @@ const styles = StyleSheet.create({
   hintRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 4, marginTop: 4 },
   cashFormActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center' },
   formSave: { paddingVertical: 10, paddingHorizontal: 20 },
+  instructionCard: { borderWidth: 1, padding: 14 },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: { width: '100%', maxWidth: 360, padding: 24 },
 });

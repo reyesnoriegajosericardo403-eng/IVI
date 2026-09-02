@@ -21,6 +21,16 @@ export const BUDGET_GROUP_DESCRIPTIONS: Record<BudgetGroupId, string> = {
   ahorro: 'Ahorro e inversión',
 };
 
+// Ejemplos cortos por grupo, visibles en letra pequeña incluso ANTES de
+// desplegar el grupo — mezcla lo obvio (renta, súper) con cosas que
+// cuentan pero que a nadie se le ocurren de entrada (spec: "ejemplos de
+// subcategorías que nadie recuerda nunca, como un corte de cabello").
+export const BUDGET_GROUP_EXAMPLES: Record<BudgetGroupId, string> = {
+  necesidades: 'ej. renta, súper, gasolina, consulta médica, corte de pelo, colegiatura',
+  deseos: 'ej. streaming, salidas, regalos, uñas, boliche, viajes',
+  ahorro: 'ej. fondo de emergencia, CETES, meta de viaje, retiro',
+};
+
 export interface ConceptMatch {
   categoryId: string;
   // Si se omite, cuenta toda la categoría; si se da, solo esas subcategorías.
@@ -52,7 +62,10 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     matches: [
       {
         categoryId: 'food',
-        subcategoryIds: ['food_supermarket', 'food_restaurant', 'food_coffee', 'food_market', 'food_bakery', 'food_organic', 'food_other'],
+        subcategoryIds: [
+          'food_supermarket', 'food_restaurant', 'food_coffee', 'food_market', 'food_bakery', 'food_organic', 'food_other',
+          'food_juice_bar', 'food_water_delivery',
+        ],
       },
     ],
   },
@@ -94,13 +107,24 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     matches: [
       {
         categoryId: 'entertainment',
+        // ent_vacation se agregó aquí el 2026-09-02 — antes no estaba en
+        // NINGÚN concepto (huérfano silencioso), igual que ent_escape_room/
+        // ent_arcade/ent_billiards/ent_photography, nuevas del catálogo v9.
         subcategoryIds: [
           'ent_cinema', 'ent_concerts', 'ent_hobbies', 'ent_videogames', 'ent_sports',
-          'ent_bowling', 'ent_clubs', 'ent_events', 'ent_karaoke', 'ent_amusement', 'ent_other',
+          'ent_bowling', 'ent_clubs', 'ent_events', 'ent_karaoke', 'ent_amusement', 'ent_other', 'ent_vacation',
+          'ent_escape_room', 'ent_arcade', 'ent_billiards', 'ent_photography',
         ],
       },
-      { categoryId: 'food', subcategoryIds: ['food_alcohol', 'food_fastfood', 'food_snacks', 'food_sweets', 'food_delivery'] },
-      { categoryId: 'lifestyle', subcategoryIds: ['life_travel', 'life_experiences', 'life_personal'] },
+      { categoryId: 'food', subcategoryIds: ['food_alcohol', 'food_fastfood', 'food_snacks', 'food_sweets', 'food_delivery', 'food_catering'] },
+      {
+        categoryId: 'lifestyle',
+        // life_pets/life_other se agregaron aquí el 2026-09-02 — antes no
+        // estaban en NINGÚN concepto (huérfanos silenciosos), igual que
+        // life_self_improvement/life_social_clubs/life_wedding, nuevas del
+        // catálogo v9.
+        subcategoryIds: ['life_travel', 'life_experiences', 'life_personal', 'life_pets', 'life_other', 'life_self_improvement', 'life_social_clubs', 'life_wedding'],
+      },
     ],
   },
   {
@@ -111,7 +135,7 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     matches: [
       { categoryId: 'entertainment', subcategoryIds: ['ent_streaming', 'ent_subscriptions'] },
       { categoryId: 'housing', subcategoryIds: ['house_phone', 'house_internet'] },
-      { categoryId: 'miscellaneous', subcategoryIds: ['misc_electronics', 'misc_software', 'misc_cloud'] },
+      { categoryId: 'miscellaneous', subcategoryIds: ['misc_electronics', 'misc_software', 'misc_cloud', 'misc_repairs'] },
     ],
   },
   {
@@ -142,14 +166,14 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     name: 'Metas a corto plazo',
     group: 'ahorro',
     icon: 'savings',
-    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_short', 'sav_goals', 'sav_vacation'] }],
+    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_short', 'sav_goals', 'sav_vacation', 'sav_wedding_fund'] }],
   },
   {
     id: 'concept_goals_long',
     name: 'Metas a mediano/largo plazo',
     group: 'ahorro',
     icon: 'savings',
-    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_long', 'sav_retirement', 'sav_house_downpayment'] }],
+    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_long', 'sav_retirement', 'sav_house_downpayment', 'sav_education_fund'] }],
   },
   {
     id: 'concept_emergency',

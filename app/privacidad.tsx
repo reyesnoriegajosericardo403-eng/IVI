@@ -84,9 +84,9 @@ export default function Privacidad() {
           <Text style={[typography.headline, { color: colors.textPrimary }]}>Lo que VALU aprendió de ti</Text>
           <Text style={[typography.body, { color: colors.textSecondary }]}>
             {learnedCount > 0
-              ? `Cuando corriges una categoría que VALU no supo adivinar sola, se acuerda de esa palabra para la próxima vez — sin mandarla a ningún proveedor de IA. Hasta ahora ha aprendido ${learnedCount} ${learnedCount === 1 ? 'palabra' : 'palabras'}.`
+              ? `Cuando corriges una categoría que VALU no supo adivinar sola, se acuerda de esa palabra para la próxima vez — sin mandarla a ningún proveedor de IA. Hasta ahora ha aprendido ${learnedCount} de un máximo de 50 palabras.`
               : 'Cuando corriges una categoría que VALU no supo adivinar sola, se acuerda de esa palabra para la próxima vez — sin mandarla a ningún proveedor de IA. Todavía no has corregido ninguna, así que no hay nada guardado aquí.'}
-            {' '}Esto vive solo en este dispositivo, no se sincroniza a la nube todavía.
+            {' '}Guarda como máximo 50 — al llegar al tope, olvida primero la corrección más antigua. Esto vive solo en este dispositivo, no se sincroniza a la nube todavía.
           </Text>
           {learnedCount > 0 && (
             <Pressable

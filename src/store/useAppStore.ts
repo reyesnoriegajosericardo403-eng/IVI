@@ -44,6 +44,11 @@ const DEFAULT_BUDGET_PERIODS: { week: BudgetPeriodState; month: BudgetPeriodStat
   month: { lastPeriodKey: null, carryOver: 0 },
 };
 
+// Tope de palabras que la memoria de correcciones recuerda por cuenta —
+// evita que crezca sin límite; al llegar al tope se olvidan primero las
+// correcciones más viejas (spec: "límite por cuenta de 50 palabras").
+const MAX_CUSTOM_MAPPINGS = 50;
+
 // Da a un registro nuevo su identidad de sincronización (spec 75, 77, 83).
 function withNewMeta<T extends object>(draft: T): T & SyncMeta {
   const now = new Date().toISOString();
@@ -227,6 +232,15 @@ export const useAppStore = create<AppState>()(
           set((s) => {
             const next = { ...s.customCategoryMappings };
             for (const kw of keywords) next[kw] = { categoryId, subcategoryId, updatedAt };
+            // Tope de MAX_CUSTOM_MAPPINGS palabras por cuenta — si se pasa,
+            // se olvidan primero las correcciones más viejas (por
+            // updatedAt), nunca las más recientes.
+            const entries = Object.entries(next);
+            if (entries.length > MAX_CUSTOM_MAPPINGS) {
+              entries.sort((a, b) => a[1].updatedAt.localeCompare(b[1].updatedAt));
+              const toDrop = entries.length - MAX_CUSTOM_MAPPINGS;
+              for (let i = 0; i < toDrop; i++) delete next[entries[i][0]];
+            }
             return { customCategoryMappings: next };
           });
         },

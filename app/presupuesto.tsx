@@ -4,12 +4,25 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BudgetSearchBar, type BudgetSearchEntry } from '@/components/BudgetSearchBar';
 import { ConceptBudgetForm } from '@/components/ConceptBudgetForm';
 import { ConceptRow } from '@/components/ConceptRow';
 import { ConceptSubBudgets } from '@/components/ConceptSubBudgets';
 import { IncomeConceptRow } from '@/components/IncomeConceptRow';
 import { SectionToggle } from '@/components/SectionToggle';
-import { BUDGET_GROUP_DESCRIPTIONS, BUDGET_GROUP_LABELS, budgetConceptsByGroup, INCOME_CONCEPTS, type BudgetGroupId, type IncomeConcept } from '@/data/budgetConcepts';
+import {
+  BUDGET_CONCEPTS,
+  BUDGET_GROUP_DESCRIPTIONS,
+  BUDGET_GROUP_EXAMPLES,
+  BUDGET_GROUP_LABELS,
+  budgetConceptsByGroup,
+  INCOME_CONCEPTS,
+  makeSubBudgetId,
+  subcategoryOptionsForConcept,
+  type BudgetGroupId,
+  type IncomeConcept,
+} from '@/data/budgetConcepts';
+import { findSubcategory } from '@/data/categories';
 import type { BudgetFrequency, BudgetPeriodicity } from '@/data/types';
 import { selectActiveAccounts, selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
@@ -166,6 +179,60 @@ export default function Presupuesto() {
       />
     );
 
+  // Entradas del buscador de Ingresos — un renglón por tipo de ingreso,
+  // con las palabras clave del catálogo para poder encontrarlo escribiendo
+  // un sinónimo ("nómina" también encuentra "Salario").
+  const incomeSearchEntries: BudgetSearchEntry[] = useMemo(
+    () =>
+      INCOME_CONCEPTS.map((concept) => {
+        const subId = concept.matches[0]?.subcategoryIds?.[0];
+        const keywords = subId ? findSubcategory('income', subId)?.keywords : undefined;
+        return {
+          key: concept.id,
+          label: concept.name,
+          sublabel: concept.kind === 'fixed' ? 'Ingreso fijo' : 'Ingreso variable',
+          keywords,
+          onSelect: () => {
+            setIngresosOpen(true);
+            setEditingConceptId(concept.id);
+          },
+        };
+      }),
+    []
+  );
+
+  // Entradas del buscador de Gastos — un renglón por concepto Y uno por
+  // cada subcategoría real dentro de ese concepto, así buscar "Uber" abre
+  // directo su ficha dentro de "Transporte cotidiano" sin tener que saber
+  // en qué concepto vive (spec: "elegir la categoría O la subcategoría").
+  const expenseSearchEntries: BudgetSearchEntry[] = useMemo(() => {
+    const out: BudgetSearchEntry[] = [];
+    for (const concept of BUDGET_CONCEPTS) {
+      out.push({
+        key: concept.id,
+        label: concept.name,
+        sublabel: BUDGET_GROUP_LABELS[concept.group],
+        onSelect: () => {
+          setOpenGroupId(concept.group);
+          setEditingConceptId(concept.id);
+        },
+      });
+      for (const option of subcategoryOptionsForConcept(concept)) {
+        out.push({
+          key: `${concept.id}::${option.subcategoryId}`,
+          label: option.name,
+          sublabel: concept.name,
+          keywords: findSubcategory(option.categoryId, option.subcategoryId)?.keywords,
+          onSelect: () => {
+            setOpenGroupId(concept.group);
+            setEditingConceptId(makeSubBudgetId(concept.id, option.subcategoryId));
+          },
+        });
+      }
+    }
+    return out;
+  }, []);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, flexDirection: 'row', alignItems: 'center' }}>
@@ -251,6 +318,8 @@ export default function Presupuesto() {
           onToggle={() => setIngresosOpen((v) => !v)}
         />
 
+        <BudgetSearchBar entries={incomeSearchEntries} placeholder="Buscar un tipo de ingreso…" />
+
         {ingresosOpen && (
           <View style={{ gap: spacing.sm }}>
             <Text style={[typography.caption, { color: colors.textSecondary, paddingHorizontal: 4 }]}>
@@ -268,6 +337,8 @@ export default function Presupuesto() {
         {/* ---------- Distribuye tu dinero: grupos de gasto ---------- */}
         <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.xs }]}>Distribuye tu dinero</Text>
 
+        <BudgetSearchBar entries={expenseSearchEntries} placeholder="Buscar un gasto (ej. Uber, corte de pelo…)" />
+
         {groupSummaries.map(({ group, concepts, amount, percent }) => {
           const isOpen = openGroupId === group;
           return (
@@ -284,6 +355,9 @@ export default function Presupuesto() {
                   <Text style={[typography.headline, { color: colors.textPrimary }]}>{BUDGET_GROUP_LABELS[group]}</Text>
                   <Text style={[typography.caption, { color: colors.textSecondary }]} numberOfLines={1}>
                     {BUDGET_GROUP_DESCRIPTIONS[group]}
+                  </Text>
+                  <Text style={[typography.micro, { color: colors.textTertiary, fontWeight: '400', marginTop: 2 }]} numberOfLines={1}>
+                    {BUDGET_GROUP_EXAMPLES[group]}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', marginRight: spacing.sm }}>
