@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { applyCustomMapping, detectAccountAdjustment, splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
-import { HoldToConfirmButton } from '@/components/HoldToConfirmButton';
 import { ValuMark } from '@/components/ValuMark';
 import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory } from '@/data/categories';
@@ -60,14 +59,40 @@ export default function Capture() {
   // DESPUÉS de terminar de finalizar, nunca un valor leído de antemano
   // (spec: auditoría del botón que fallaba ~4 de cada 5 veces).
   const finalizeResolveRef = useRef<((text: string) => void) | null>(null);
+  // Limpieza del listener global de "soltaste el botón" — se registra en
+  // window (no en el propio botón) para que soltar el dedo cuente aunque
+  // ya se haya vuelto a dibujar la pantalla mientras se grababa (spec:
+  // "mantén presionado para grabar, suelta para guardar").
+  const releaseListenerCleanupRef = useRef<(() => void) | null>(null);
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     return () => {
       listeningRef.current = false;
       stopListeningRef.current?.();
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      releaseListenerCleanupRef.current?.();
     };
   }, []);
+
+  // Iluminación futurista del micrófono MIENTRAS graba/transcribe — deja
+  // clarísimo que el micrófono está activo ahora mismo, sin depender de
+  // que la persona entienda ningún texto (spec: pruebas con usuarios
+  // reales, "que el ícono se ilumine mientras se está grabando").
+  useEffect(() => {
+    if (stage !== 'listening') {
+      glowAnim.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [stage, glowAnim]);
 
   const pushRegistered = (item: ParsedCapture) => {
     registeredRef.current = [...registeredRef.current, item];
@@ -277,8 +302,6 @@ export default function Capture() {
     stopListeningRef.current = stop;
   };
 
-  const handleMicPress = () => beginListening();
-
   // Llegar aquí desde el acceso directo "Grabar por voz" de la pantalla de
   // inicio del celular (manifest.json shortcuts, url "/capture?autostart=1")
   // arranca a escuchar de una vez — un solo toque, sin tener que abrir la
@@ -289,11 +312,11 @@ export default function Capture() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autostart]);
 
-  // Se llama desde el botón de "mantener presionado". Devuelve una promesa
-  // que se resuelve solo cuando el guardado de verdad ocurrió, y truena si
-  // no se logró capturar nada — así el botón muestra éxito/error honestos
-  // en vez de asumir que completar el gesto significa que ya se guardó.
-  const handleStopListening = async () => {
+  // Se llama al SOLTAR el botón del micrófono. Nunca asume que soltar
+  // significa que ya se guardó algo — solo lo sabe cuando el motor de voz
+  // termina de finalizar de verdad (spec: auditoría del botón que fallaba
+  // ~4 de cada 5 veces).
+  const handleMicRelease = async () => {
     if (!listeningRef.current) return;
     const finalText = await new Promise<string>((resolve) => {
       finalizeResolveRef.current = resolve;
@@ -308,15 +331,40 @@ export default function Capture() {
       }, 2500);
     });
     if (!finalText) {
-      // No se detectó nada que guardar — se vuelve a escuchar de inmediato
-      // para poder intentar otra vez sin salir de esta pantalla.
-      beginListening();
-      throw new Error('No se detectó nada que guardar.');
+      setErrorMsg('No se escuchó nada. Mantén presionado el micrófono y vuelve a intentar.');
+      setStage('error');
+      return;
     }
     await runBatchParse(finalText);
   };
 
+  // El "soltar" se detecta en window, no en el propio botón — así cuenta
+  // aunque la pantalla ya haya cambiado a "Te escucho..." mientras el
+  // dedo seguía presionado (mantener presionado para grabar, soltar para
+  // guardar — spec: pruebas con usuarios reales, "todos dejaron
+  // presionado el botón para grabar").
+  const handleMicPressIn = () => {
+    releaseListenerCleanupRef.current?.();
+    if (typeof window !== 'undefined') {
+      const onRelease = () => {
+        releaseListenerCleanupRef.current = null;
+        window.removeEventListener('pointerup', onRelease);
+        window.removeEventListener('pointercancel', onRelease);
+        handleMicRelease();
+      };
+      window.addEventListener('pointerup', onRelease);
+      window.addEventListener('pointercancel', onRelease);
+      releaseListenerCleanupRef.current = () => {
+        window.removeEventListener('pointerup', onRelease);
+        window.removeEventListener('pointercancel', onRelease);
+      };
+    }
+    beginListening();
+  };
+
   const handleCancelListening = () => {
+    releaseListenerCleanupRef.current?.();
+    releaseListenerCleanupRef.current = null;
     listeningRef.current = false;
     if (finalizeResolveRef.current) {
       finalizeResolveRef.current('');
@@ -429,7 +477,7 @@ export default function Capture() {
               <Ionicons name="checkmark" size={32} color="#FFFFFF" />
             </View>
             <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.lg, textAlign: 'center' }]}>
-              {registered.length > 1 ? `Se registraron ${registered.length} movimientos` : 'Registrado'}
+              {registered.length > 1 ? `Se registraron ${registered.length} movimientos` : '¡Listo!'}
             </Text>
             <ScrollView style={{ maxHeight: 260, marginTop: spacing.md, width: '100%' }} contentContainerStyle={{ gap: 10 }}>
               {registered.map((item, idx) => {
@@ -519,8 +567,23 @@ export default function Capture() {
           </View>
         ) : stage === 'listening' ? (
           <View style={styles.center}>
-            <ValuMark size={64} variant="ai" />
+            <Animated.View
+              style={[
+                styles.micGlowRing,
+                {
+                  borderColor: colors.accentTo,
+                  shadowColor: colors.accentTo,
+                  opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
+                  transform: [{ scale: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) }],
+                },
+              ]}
+            >
+              <View style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: 999 }]}>
+                <Ionicons name="mic" size={30} color="#FFFFFF" />
+              </View>
+            </Animated.View>
             <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.lg }]}>Te escucho...</Text>
+            <Text style={[typography.body, { color: colors.accentFrom, fontWeight: '700', marginTop: 2 }]}>Suelta para guardar</Text>
             <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.xs, textAlign: 'center' }]}>
               Puedes decir varias cosas seguidas, por ejemplo: "65 pesos de café y 200 de uber"
             </Text>
@@ -529,18 +592,9 @@ export default function Capture() {
                 {liveTranscript || '…'}
               </Text>
             </ScrollView>
-            <View style={{ width: '100%', maxWidth: 340, marginTop: spacing.lg, gap: spacing.md }}>
-              <HoldToConfirmButton
-                onConfirm={handleStopListening}
-                label="Mantén presionado para guardar"
-                errorLabel="No se escuchó nada. Vuelve a hablar y dale otra vez."
-                icon="checkmark"
-                accessibilityLabel="Mantener presionado para guardar movimiento"
-              />
-              <Pressable onPress={handleCancelListening} style={{ alignSelf: 'center', paddingVertical: 4 }}>
-                <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancelar</Text>
-              </Pressable>
-            </View>
+            <Pressable onPress={handleCancelListening} style={{ alignSelf: 'center', paddingVertical: spacing.md }}>
+              <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancelar</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.center}>
@@ -585,12 +639,18 @@ export default function Capture() {
                   </View>
                 )}
                 <Pressable
-                  accessibilityLabel="Grabar por voz"
-                  onPress={handleMicPress}
+                  accessibilityLabel="Mantener presionado para grabar"
+                  onPressIn={handleMicPressIn}
                   style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, marginTop: spacing.lg }]}
                 >
                   <Ionicons name="mic" size={30} color="#FFFFFF" />
                 </Pressable>
+                <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '700', marginTop: spacing.sm, textAlign: 'center' }]}>
+                  Mantén presionado el botón para registrar
+                </Text>
+                <Text style={[typography.micro, { color: colors.textTertiary, fontWeight: '400', marginTop: 4, textAlign: 'center', maxWidth: 280 }]}>
+                  Si aparece el ícono verde "¡Listo!" se guardó correctamente. Si no, inténtalo de nuevo.
+                </Text>
                 <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.lg }]}>
                   o escribe uno o varios movimientos
                 </Text>
@@ -642,6 +702,18 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, paddingHorizontal: 12 },
   chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1 },
   micBtn: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  micGlowRing: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 0.9,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
   textInput: { width: '100%', maxWidth: 320, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 12, fontSize: 15 },
   liveTextBox: { width: '100%', maxWidth: 340, maxHeight: 140, marginTop: 20 },
   accountChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },

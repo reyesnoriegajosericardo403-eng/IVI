@@ -27,7 +27,7 @@ import {
 } from '@/data/budgetConcepts';
 import { findSubcategory } from '@/data/categories';
 import type { AccountType, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
-import { ONBOARDING_SURVEY } from '@/data/onboardingSurvey';
+import { getOnboardingSurvey, type SurveyTone } from '@/data/onboardingSurvey';
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { submitSurveyResponse } from '@/services/supabase/surveyRepository';
 import { selectActiveAccounts, selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
@@ -40,6 +40,9 @@ import { formatCurrency } from '@/utils/format';
 const CURRENCIES: Currency[] = ['MXN', 'USD'];
 const GROUPS: BudgetGroupId[] = ['necesidades', 'deseos', 'ahorro'];
 const BANK_ACCOUNT_TYPES: AccountType[] = ['bank', 'savings', 'credit_card'];
+// 0 a 100 — decide qué tono de encuesta/anuncio ve la persona (0-22
+// casual, 23-100 formal, spec 2026-09-02).
+const AGE_OPTIONS: number[] = Array.from({ length: 101 }, (_, i) => i);
 
 // Copia específica del onboarding — más explicativa que la de la
 // pantalla normal de Presupuesto, porque aquí es la primera vez que
@@ -74,26 +77,36 @@ export default function Onboarding() {
 
   const [step, setStep] = useState<Step>('profile');
 
-  // ---------- Paso 1: perfil (nombre, moneda) ----------
+  // ---------- Paso 1: perfil (apodo, moneda, sexo, edad) ----------
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<Currency>('MXN');
+  const [sex, setSex] = useState<'hombre' | 'mujer' | 'prefiero_no_decirlo' | ''>('');
+  const [age, setAge] = useState<number | null>(null);
+  const [ageDropdownOpen, setAgeDropdownOpen] = useState(false);
+
+  // 0-22 años ve el tono relajado original; 23-100 (o si no eligió edad,
+  // por seguridad) ve un tono formal — nada de "chingona", solo "mejorar"
+  // (spec 2026-09-02).
+  const surveyTone: SurveyTone = age !== null && age <= 22 ? 'casual' : 'formal';
+  const surveyQuestions = getOnboardingSurvey(surveyTone);
 
   const handleProfileNext = () => {
     // Se guarda ya (sin marcar onboardingComplete todavía) para que la
     // moneda elegida se refleje de una vez en los pasos que siguen.
     updateProfileDraft({ name: name.trim() || 'Tú', primaryCurrency: currency });
+    setSurveyAnswers({ age: age !== null ? String(age) : '', sex });
     setStep('survey');
   };
 
-  // ---------- Paso 2: encuesta de bienvenida (6 preguntas) ----------
+  // ---------- Paso 2: encuesta de bienvenida (5 preguntas) ----------
   const [surveyIndex, setSurveyIndex] = useState(-1); // -1 = pantalla de intro
   const [surveyAnswers, setSurveyAnswers] = useState<Record<string, string>>({});
 
   const handleSurveyAnswer = (value: string) => {
-    const question = ONBOARDING_SURVEY[surveyIndex];
+    const question = surveyQuestions[surveyIndex];
     const next = { ...surveyAnswers, [question.id]: value };
     setSurveyAnswers(next);
-    if (surveyIndex < ONBOARDING_SURVEY.length - 1) {
+    if (surveyIndex < surveyQuestions.length - 1) {
       setSurveyIndex((i) => i + 1);
     } else {
       if (userId) submitSurveyResponse(userId, next);
@@ -282,7 +295,7 @@ export default function Onboarding() {
           </View>
 
           <View style={{ gap: spacing.sm }}>
-            <Text style={[typography.headline, { color: colors.textPrimary }]}>¿Cómo te llamas?</Text>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>¿Cómo te llaman tus amigos?</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -319,6 +332,67 @@ export default function Onboarding() {
             </View>
           </View>
 
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>Sexo</Text>
+            <View style={[styles.row, { flexWrap: 'wrap' }]}>
+              {(
+                [
+                  { value: 'hombre', label: 'Hombre' },
+                  { value: 'mujer', label: 'Mujer' },
+                  { value: 'prefiero_no_decirlo', label: 'Prefiero no decirlo' },
+                ] as const
+              ).map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => setSex(opt.value)}
+                  style={[
+                    styles.pill,
+                    {
+                      borderRadius: radius.pill,
+                      borderColor: sex === opt.value ? colors.accentFrom : colors.surfaceBorder,
+                      backgroundColor: sex === opt.value ? colors.accentSoft : colors.surfaceSolid,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: sex === opt.value ? colors.accentFrom : colors.textSecondary, fontWeight: '600' }}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>Edad</Text>
+            <Pressable
+              accessibilityLabel="Elegir edad"
+              onPress={() => setAgeDropdownOpen((v) => !v)}
+              style={[styles.dropdownHeader, { borderColor: colors.surfaceBorder, borderRadius: radius.md, backgroundColor: colors.surfaceSolid }]}
+            >
+              <Text style={[typography.body, { color: age !== null ? colors.textPrimary : colors.textTertiary, flex: 1 }]}>
+                {age !== null ? `${age} años` : 'Elegir edad'}
+              </Text>
+              <Ionicons name={ageDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textTertiary} />
+            </Pressable>
+            {ageDropdownOpen && (
+              <ScrollView style={[styles.dropdownList, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]} nestedScrollEnabled>
+                {AGE_OPTIONS.map((value) => (
+                  <Pressable
+                    key={value}
+                    accessibilityLabel={`Edad ${value}`}
+                    onPress={() => {
+                      setAge(value);
+                      setAgeDropdownOpen(false);
+                    }}
+                    style={[styles.dropdownItem, { borderBottomColor: colors.surfaceBorder }]}
+                  >
+                    <Text style={[typography.body, { color: colors.textPrimary }]}>{value} años</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+
           <Pressable onPress={handleProfileNext} style={[styles.cta, { borderRadius: radius.pill, backgroundColor: colors.accentFrom }]}>
             <Text style={[typography.headline, { color: '#FFFFFF' }]}>Listo</Text>
           </Pressable>
@@ -346,13 +420,17 @@ export default function Onboarding() {
             <Text style={{ textAlign: 'center' }}>
               <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700', letterSpacing: 1 }]}>ANTES{'  '}</Text>
               {'\n'}
-              <Text style={{ color: colors.accentFrom, fontSize: 40, fontWeight: '800', lineHeight: 46 }}>6 preguntitas</Text>
+              <Text style={{ color: colors.accentFrom, fontSize: 40, fontWeight: '800', lineHeight: 46 }}>
+                {surveyTone === 'casual' ? '5 preguntitas' : 'Unas preguntas rápidas'}
+              </Text>
               {'\n'}
               <Text style={[typography.title, { color: colors.textPrimary, fontWeight: '600' }]}>
-                para hacer más chingona tu app{' '}
+                {surveyTone === 'casual' ? 'para hacer más chingona tu app ' : 'para mejorar tu experiencia '}
               </Text>
               <Text style={[typography.title, { color: colors.textSecondary, fontWeight: '400' }]}>
-                y que tengas un mejor control de tus finanzas
+                {surveyTone === 'casual'
+                  ? 'y que tengas un mejor control de tus finanzas'
+                  : 'y ayudarte a tener un mejor control de tus finanzas'}
               </Text>
             </Text>
             <Pressable
@@ -367,7 +445,7 @@ export default function Onboarding() {
       );
     }
 
-    const question = ONBOARDING_SURVEY[surveyIndex];
+    const question = surveyQuestions[surveyIndex];
     return (
       <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]}>
         <View style={{ padding: spacing.lg, gap: spacing.md }}>
@@ -376,10 +454,10 @@ export default function Onboarding() {
               <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
             </Pressable>
             <Text style={[typography.caption, { color: colors.textTertiary }]}>
-              {surveyIndex + 1} de {ONBOARDING_SURVEY.length}
+              {surveyIndex + 1} de {surveyQuestions.length}
             </Text>
           </View>
-          <ProgressBar percent={((surveyIndex + 1) / ONBOARDING_SURVEY.length) * 100} height={10} />
+          <ProgressBar percent={((surveyIndex + 1) / surveyQuestions.length) * 100} height={10} />
         </View>
         <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, gap: spacing.lg, flexGrow: 1 }}>
           <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.lg }]}>{question.prompt}</Text>
@@ -409,7 +487,7 @@ export default function Onboarding() {
             accessibilityLabel="Regresar"
             onPress={() => {
               setStep('survey');
-              setSurveyIndex(ONBOARDING_SURVEY.length - 1);
+              setSurveyIndex(surveyQuestions.length - 1);
             }}
             style={{ marginRight: spacing.md }}
           >
@@ -767,6 +845,9 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginTop: 24 },
   input: { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16 },
   row: { flexDirection: 'row', gap: 10 },
+  dropdownHeader: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14 },
+  dropdownList: { borderWidth: 1, maxHeight: 220 },
+  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   pill: { paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1 },
   cta: { paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   surveyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
