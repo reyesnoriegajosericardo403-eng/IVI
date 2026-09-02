@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
+import { applyCustomMapping, splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { HoldToConfirmButton } from '@/components/HoldToConfirmButton';
 import { ValuMark } from '@/components/ValuMark';
@@ -27,6 +27,8 @@ export default function Capture() {
   const addTransaction = useAppStore((s) => s.addTransaction);
   const rawAccounts = useAppStore((s) => s.accounts);
   const rawBudgets = useAppStore((s) => s.budgets);
+  const customCategoryMappings = useAppStore((s) => s.customCategoryMappings);
+  const learnCategoryMapping = useAppStore((s) => s.learnCategoryMapping);
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
 
@@ -147,7 +149,11 @@ export default function Capture() {
     return new Promise((resolve) => {
       setTimeout(async () => {
         const segments = splitCaptureSegments(raw);
-        const results = await Promise.all(segments.map((seg) => providers.ai.parseCaptureText(seg)));
+        const rawResults = await Promise.all(segments.map((seg) => providers.ai.parseCaptureText(seg)));
+        // Lo que la persona ya corrigió antes gana sobre cualquier
+        // adivinanza del catálogo o del proveedor de IA conectado (spec:
+        // catálogo v7, "mapeo personal").
+        const results = rawResults.map((r) => applyCustomMapping(r, customCategoryMappings));
         processBatch(results);
         resolve();
       }, 380);
@@ -319,10 +325,15 @@ export default function Capture() {
 
   const handleCategoryPick = (categoryId: string) => {
     if (!parsed) return;
+    const subcategoryId = fallbackSubcategoryId(categoryId);
+    // VALU no supo clasificar esto sola — la elección de la persona se
+    // recuerda para la próxima vez que diga algo parecido (spec: catálogo
+    // v7, "mapeo personal").
+    learnCategoryMapping(parsed.rawText, categoryId, subcategoryId);
     const updated: ParsedCapture = {
       ...parsed,
       categoryId,
-      subcategoryId: fallbackSubcategoryId(categoryId),
+      subcategoryId,
       missing: parsed.missing.filter((m) => m !== 'category'),
     };
     const saved = saveTransaction(updated, accountOverride);

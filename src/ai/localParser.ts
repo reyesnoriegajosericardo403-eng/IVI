@@ -359,6 +359,62 @@ function extractCategory(text: string): { categoryId: string | null; subcategory
   return { categoryId: null, subcategoryId: null };
 }
 
+export interface CustomCategoryMapping {
+  categoryId: string;
+  subcategoryId: string;
+  updatedAt: string; // ISO — la corrección más reciente gana si dos se pisan
+}
+
+// Conectores/verbos comunes que NUNCA deben aprenderse como pista de
+// categoría, aunque sobrevivan al filtro de longitud — sin esto, "tengo"
+// o "compré" terminarían "enseñando" una categoría falsa la próxima vez
+// que aparezcan en cualquier frase (catálogo v7, memoria de mapeo personal).
+const LEARNING_STOPWORDS = new Set([
+  'para', 'esta', 'este', 'estas', 'estos', 'esas', 'esos', 'pero',
+  'como', 'cuando', 'donde', 'porque', 'tambien', 'ademas', 'entonces',
+  'hoy', 'ayer', 'manana', 'siempre', 'nunca', 'ahora', 'luego', 'otra', 'otro',
+  'compre', 'compré', 'pague', 'pagué', 'gaste', 'gasté', 'hice', 'fui',
+  'tengo', 'necesito', 'quiero', 'creo',
+]);
+
+const MIN_LEARNABLE_WORD_LENGTH = 4;
+
+// Palabras "con contenido" de una frase — quita números, moneda y
+// conectores comunes, así solo queda lo que de verdad describe DE QUÉ es
+// el gasto. Se usa tanto para aprender (guardar la corrección) como para
+// aplicar lo ya aprendido (buscar esas mismas palabras la próxima vez).
+export function extractLearnableKeywords(text: string): string[] {
+  const tokens = normalize(text).split(' ').filter(Boolean);
+  const out: string[] = [];
+  for (const tok of tokens) {
+    if (tok.length < MIN_LEARNABLE_WORD_LENGTH) continue;
+    if (NUMBER_WORD_TOKENS.has(tok) || CURRENCY_WORDS.has(tok) || LEARNING_STOPWORDS.has(tok)) continue;
+    if (!out.includes(tok)) out.push(tok);
+  }
+  return out;
+}
+
+// Aplica lo que la persona ya enseñó antes (corrigió una categoría que
+// VALU no supo adivinar sola). Tiene prioridad sobre el catálogo y sobre
+// el proveedor de IA conectado — es SU manera de nombrar las cosas, más
+// específica que cualquier palabra clave genérica (catálogo v7, pipeline
+// paso 3: "mapeo personal", antes de volver a preguntar la categoría).
+export function applyCustomMapping(result: ParsedCapture, mappings: Record<string, CustomCategoryMapping>): ParsedCapture {
+  if (result.type !== 'expense' || Object.keys(mappings).length === 0) return result;
+  for (const tok of extractLearnableKeywords(result.rawText)) {
+    const mapping = mappings[tok];
+    if (mapping) {
+      return {
+        ...result,
+        categoryId: mapping.categoryId,
+        subcategoryId: mapping.subcategoryId,
+        missing: result.missing.filter((m) => m !== 'category'),
+      };
+    }
+  }
+  return result;
+}
+
 // Divide una sola grabación/nota en varios movimientos cuando el usuario
 // dijo/escribió más de uno de golpe (spec: "necesito anotar 3 cosas a la
 // vez"). Heurística simple por conectores comunes en español — cada

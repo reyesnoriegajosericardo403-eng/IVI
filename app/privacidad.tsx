@@ -17,6 +17,9 @@ export default function Privacidad() {
   const { colors, typography, spacing, radius } = useTheme();
   const { userId } = useAuthSession();
   const resetAll = useAppStore((s) => s.resetAll);
+  const customCategoryMappings = useAppStore((s) => s.customCategoryMappings);
+  const clearCustomCategoryMappings = useAppStore((s) => s.clearCustomCategoryMappings);
+  const learnedCount = Object.keys(customCategoryMappings).length;
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -75,6 +78,25 @@ export default function Privacidad() {
             FIBRAs, tasa de CETES) se consultan de proveedores públicos únicamente para mostrarte ese precio — no se
             les envía tu información personal ni financiera.
           </Text>
+        </GlassCard>
+
+        <GlassCard style={{ gap: spacing.sm }}>
+          <Text style={[typography.headline, { color: colors.textPrimary }]}>Lo que VALU aprendió de ti</Text>
+          <Text style={[typography.body, { color: colors.textSecondary }]}>
+            {learnedCount > 0
+              ? `Cuando corriges una categoría que VALU no supo adivinar sola, se acuerda de esa palabra para la próxima vez — sin mandarla a ningún proveedor de IA. Hasta ahora ha aprendido ${learnedCount} ${learnedCount === 1 ? 'palabra' : 'palabras'}.`
+              : 'Cuando corriges una categoría que VALU no supo adivinar sola, se acuerda de esa palabra para la próxima vez — sin mandarla a ningún proveedor de IA. Todavía no has corregido ninguna, así que no hay nada guardado aquí.'}
+            {' '}Esto vive solo en este dispositivo, no se sincroniza a la nube todavía.
+          </Text>
+          {learnedCount > 0 && (
+            <Pressable
+              onPress={clearCustomCategoryMappings}
+              style={[styles.actionBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}
+            >
+              <Ionicons name="refresh-outline" size={18} color={colors.textSecondary} />
+              <Text style={{ color: colors.textSecondary, fontWeight: '700', marginLeft: 8 }}>Olvidar todo lo aprendido</Text>
+            </Pressable>
+          )}
         </GlassCard>
 
         <GlassCard style={{ gap: spacing.sm }}>

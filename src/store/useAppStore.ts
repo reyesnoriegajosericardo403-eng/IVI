@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { extractLearnableKeywords, type CustomCategoryMapping } from '@/ai/localParser';
 import type {
   Account,
   AuditLogEntry,
@@ -85,6 +86,15 @@ interface AppState {
 
   budgetPeriods: { week: BudgetPeriodState; month: BudgetPeriodState };
   ackBudgetPeriod: (scope: 'week' | 'month', periodKey: string, carryOver: number) => void;
+
+  // "Memoria" de correcciones de categoría — cuando la persona le dice a
+  // VALU cuál es la categoría correcta de algo que no supo clasificar
+  // solo, se recuerda esa palabra para la próxima vez, sin depender de
+  // ningún proveedor de IA (spec: catálogo v7, "mapeo personal"). Solo
+  // vive en este dispositivo — no se sincroniza a Supabase todavía.
+  customCategoryMappings: Record<string, CustomCategoryMapping>;
+  learnCategoryMapping: (rawText: string, categoryId: string, subcategoryId: string) => void;
+  clearCustomCategoryMappings: () => void;
 
   // Cotizaciones en vivo — deliberadamente FUERA de lo que se persiste
   // (ver partialize abajo): es un valor de "ahora mismo", no un dato
@@ -203,11 +213,24 @@ export const useAppStore = create<AppState>()(
         lastQuotesFetchedAt: null,
         cetesRates: null,
         budgetPeriods: DEFAULT_BUDGET_PERIODS,
+        customCategoryMappings: {},
 
         ackBudgetPeriod: (scope, periodKey, carryOver) =>
           set((s) => ({
             budgetPeriods: { ...s.budgetPeriods, [scope]: { lastPeriodKey: periodKey, carryOver } },
           })),
+
+        learnCategoryMapping: (rawText, categoryId, subcategoryId) => {
+          const keywords = extractLearnableKeywords(rawText);
+          if (keywords.length === 0) return;
+          const updatedAt = new Date().toISOString();
+          set((s) => {
+            const next = { ...s.customCategoryMappings };
+            for (const kw of keywords) next[kw] = { categoryId, subcategoryId, updatedAt };
+            return { customCategoryMappings: next };
+          });
+        },
+        clearCustomCategoryMappings: () => set({ customCategoryMappings: {} }),
 
         setLiveQuotes: (quotes) =>
           set((s) => {
@@ -444,6 +467,7 @@ export const useAppStore = create<AppState>()(
             pendingSync: [],
             lastSyncedAt: null,
             budgetPeriods: DEFAULT_BUDGET_PERIODS,
+            customCategoryMappings: {},
           }),
       };
     },
