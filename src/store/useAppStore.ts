@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { extractLearnableKeywords, type CustomCategoryMapping } from '@/ai/localParser';
+import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
 import type {
   Account,
   AuditLogEntry,
@@ -129,6 +130,14 @@ interface AppState {
   addAccount: (draft: Draft<Account>) => void;
   updateAccount: (id: string, patch: Partial<Draft<Account>>) => void;
   deleteAccount: (id: string) => void;
+  // Garantiza que siempre exista una cuenta de efectivo para elegir al
+  // registrar (spec: "en la vida real también te pueden pagar en
+  // efectivo... también hace gastos... en efectivo") — el paso de
+  // Cuentas del onboarding solo la crea si la persona anotó un saldo, así
+  // que quien lo dejó en blanco se quedaba sin poder elegir efectivo
+  // nunca. Se crea en $0 (nunca un saldo inventado) y no hace nada si ya
+  // existe una cuenta de efectivo activa.
+  ensureCashAccount: () => void;
 
   setBudget: (draft: Draft<Budget>) => void;
   deleteBudget: (id: string) => void;
@@ -307,6 +316,19 @@ export const useAppStore = create<AppState>()(
 
         addAccount: (draft) => {
           const account = withNewMeta(draft);
+          set((s) => ({ accounts: [...s.accounts, account] }));
+          enqueue('accounts', account.id, 'upsert', account as unknown as Record<string, unknown>, account.isDemo);
+        },
+        ensureCashAccount: () => {
+          const hasCash = get().accounts.some((a) => a.type === 'cash' && !a.deletedAt);
+          if (hasCash) return;
+          const account = withNewMeta({
+            name: 'Efectivo',
+            type: 'cash',
+            currency: get().profile.primaryCurrency,
+            balance: 0,
+            color: CASH_ACCOUNT_COLOR,
+          } as Draft<Account>);
           set((s) => ({ accounts: [...s.accounts, account] }));
           enqueue('accounts', account.id, 'upsert', account as unknown as Record<string, unknown>, account.isDemo);
         },

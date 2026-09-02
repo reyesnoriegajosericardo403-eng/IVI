@@ -20,10 +20,23 @@ type Stage = 'idle' | 'listening' | 'processing' | 'needsAmount' | 'needsCategor
 
 const QUICK_CATEGORIES = ['food', 'transport', 'entertainment', 'health', 'miscellaneous', 'lifestyle'];
 
+// Evita que el navegador seleccione texto (y muestre el menú de
+// "copiar/pegar") mientras se mantiene presionado el micrófono — eso era
+// lo que interrumpía la grabación cuando el dedo quedaba cerca de un
+// texto (mismo bug ya resuelto antes en HoldToConfirmButton: "se
+// selecciona el texto... y eso cancela el registro"). Se aplica a toda la
+// pantalla porque no hay ningún texto aquí que alguien necesite copiar.
+const noSelectStyle = {
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  WebkitTouchCallout: 'none',
+} as any;
+
 export default function Capture() {
   const { colors, typography, spacing, radius } = useTheme();
   const { autostart } = useLocalSearchParams<{ autostart?: string }>();
   const addTransaction = useAppStore((s) => s.addTransaction);
+  const ensureCashAccount = useAppStore((s) => s.ensureCashAccount);
   const rawAccounts = useAppStore((s) => s.accounts);
   const rawBudgets = useAppStore((s) => s.budgets);
   const customCategoryMappings = useAppStore((s) => s.customCategoryMappings);
@@ -73,6 +86,15 @@ export default function Capture() {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
       releaseListenerCleanupRef.current?.();
     };
+  }, []);
+
+  // El efectivo siempre debe poder elegirse — no solo cuando alguien
+  // anotó un saldo inicial en el onboarding (spec: "en la vida real
+  // también te pueden pagar en efectivo... también hace gastos... en
+  // efectivo"). No hace nada si ya existe.
+  useEffect(() => {
+    ensureCashAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Iluminación futurista del micrófono MIENTRAS graba/transcribe — deja
@@ -452,8 +474,8 @@ export default function Capture() {
                 ]}
               >
                 <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
-                <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={13} color={selected ? colors.accentFrom : colors.textSecondary} />
-                <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 13, fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
+                <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={20} color={selected ? colors.accentFrom : colors.textSecondary} />
+                <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 16, fontWeight: '700', marginLeft: 8 }} numberOfLines={1}>
                   {a.name}
                 </Text>
               </Pressable>
@@ -466,7 +488,7 @@ export default function Capture() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[styles.container, { padding: spacing.xl }]}>
+      <View style={[styles.container, { padding: spacing.xl }, noSelectStyle]}>
         <Pressable onPress={() => router.back()} style={styles.closeBtn}>
           <Ionicons name="chevron-down" size={26} color={colors.textSecondary} />
         </Pressable>
@@ -611,10 +633,10 @@ export default function Capture() {
               <>
                 {accounts.length > 0 && (
                   <View style={{ width: '100%', maxWidth: 340, marginTop: spacing.xl }}>
-                    <Text style={[typography.caption, { color: colors.textTertiary, marginBottom: 6, textAlign: 'center' }]}>
+                    <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700', marginBottom: 10, textAlign: 'center' }]}>
                       ¿DE QUÉ CUENTA VA A SALIR?
                     </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, justifyContent: 'center' }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, justifyContent: 'center' }}>
                       {accounts.map((a) => {
                         const selected = preSelectedAccountId === a.id;
                         return (
@@ -628,8 +650,8 @@ export default function Capture() {
                             ]}
                           >
                             <View style={[styles.accountDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
-                            <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={13} color={selected ? colors.accentFrom : colors.textSecondary} />
-                            <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 13, fontWeight: '600', marginLeft: 4 }} numberOfLines={1}>
+                            <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={20} color={selected ? colors.accentFrom : colors.textSecondary} />
+                            <Text style={{ color: selected ? colors.accentFrom : colors.textPrimary, fontSize: 16, fontWeight: '700', marginLeft: 8 }} numberOfLines={1}>
                               {a.name}
                             </Text>
                           </Pressable>
@@ -641,7 +663,7 @@ export default function Capture() {
                 <Pressable
                   accessibilityLabel="Mantener presionado para grabar"
                   onPressIn={handleMicPressIn}
-                  style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, marginTop: spacing.lg }]}
+                  style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, marginTop: spacing.xl }]}
                 >
                   <Ionicons name="mic" size={30} color="#FFFFFF" />
                 </Pressable>
@@ -716,6 +738,10 @@ const styles = StyleSheet.create({
   },
   textInput: { width: '100%', maxWidth: 320, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12, marginTop: 12, fontSize: 15 },
   liveTextBox: { width: '100%', maxWidth: 340, maxHeight: 140, marginTop: 20 },
-  accountChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },
-  accountDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  // Más grandes que antes a propósito: son lo primero que se debe ver
+  // claramente (el banco), el micrófono queda como acción secundaria
+  // debajo (spec: "que la vista vea primero el banco y por debajo el
+  // micrófono").
+  accountChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16, borderWidth: 1.5 },
+  accountDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
 });

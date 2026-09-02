@@ -41,11 +41,20 @@ interface SearchEntry {
 export default function NewTransaction() {
   const { colors, typography, spacing, radius } = useTheme();
   const addTransaction = useAppStore((s) => s.addTransaction);
+  const ensureCashAccount = useAppStore((s) => s.ensureCashAccount);
   const primaryCurrency = useAppStore((s) => s.profile.primaryCurrency);
   const rawAccounts = useAppStore((s) => s.accounts);
   const rawBudgets = useAppStore((s) => s.budgets);
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
+
+  // El efectivo siempre debe poder elegirse aquí también, no solo en la
+  // captura por voz (spec: misma razón — no todos anotaron un saldo
+  // inicial de efectivo en el onboarding).
+  useEffect(() => {
+    ensureCashAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
