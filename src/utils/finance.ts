@@ -4,12 +4,17 @@ import { getUsdMxnRate } from '@/data/exchangeRate';
 import type {
   Account,
   Budget,
+  BudgetAssignment,
+  BudgetTemplate,
   Currency,
   InvestmentPosition,
   Liability,
   NetWorthSnapshot,
+  PeriodBudgetOverride,
+  TemplateBudgetLine,
   Transaction,
 } from '@/data/types';
+import { comparePeriodKeys, parsePeriodKey } from '@/utils/budgetPeriods';
 import type { MarketQuote } from '@/providers/types';
 
 // Todas las funciones aquí son puras: reciben datos del store y devuelven
@@ -678,4 +683,186 @@ export function computeFinancialHealth(params: {
   else if (score >= 40) label = 'Salud financiera moderada';
 
   return { score, label, factors, suggestions, baseScore, breakdown };
+}
+
+// ============================================================
+// Presupuestos con nombre aplicados a periodos del calendario
+// ============================================================
+
+function inDateRange(iso: string, start: Date, end: Date): boolean {
+  const t = new Date(iso).getTime();
+  return t >= start.getTime() && t <= end.getTime();
+}
+
+// Versiones por RANGO de las sumas por concepto — las de arriba
+// (spendByConcept y compañía) siguen intactas porque el Dashboard y
+// Movimientos las usan con "ahora"; estas permiten mirar cualquier
+// periodo pasado o futuro (spec: "revisar presupuestos pasados así como
+// los resultados de esos presupuestos").
+export function spendByConceptInRange(transactions: Transaction[], start: Date, end: Date): Record<string, number> {
+  const expenses = transactions.filter((t) => SPEND_TYPES.includes(t.type) && countsForBudget(t) && inDateRange(t.date, start, end));
+  const result: Record<string, number> = {};
+  for (const concept of BUDGET_CONCEPTS) {
+    let total = 0;
+    for (const t of expenses) {
+      const matched = concept.matches.some((m) => m.categoryId === t.categoryId && (!m.subcategoryIds || m.subcategoryIds.includes(t.subcategoryId)));
+      if (matched) total += t.amount;
+    }
+    result[concept.id] = total;
+  }
+  return result;
+}
+
+export function spendBySubBudgetInRange(transactions: Transaction[], start: Date, end: Date): Record<string, number> {
+  const expenses = transactions.filter((t) => SPEND_TYPES.includes(t.type) && countsForBudget(t) && inDateRange(t.date, start, end));
+  const result: Record<string, number> = {};
+  for (const concept of BUDGET_CONCEPTS) {
+    for (const t of expenses) {
+      const matched = concept.matches.some((m) => m.categoryId === t.categoryId && (!m.subcategoryIds || m.subcategoryIds.includes(t.subcategoryId)));
+      if (!matched) continue;
+      const key = makeSubBudgetId(concept.id, t.subcategoryId);
+      result[key] = (result[key] ?? 0) + t.amount;
+    }
+  }
+  return result;
+}
+
+export function incomeByConceptInRange(transactions: Transaction[], start: Date, end: Date): Record<string, number> {
+  const incomeTx = transactions.filter((t) => t.type === 'income' && countsForBudget(t) && inDateRange(t.date, start, end));
+  const result: Record<string, number> = {};
+  for (const concept of INCOME_CONCEPTS) {
+    let total = 0;
+    for (const t of incomeTx) {
+      const matched = concept.matches.some((m) => m.categoryId === t.categoryId && (!m.subcategoryIds || m.subcategoryIds.includes(t.subcategoryId)));
+      if (matched) total += t.amount;
+    }
+    result[concept.id] = total;
+  }
+  return result;
+}
+
+// La plantilla que manda en un periodo: la que se asignó explícitamente
+// en el calendario o, si ese periodo no tiene ninguna, la plantilla por
+// defecto ("Mi presupuesto") — así nadie se queda sin presupuesto por no
+// haber tocado el calendario nunca.
+export function resolveTemplateForPeriod(
+  periodKey: string,
+  templates: BudgetTemplate[],
+  assignments: BudgetAssignment[]
+): { template: BudgetTemplate | undefined; assignment: BudgetAssignment | undefined } {
+  const assignment = assignments.find((a) => a.periodKey === periodKey);
+  if (assignment) {
+    const template = templates.find((t) => t.id === assignment.templateId);
+    if (template) return { template, assignment };
+  }
+  return { template: templates.find((t) => t.isDefault), assignment: undefined };
+}
+
+// Combina un renglón de plantilla con su ajuste de ese periodo (si lo
+// hay). Devuelve null si el ajuste dice que ese renglón no aplica aquí.
+function mergeLineWithOverride(line: TemplateBudgetLine, override: PeriodBudgetOverride | undefined): TemplateBudgetLine | null {
+  if (!override) return line;
+  if (override.monthlyAmount === null) return null;
+  return {
+    ...line,
+    monthlyAmount: override.monthlyAmount,
+    periodicity: override.periodicity ?? line.periodicity,
+    frequency: override.frequency ?? line.frequency,
+    customDaysPerWeek: override.customDaysPerWeek ?? line.customDaysPerWeek,
+    baseAmount: override.baseAmount ?? line.baseAmount,
+    dayOfMonth: override.dayOfMonth ?? line.dayOfMonth,
+    dayOfWeek: override.dayOfWeek ?? line.dayOfWeek,
+    oneTimeDate: override.oneTimeDate ?? line.oneTimeDate,
+    targetAccountId: override.targetAccountId ?? line.targetAccountId,
+    includedAccountIds: override.includedAccountIds ?? line.includedAccountIds,
+  };
+}
+
+export interface ResolvedPeriodBudget {
+  template: BudgetTemplate | undefined;
+  assignment: BudgetAssignment | undefined;
+  lines: BudgetLine[];
+  // Gasto/ingreso real del periodo por concepto y por ficha — mismas
+  // llaves que usan ConceptRow/ConceptSubBudgets para los conceptos que
+  // todavía no tienen monto definido.
+  conceptSpend: Record<string, number>;
+  subcategorySpend: Record<string, number>;
+  incomeConceptActual: Record<string, number>;
+}
+
+// Arma las líneas de presupuesto de UN periodo del calendario, con la
+// plantilla que le toque y los ajustes propios de ese periodo ya
+// aplicados. Sustituye a buildBudgetLines en la pantalla de Presupuesto;
+// buildBudgetLines se queda para el onboarding y el Dashboard, que
+// siguen mirando "ahora".
+export function resolveBudgetForPeriod(input: {
+  periodKey: string;
+  templates: BudgetTemplate[];
+  templateLines: TemplateBudgetLine[];
+  assignments: BudgetAssignment[];
+  overrides: PeriodBudgetOverride[];
+  transactions: Transaction[];
+  thresholds: { attention: number; warning: number; exceeded: number };
+}): ResolvedPeriodBudget {
+  const { periodKey, templates, templateLines, assignments, overrides, transactions, thresholds } = input;
+  const { template, assignment } = resolveTemplateForPeriod(periodKey, templates, assignments);
+  const parsed = parsePeriodKey(periodKey);
+  const start = parsed?.start ?? new Date();
+  const end = parsed?.end ?? new Date();
+
+  const conceptSpend = spendByConceptInRange(transactions, start, end);
+  const subcategorySpend = spendBySubBudgetInRange(transactions, start, end);
+  const incomeConceptActual = incomeByConceptInRange(transactions, start, end);
+
+  const ownLines = template ? templateLines.filter((l) => l.templateId === template.id) : [];
+  const overridesHere = assignment ? overrides.filter((o) => o.assignmentId === assignment.id) : [];
+
+  const lines: BudgetLine[] = [];
+  for (const raw of ownLines) {
+    const merged = mergeLineWithOverride(raw, overridesHere.find((o) => o.categoryId === raw.categoryId));
+    if (!merged) continue;
+    const subBudget = parseSubBudgetId(merged.categoryId);
+    const expenseConcept = subBudget ? findBudgetConcept(subBudget.conceptId) : findBudgetConcept(merged.categoryId);
+    const incomeConcept = subBudget ? undefined : findIncomeConcept(merged.categoryId);
+    const actual = subBudget
+      ? subcategorySpend[merged.categoryId] ?? 0
+      : incomeConcept
+        ? incomeConceptActual[merged.categoryId] ?? 0
+        : conceptSpend[merged.categoryId] ?? 0;
+    const percentUsed = merged.monthlyAmount > 0 ? Math.round((actual / merged.monthlyAmount) * 100) : 0;
+    const categoryName = subBudget
+      ? findSubcategoryAnyCategory(subBudget.subcategoryId)?.subcategory.name ?? merged.categoryId
+      : expenseConcept?.name ?? incomeConcept?.name ?? merged.categoryId;
+    lines.push({
+      budgetId: merged.id,
+      categoryId: merged.categoryId,
+      categoryName,
+      budgeted: merged.monthlyAmount,
+      actual,
+      percentUsed,
+      status: computeBudgetStatus(percentUsed, thresholds),
+      dayOfMonth: merged.dayOfMonth,
+      dayOfWeek: merged.dayOfWeek,
+      oneTimeDate: merged.oneTimeDate,
+      targetAccountId: incomeConcept ? merged.targetAccountId : undefined,
+      includedAccountIds: expenseConcept ? merged.includedAccountIds : undefined,
+    });
+  }
+
+  return { template, assignment, lines, conceptSpend, subcategorySpend, incomeConceptActual };
+}
+
+// Las próximas N asignaciones de la MISMA plantilla, en orden
+// cronológico, después del periodo que se está viendo — para "aplica
+// este cambio a los próximos N periodos" (spec: dropdown del 1 al 24).
+export function nextAssignmentsOfTemplate(
+  templateId: string,
+  afterPeriodKey: string,
+  assignments: BudgetAssignment[],
+  limit: number
+): BudgetAssignment[] {
+  return assignments
+    .filter((a) => a.templateId === templateId && comparePeriodKeys(a.periodKey, afterPeriodKey) > 0)
+    .sort((a, b) => comparePeriodKeys(a.periodKey, b.periodKey))
+    .slice(0, Math.max(0, limit));
 }

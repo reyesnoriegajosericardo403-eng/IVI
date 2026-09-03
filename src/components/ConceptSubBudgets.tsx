@@ -2,11 +2,11 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { makeSubBudgetId, subcategoryOptionsForConcept, type BudgetConcept } from '@/data/budgetConcepts';
-import type { Account, Budget, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
+import type { Account, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { BudgetLine } from '@/utils/finance';
 
-import { ConceptBudgetForm } from './ConceptBudgetForm';
+import { ConceptBudgetForm, type BudgetFormInitial } from './ConceptBudgetForm';
 import { ConceptRow } from './ConceptRow';
 import { SubcategoryAddDropdown } from './SubcategoryAddDropdown';
 
@@ -34,7 +34,9 @@ export function ConceptSubBudgets({
   onDeleteBudget,
 }: {
   concept: BudgetConcept;
-  budgets: Budget[];
+  // Los renglones ya guardados — sirven tanto los del esquema anterior
+  // (Budget) como los de una plantilla con nombre (TemplateBudgetLine).
+  budgets: (BudgetFormInitial & { id: string; categoryId: string })[];
   lineByConcept: Map<string, BudgetLine>;
   subcategorySpend: Record<string, number>;
   scope: 'month' | 'week';

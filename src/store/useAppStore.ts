@@ -8,7 +8,12 @@ import type {
   Account,
   AuditLogEntry,
   Budget,
+  BudgetAssignment,
+  BudgetTemplate,
+  Currency,
   Goal,
+  PeriodBudgetOverride,
+  TemplateBudgetLine,
   InvestmentPosition,
   Liability,
   NetWorthSnapshot,
@@ -18,8 +23,14 @@ import type {
 } from '@/data/types';
 import type { SyncQueueEntry, SyncTable } from '@/services/sync/types';
 import type { CetesRates, MarketQuote } from '@/providers/types';
+import { nextAssignmentsOfTemplate } from '@/utils/finance';
 import { generateId } from '@/utils/id';
 import { accountDeltasForTransaction, mergeDeltas, reverseDeltas } from '@/utils/ledger';
+
+// Color de la plantilla "Mi presupuesto" — neutro a propósito: es la que
+// aplica cuando un periodo no tiene ninguna otra asignada, así que no
+// debe competir visualmente con las que la persona sí eligió.
+const DEFAULT_TEMPLATE_COLOR = '#64748B';
 
 const DEFAULT_PROFILE: UserProfile = {
   name: '',
@@ -81,6 +92,14 @@ interface AppState {
   transactions: Transaction[];
   accounts: Account[];
   budgets: Budget[];
+  // Presupuestos con nombre aplicables a periodos del calendario — ver
+  // los tipos en data/types.ts. `budgets` (arriba) se conserva tal cual:
+  // es el esquema anterior y la fuente de los eventos de un día que ya
+  // existían antes de esta función.
+  budgetTemplates: BudgetTemplate[];
+  templateBudgetLines: TemplateBudgetLine[];
+  budgetAssignments: BudgetAssignment[];
+  periodBudgetOverrides: PeriodBudgetOverride[];
   goals: Goal[];
   investments: InvestmentPosition[];
   liabilities: Liability[];
@@ -141,6 +160,35 @@ interface AppState {
 
   setBudget: (draft: Draft<Budget>) => void;
   deleteBudget: (id: string) => void;
+
+  // ---- Presupuestos con nombre + calendario ----
+  // Crea la plantilla "Mi presupuesto" y le pasa los presupuestos que ya
+  // existían, la primera vez que se abre Presupuesto tras esta versión.
+  // Idempotente: no hace nada si ya hay una plantilla por defecto.
+  ensureDefaultBudgetTemplate: () => void;
+  addBudgetTemplate: (draft: Draft<BudgetTemplate>) => string;
+  updateBudgetTemplate: (id: string, patch: Partial<Draft<BudgetTemplate>>) => void;
+  deleteBudgetTemplate: (id: string) => void;
+  // Busca por (templateId, categoryId), no solo por categoryId — cada
+  // plantilla tiene su propio juego de montos.
+  setTemplateBudgetLine: (draft: Draft<TemplateBudgetLine>) => void;
+  deleteTemplateBudgetLine: (id: string) => void;
+  assignTemplateToPeriod: (templateId: string, periodKey: string) => void;
+  unassignPeriod: (periodKey: string) => void;
+  // Guarda el ajuste de un renglón para un periodo. `propagate` decide a
+  // dónde más se aplica (spec: "sí / no / personalizado 1-24"):
+  // 'none' solo este periodo, 'all' también la plantilla completa, o un
+  // número N = los próximos N periodos que usen esa misma plantilla.
+  // `currency` viaja en el patch porque se necesita si el cambio termina
+  // escribiéndose en la plantilla; el ajuste de periodo en sí no la usa
+  // (hereda la de su renglón).
+  setPeriodOverride: (
+    periodKey: string,
+    categoryId: string,
+    patch: Omit<Draft<PeriodBudgetOverride>, 'assignmentId' | 'categoryId'> & { currency: Currency },
+    propagate: 'none' | 'all' | number
+  ) => void;
+  clearPeriodOverride: (periodKey: string, categoryId: string) => void;
 
   addGoal: (draft: Draft<Goal>) => void;
   updateGoal: (id: string, patch: Partial<Draft<Goal>>) => void;
@@ -215,6 +263,10 @@ export const useAppStore = create<AppState>()(
         transactions: [],
         accounts: [],
         budgets: [],
+        budgetTemplates: [],
+        templateBudgetLines: [],
+        budgetAssignments: [],
+        periodBudgetOverrides: [],
         goals: [],
         investments: [],
         liabilities: [],
@@ -374,6 +426,215 @@ export const useAppStore = create<AppState>()(
           enqueue('budgets', id, 'delete', updated as unknown as Record<string, unknown>);
         },
 
+        ensureDefaultBudgetTemplate: () => {
+          const state = get();
+          const existing = state.budgetTemplates.find((t) => t.isDefault && !t.deletedAt);
+          const template =
+            existing ??
+            withNewMeta({
+              name: 'Mi presupuesto',
+              kind: 'month',
+              color: DEFAULT_TEMPLATE_COLOR,
+              isDefault: true,
+            } as Draft<BudgetTemplate>);
+
+          // Lo que ya existía en `budgets` pasa a ser el contenido de esta
+          // plantilla, para que nadie vea su presupuesto "desaparecer" al
+          // actualizar. `budgets` NO se borra: sigue siendo el respaldo del
+          // esquema anterior y la fuente de los eventos de un día.
+          //
+          // Se vuelve a revisar en cada llamada (no solo al crear la
+          // plantilla) porque los presupuestos del esquema anterior pueden
+          // llegar DESPUÉS, cuando termina de sincronizar desde Supabase —
+          // si solo se migrara la primera vez, esos se quedarían fuera.
+          const alreadyMigrated = new Set(
+            state.templateBudgetLines.filter((l) => l.templateId === template.id && !l.deletedAt).map((l) => l.categoryId)
+          );
+          const migrated = state.budgets
+            .filter((b) => !b.deletedAt && !alreadyMigrated.has(b.categoryId))
+            .map((b) =>
+              withNewMeta({
+                templateId: template.id,
+                categoryId: b.categoryId,
+                monthlyAmount: b.monthlyAmount,
+                currency: b.currency,
+                periodicity: b.periodicity,
+                frequency: b.frequency,
+                customDaysPerWeek: b.customDaysPerWeek,
+                baseAmount: b.baseAmount,
+                dayOfMonth: b.dayOfMonth,
+                dayOfWeek: b.dayOfWeek,
+                oneTimeDate: b.oneTimeDate,
+                targetAccountId: b.targetAccountId,
+                includedAccountIds: b.includedAccountIds,
+              } as Draft<TemplateBudgetLine>)
+            );
+
+          if (existing && migrated.length === 0) return;
+
+          if (!existing) {
+            enqueue('budget_templates', template.id, 'upsert', template as unknown as Record<string, unknown>);
+          }
+          for (const line of migrated) {
+            enqueue('template_budget_lines', line.id, 'upsert', line as unknown as Record<string, unknown>);
+          }
+          set((s) => ({
+            budgetTemplates: existing ? s.budgetTemplates : [...s.budgetTemplates, template],
+            templateBudgetLines: [...s.templateBudgetLines, ...migrated],
+          }));
+        },
+        addBudgetTemplate: (draft) => {
+          const template = withNewMeta(draft);
+          set((s) => ({ budgetTemplates: [...s.budgetTemplates, template] }));
+          enqueue('budget_templates', template.id, 'upsert', template as unknown as Record<string, unknown>);
+          return template.id;
+        },
+        updateBudgetTemplate: (id, patch) => {
+          const current = get().budgetTemplates.find((t) => t.id === id);
+          if (!current) return;
+          const updated = touch(current, patch);
+          set((s) => ({ budgetTemplates: s.budgetTemplates.map((t) => (t.id === id ? updated : t)) }));
+          enqueue('budget_templates', id, 'upsert', updated as unknown as Record<string, unknown>);
+        },
+        deleteBudgetTemplate: (id) => {
+          const current = get().budgetTemplates.find((t) => t.id === id);
+          // La plantilla por defecto es el respaldo de todo periodo sin
+          // asignación — borrarla dejaría periodos sin presupuesto.
+          if (!current || current.isDefault) return;
+          const now = new Date().toISOString();
+          const updated = touch(current, { deletedAt: now } as Partial<BudgetTemplate>);
+          set((s) => ({
+            budgetTemplates: s.budgetTemplates.map((t) => (t.id === id ? updated : t)),
+            // Sus renglones y asignaciones se van con ella (borrado suave).
+            templateBudgetLines: s.templateBudgetLines.map((l) =>
+              l.templateId === id && !l.deletedAt ? touch(l, { deletedAt: now } as Partial<TemplateBudgetLine>) : l
+            ),
+            budgetAssignments: s.budgetAssignments.map((a) =>
+              a.templateId === id && !a.deletedAt ? touch(a, { deletedAt: now } as Partial<BudgetAssignment>) : a
+            ),
+          }));
+          enqueue('budget_templates', id, 'delete', updated as unknown as Record<string, unknown>);
+        },
+        setTemplateBudgetLine: (draft) =>
+          set((s) => {
+            const existing = s.templateBudgetLines.find(
+              (l) => l.templateId === draft.templateId && l.categoryId === draft.categoryId && !l.deletedAt
+            );
+            const record = existing ? touch(existing, draft) : withNewMeta(draft);
+            enqueue('template_budget_lines', record.id, 'upsert', record as unknown as Record<string, unknown>);
+            return {
+              templateBudgetLines: existing
+                ? s.templateBudgetLines.map((l) => (l.id === existing.id ? record : l))
+                : [...s.templateBudgetLines, record],
+            };
+          }),
+        deleteTemplateBudgetLine: (id) => {
+          const current = get().templateBudgetLines.find((l) => l.id === id);
+          if (!current) return;
+          const updated = touch(current, { deletedAt: new Date().toISOString() } as Partial<TemplateBudgetLine>);
+          set((s) => ({ templateBudgetLines: s.templateBudgetLines.map((l) => (l.id === id ? updated : l)) }));
+          enqueue('template_budget_lines', id, 'delete', updated as unknown as Record<string, unknown>);
+        },
+        assignTemplateToPeriod: (templateId, periodKey) =>
+          set((s) => {
+            const existing = s.budgetAssignments.find((a) => a.periodKey === periodKey && !a.deletedAt);
+            const record = existing
+              ? touch(existing, { templateId } as Partial<BudgetAssignment>)
+              : withNewMeta({ templateId, periodKey } as Draft<BudgetAssignment>);
+            enqueue('budget_assignments', record.id, 'upsert', record as unknown as Record<string, unknown>);
+            return {
+              budgetAssignments: existing
+                ? s.budgetAssignments.map((a) => (a.id === existing.id ? record : a))
+                : [...s.budgetAssignments, record],
+            };
+          }),
+        unassignPeriod: (periodKey) => {
+          const current = get().budgetAssignments.find((a) => a.periodKey === periodKey && !a.deletedAt);
+          if (!current) return;
+          const now = new Date().toISOString();
+          const updated = touch(current, { deletedAt: now } as Partial<BudgetAssignment>);
+          set((s) => ({
+            budgetAssignments: s.budgetAssignments.map((a) => (a.id === current.id ? updated : a)),
+            // Los ajustes que colgaban de esa asignación dejan de aplicar.
+            periodBudgetOverrides: s.periodBudgetOverrides.map((o) =>
+              o.assignmentId === current.id && !o.deletedAt ? touch(o, { deletedAt: now } as Partial<PeriodBudgetOverride>) : o
+            ),
+          }));
+          enqueue('budget_assignments', current.id, 'delete', updated as unknown as Record<string, unknown>);
+        },
+        setPeriodOverride: (periodKey, categoryId, patch, propagate) => {
+          const state = get();
+          const assignment = state.budgetAssignments.find((a) => a.periodKey === periodKey && !a.deletedAt);
+          // Sin asignación explícita el periodo está usando la plantilla
+          // por defecto: ahí no hay "solo este periodo" que valga, se
+          // edita la plantilla directo (es justo lo que la persona ve).
+          if (!assignment) {
+            const fallback = state.budgetTemplates.find((t) => t.isDefault && !t.deletedAt);
+            if (!fallback || patch.monthlyAmount === null) return;
+            get().setTemplateBudgetLine({
+              templateId: fallback.id,
+              categoryId,
+              ...patch,
+              monthlyAmount: patch.monthlyAmount,
+            } as Draft<TemplateBudgetLine>);
+            return;
+          }
+
+          const { currency: _currency, ...overridePatch } = patch;
+          const writeOverride = (assignmentId: string) => {
+            const existing = get().periodBudgetOverrides.find(
+              (o) => o.assignmentId === assignmentId && o.categoryId === categoryId && !o.deletedAt
+            );
+            const record = existing
+              ? touch(existing, { ...overridePatch, categoryId } as Partial<PeriodBudgetOverride>)
+              : withNewMeta({ ...overridePatch, assignmentId, categoryId } as Draft<PeriodBudgetOverride>);
+            enqueue('period_budget_overrides', record.id, 'upsert', record as unknown as Record<string, unknown>);
+            set((s) => ({
+              periodBudgetOverrides: existing
+                ? s.periodBudgetOverrides.map((o) => (o.id === existing.id ? record : o))
+                : [...s.periodBudgetOverrides, record],
+            }));
+          };
+
+          writeOverride(assignment.id);
+
+          if (propagate === 'all') {
+            // Además del periodo actual, el cambio se vuelve parte de la
+            // plantilla: aplica a todo periodo que la use y no tenga ya su
+            // propio ajuste.
+            if (patch.monthlyAmount !== null) {
+              get().setTemplateBudgetLine({
+                templateId: assignment.templateId,
+                categoryId,
+                ...patch,
+                monthlyAmount: patch.monthlyAmount,
+              } as Draft<TemplateBudgetLine>);
+            }
+            return;
+          }
+          if (typeof propagate === 'number' && propagate > 0) {
+            const upcoming = nextAssignmentsOfTemplate(
+              assignment.templateId,
+              periodKey,
+              get().budgetAssignments.filter((a) => !a.deletedAt),
+              propagate
+            );
+            for (const next of upcoming) writeOverride(next.id);
+          }
+        },
+        clearPeriodOverride: (periodKey, categoryId) => {
+          const state = get();
+          const assignment = state.budgetAssignments.find((a) => a.periodKey === periodKey && !a.deletedAt);
+          if (!assignment) return;
+          const current = state.periodBudgetOverrides.find(
+            (o) => o.assignmentId === assignment.id && o.categoryId === categoryId && !o.deletedAt
+          );
+          if (!current) return;
+          const updated = touch(current, { deletedAt: new Date().toISOString() } as Partial<PeriodBudgetOverride>);
+          set((s) => ({ periodBudgetOverrides: s.periodBudgetOverrides.map((o) => (o.id === current.id ? updated : o)) }));
+          enqueue('period_budget_overrides', current.id, 'delete', updated as unknown as Record<string, unknown>);
+        },
+
         addGoal: (draft) => {
           const goal = withNewMeta(draft);
           set((s) => ({ goals: [...s.goals, goal] }));
@@ -495,6 +756,10 @@ export const useAppStore = create<AppState>()(
             transactions: [],
             accounts: [],
             budgets: [],
+            budgetTemplates: [],
+            templateBudgetLines: [],
+            budgetAssignments: [],
+            periodBudgetOverrides: [],
             goals: [],
             investments: [],
             liabilities: [],

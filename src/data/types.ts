@@ -135,6 +135,76 @@ export interface Budget extends SyncMeta {
   includedAccountIds?: string[];
 }
 
+// ============================================================
+// Presupuestos con nombre ("plantillas") aplicables a periodos
+// específicos del calendario — spec: "puedes armar un presupuesto...
+// para tus días en clases... pero aparte puedes armar un presupuesto
+// para cuando estés en vacaciones".
+//
+// Modelo: una BudgetTemplate agrupa sus renglones (TemplateBudgetLine).
+// Una BudgetAssignment dice qué plantilla se carga en qué periodo del
+// calendario. Un PeriodBudgetOverride es el ajuste de UN renglón para UN
+// periodo, cuando la persona lo editó ahí sin querer cambiar la
+// plantilla completa (spec: "no va a ser inamovible... solo una carga
+// automática que puedes modificar").
+// ============================================================
+
+export type BudgetTemplateKind = 'week' | 'month' | 'day';
+
+export interface BudgetTemplate extends SyncMeta {
+  name: string;
+  kind: BudgetTemplateKind;
+  // Color con el que se pintan en el calendario los periodos donde esta
+  // plantilla está aplicada.
+  color: string;
+  // La plantilla "Mi presupuesto" a la que se migró lo que ya existía —
+  // se usa como respaldo en cualquier periodo sin plantilla asignada, y
+  // nunca se puede borrar (solo renombrar o cambiarle el color).
+  isDefault?: boolean;
+}
+
+// Un renglón dentro de una plantilla. Mismos campos que Budget, pero
+// agrupados por templateId en vez de vivir sueltos por categoryId.
+export interface TemplateBudgetLine extends SyncMeta {
+  templateId: string;
+  categoryId: string;
+  monthlyAmount: number;
+  currency: Currency;
+  periodicity?: BudgetPeriodicity;
+  frequency?: BudgetFrequency;
+  customDaysPerWeek?: number;
+  baseAmount?: number;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  oneTimeDate?: string;
+  targetAccountId?: string;
+  includedAccountIds?: string[];
+}
+
+// Qué plantilla está cargada en qué periodo. periodKey:
+// "2026-09" (mes), "2026-W36" (semana ISO) o "2026-09-15" (día).
+export interface BudgetAssignment extends SyncMeta {
+  templateId: string;
+  periodKey: string;
+}
+
+// Ajuste de un renglón SOLO para el periodo de ese assignment.
+// monthlyAmount === null significa "este renglón no aplica aquí".
+export interface PeriodBudgetOverride extends SyncMeta {
+  assignmentId: string;
+  categoryId: string;
+  monthlyAmount: number | null;
+  periodicity?: BudgetPeriodicity;
+  frequency?: BudgetFrequency;
+  customDaysPerWeek?: number;
+  baseAmount?: number;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  oneTimeDate?: string;
+  targetAccountId?: string;
+  includedAccountIds?: string[];
+}
+
 export interface Goal extends SyncMeta {
   name: string;
   targetAmount: number;
@@ -193,6 +263,11 @@ export interface UserProfile {
     warning: number;
     exceeded: number;
   };
+  // Se marca la primera vez que alguien entra a Presupuesto y ve el aviso
+  // de los presupuestos con nombre/calendario — después de esa vez ya no
+  // se vuelve a mostrar (spec: "debe anunciarse la primera vez... ya
+  // después de la primera vez ya no debe volver a aparecer").
+  seenBudgetTemplatesIntro?: boolean;
 }
 
 export interface NetWorthSnapshot extends SyncMeta {

@@ -5,10 +5,14 @@ import type {
   Account,
   AuditLogEntry,
   Budget,
+  BudgetAssignment,
+  BudgetTemplate,
   Goal,
   InvestmentPosition,
   Liability,
   NetWorthSnapshot,
+  PeriodBudgetOverride,
+  TemplateBudgetLine,
   Transaction,
 } from '@/data/types';
 
@@ -306,6 +310,144 @@ export function auditLogFromRow(row: any): AuditLogEntry {
     summary: row.summary,
     previousValue: row.previous_value != null ? Number(row.previous_value) : undefined,
     newValue: row.new_value != null ? Number(row.new_value) : undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+// ---- Presupuestos con nombre aplicados a periodos del calendario ----
+
+export function budgetTemplateToRow(userId: string, t: BudgetTemplate) {
+  return {
+    id: t.id,
+    user_id: userId,
+    name: t.name,
+    kind: t.kind,
+    color: t.color,
+    is_default: t.isDefault ?? false,
+    created_at: t.createdAt,
+    deleted_at: t.deletedAt ?? null,
+  };
+}
+
+export function budgetTemplateFromRow(row: any): BudgetTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    color: row.color,
+    isDefault: row.is_default ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+export function templateBudgetLineToRow(userId: string, l: TemplateBudgetLine) {
+  return {
+    id: l.id,
+    user_id: userId,
+    template_id: l.templateId,
+    category_id: l.categoryId,
+    monthly_amount: l.monthlyAmount,
+    currency: l.currency,
+    periodicity: l.periodicity ?? null,
+    frequency: l.frequency ?? null,
+    custom_days_per_week: l.customDaysPerWeek ?? null,
+    base_amount: l.baseAmount ?? null,
+    day_of_month: l.dayOfMonth ?? null,
+    day_of_week: l.dayOfWeek ?? null,
+    one_time_date: l.oneTimeDate ?? null,
+    target_account_id: l.targetAccountId ?? null,
+    included_account_ids: l.includedAccountIds ?? [],
+    created_at: l.createdAt,
+    deleted_at: l.deletedAt ?? null,
+  };
+}
+
+export function templateBudgetLineFromRow(row: any): TemplateBudgetLine {
+  return {
+    id: row.id,
+    templateId: row.template_id,
+    categoryId: row.category_id,
+    monthlyAmount: Number(row.monthly_amount),
+    currency: row.currency,
+    periodicity: row.periodicity ?? undefined,
+    frequency: row.frequency ?? undefined,
+    customDaysPerWeek: row.custom_days_per_week ?? undefined,
+    baseAmount: row.base_amount != null ? Number(row.base_amount) : undefined,
+    dayOfMonth: row.day_of_month ?? undefined,
+    dayOfWeek: row.day_of_week ?? undefined,
+    oneTimeDate: row.one_time_date ?? undefined,
+    targetAccountId: row.target_account_id ?? undefined,
+    includedAccountIds: row.included_account_ids && row.included_account_ids.length > 0 ? row.included_account_ids : undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+export function budgetAssignmentToRow(userId: string, a: BudgetAssignment) {
+  return {
+    id: a.id,
+    user_id: userId,
+    template_id: a.templateId,
+    period_key: a.periodKey,
+    created_at: a.createdAt,
+    deleted_at: a.deletedAt ?? null,
+  };
+}
+
+export function budgetAssignmentFromRow(row: any): BudgetAssignment {
+  return {
+    id: row.id,
+    templateId: row.template_id,
+    periodKey: row.period_key,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+export function periodBudgetOverrideToRow(userId: string, o: PeriodBudgetOverride) {
+  return {
+    id: o.id,
+    user_id: userId,
+    assignment_id: o.assignmentId,
+    category_id: o.categoryId,
+    // null es un valor con significado aquí ("este renglón no aplica en
+    // este periodo"), así que NO se convierte a 0 ni se omite.
+    monthly_amount: o.monthlyAmount,
+    periodicity: o.periodicity ?? null,
+    frequency: o.frequency ?? null,
+    custom_days_per_week: o.customDaysPerWeek ?? null,
+    base_amount: o.baseAmount ?? null,
+    day_of_month: o.dayOfMonth ?? null,
+    day_of_week: o.dayOfWeek ?? null,
+    one_time_date: o.oneTimeDate ?? null,
+    target_account_id: o.targetAccountId ?? null,
+    included_account_ids: o.includedAccountIds ?? [],
+    created_at: o.createdAt,
+    deleted_at: o.deletedAt ?? null,
+  };
+}
+
+export function periodBudgetOverrideFromRow(row: any): PeriodBudgetOverride {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    categoryId: row.category_id,
+    monthlyAmount: row.monthly_amount != null ? Number(row.monthly_amount) : null,
+    periodicity: row.periodicity ?? undefined,
+    frequency: row.frequency ?? undefined,
+    customDaysPerWeek: row.custom_days_per_week ?? undefined,
+    baseAmount: row.base_amount != null ? Number(row.base_amount) : undefined,
+    dayOfMonth: row.day_of_month ?? undefined,
+    dayOfWeek: row.day_of_week ?? undefined,
+    oneTimeDate: row.one_time_date ?? undefined,
+    targetAccountId: row.target_account_id ?? undefined,
+    includedAccountIds: row.included_account_ids && row.included_account_ids.length > 0 ? row.included_account_ids : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at ?? undefined,

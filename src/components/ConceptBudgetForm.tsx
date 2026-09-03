@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
-import type { Account, Budget, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
+import type { Account, BudgetFrequency, BudgetPeriodicity, Currency } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { computeMonthlyAmount, FREQUENCY_LABELS, PERIODICITY_LABELS } from '@/utils/budgetCalculator';
 import { daysInMonth, formatDateDMY, todayISO } from '@/utils/date';
@@ -13,6 +13,21 @@ import { CalendarPicker } from './CalendarPicker';
 import { GlassCard } from './GlassCard';
 
 export const WEEKDAY_FULL_LABELS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// Con qué valores se reabre el formulario. Se define por forma (no como
+// `Budget`) porque el mismo formulario edita tanto los presupuestos del
+// esquema anterior como los renglones de una plantilla con nombre.
+export interface BudgetFormInitial {
+  periodicity?: BudgetPeriodicity;
+  frequency?: BudgetFrequency;
+  customDaysPerWeek?: number;
+  baseAmount?: number;
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  oneTimeDate?: string;
+  targetAccountId?: string;
+  includedAccountIds?: string[];
+}
 
 // Formulario compartido para definir el monto esperado de un concepto de
 // presupuesto (gasto o ingreso) — usado por Presupuesto y por el
@@ -31,7 +46,7 @@ export function ConceptBudgetForm({
   onCancel,
 }: {
   concept: { id: string; name: string };
-  initial: Budget | undefined;
+  initial: BudgetFormInitial | undefined;
   currency: Currency;
   // Solo false para ingresos VARIABLES/eventuales (Freelance, Ventas...) —
   // esos no tienen una fecha predecible, así que no tiene caso preguntarla

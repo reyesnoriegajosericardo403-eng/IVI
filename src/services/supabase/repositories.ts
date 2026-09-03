@@ -2,10 +2,14 @@ import type {
   Account,
   AuditLogEntry,
   Budget,
+  BudgetAssignment,
+  BudgetTemplate,
   Goal,
   InvestmentPosition,
   Liability,
   NetWorthSnapshot,
+  PeriodBudgetOverride,
+  TemplateBudgetLine,
   Transaction,
 } from '@/data/types';
 import type { Repository } from '../repository';
@@ -16,7 +20,11 @@ import {
   accountToRow,
   auditLogFromRow,
   auditLogToRow,
+  budgetAssignmentFromRow,
+  budgetAssignmentToRow,
   budgetFromRow,
+  budgetTemplateFromRow,
+  budgetTemplateToRow,
   budgetToRow,
   goalFromRow,
   goalToRow,
@@ -26,6 +34,10 @@ import {
   liabilityToRow,
   netWorthSnapshotFromRow,
   netWorthSnapshotToRow,
+  periodBudgetOverrideFromRow,
+  periodBudgetOverrideToRow,
+  templateBudgetLineFromRow,
+  templateBudgetLineToRow,
   transactionFromRow,
   transactionToRow,
 } from './mappers';
@@ -69,6 +81,26 @@ export const netWorthSnapshotsRepository: Repository<NetWorthSnapshot> = createS
   netWorthSnapshotFromRow
 );
 export const auditLogRepository: Repository<AuditLogEntry> = createSupabaseRepository('audit_log', auditLogToRow, auditLogFromRow);
+export const budgetTemplatesRepository: Repository<BudgetTemplate> = createSupabaseRepository(
+  'budget_templates',
+  budgetTemplateToRow,
+  budgetTemplateFromRow
+);
+export const templateBudgetLinesRepository: Repository<TemplateBudgetLine> = createSupabaseRepository(
+  'template_budget_lines',
+  templateBudgetLineToRow,
+  templateBudgetLineFromRow
+);
+export const budgetAssignmentsRepository: Repository<BudgetAssignment> = createSupabaseRepository(
+  'budget_assignments',
+  budgetAssignmentToRow,
+  budgetAssignmentFromRow
+);
+export const periodBudgetOverridesRepository: Repository<PeriodBudgetOverride> = createSupabaseRepository(
+  'period_budget_overrides',
+  periodBudgetOverrideToRow,
+  periodBudgetOverrideFromRow
+);
 
 // Usado por el SyncEngine para resolver, a partir del nombre de tabla en
 // una entrada de la cola de sincronización, qué repositorio invocar.
@@ -76,6 +108,10 @@ export const repositoryByTable: Record<SyncTable, Repository<any>> = {
   accounts: accountsRepository,
   transactions: transactionsRepository,
   budgets: budgetsRepository,
+  budget_templates: budgetTemplatesRepository,
+  template_budget_lines: templateBudgetLinesRepository,
+  budget_assignments: budgetAssignmentsRepository,
+  period_budget_overrides: periodBudgetOverridesRepository,
   goals: goalsRepository,
   investments: investmentsRepository,
   liabilities: liabilitiesRepository,
