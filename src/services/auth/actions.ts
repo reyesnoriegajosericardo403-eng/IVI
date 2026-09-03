@@ -20,12 +20,24 @@ export function getAuthRedirectOrigin(): string {
 export async function signUpWithEmail(email: string, password: string): Promise<AuthResult> {
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' };
   const origin = getAuthRedirectOrigin();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: origin ? { emailRedirectTo: `${origin}/` } : undefined,
   });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  if (error) return { ok: false, error: error.message };
+  // Para no revelar qué correos ya tienen cuenta, Supabase NO manda un
+  // error cuando ese correo ya está confirmado — responde 200 con un
+  // usuario "fantasma" cuyo identities queda vacío, y no manda ningún
+  // correo nuevo. Sin este chequeo, la persona veía "Cuenta creada, revisa
+  // tu correo" para una cuenta que ya existía, se quedaba esperando un
+  // correo que nunca llegaría, y después no entendía por qué su
+  // contraseña "no servía" al iniciar sesión (spec: "cuando intentan
+  // iniciar sesión nuevamente dice que la contraseña... es incorrecta").
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    return { ok: false, error: 'already registered' };
+  }
+  return { ok: true };
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
@@ -96,6 +108,23 @@ export async function establishSessionFromUrl(): Promise<AuthResult> {
 export async function updatePassword(newPassword: string): Promise<AuthResult> {
   if (!supabase) return { ok: false, error: 'Supabase no está configurado.' };
   const { error } = await supabase.auth.updateUser({ password: newPassword });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+// Cambia el correo al que llegan los avisos de la cuenta — en particular,
+// a dónde llega el enlace de "olvidé mi contraseña" (spec: Ajustes →
+// "correo de recuperación... para mandar un correo de confirmación en
+// caso de perder la contraseña"). Supabase nunca cambia el correo de
+// inmediato: manda un enlace de confirmación a la dirección NUEVA primero,
+// y solo al tocarlo queda hecho el cambio — así nadie puede robarse una
+// cuenta con solo escribir el correo de otra persona aquí.
+export async function updateEmail(newEmail: string): Promise<AuthResult> {
+  if (!supabase) return { ok: false, error: 'Supabase no está configurado.' };
+  const origin = getAuthRedirectOrigin();
+  const { error } = await supabase.auth.updateUser(
+    { email: newEmail },
+    origin ? { emailRedirectTo: `${origin}/` } : undefined
+  );
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 

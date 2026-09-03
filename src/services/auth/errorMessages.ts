@@ -6,7 +6,7 @@ export function translateAuthError(rawMessage: string | undefined): string {
   const msg = (rawMessage || '').toLowerCase();
 
   if (msg.includes('invalid login credentials')) {
-    return 'No encontramos una cuenta con ese correo y esa contraseña. Si es tu primera vez aquí, toca "Crea tu cuenta" abajo. Si ya tienes cuenta, revisa que la contraseña esté bien escrita o recupérala.';
+    return 'No encontramos una cuenta con ese correo y esa contraseña. Si entraste antes con "Continuar con Google", usa ese botón en vez de tu contraseña. Si es tu primera vez aquí, toca "Crea tu cuenta" abajo. Si ya tienes cuenta con contraseña, revisa que esté bien escrita o recupérala.';
   }
   if (msg.includes('email not confirmed')) {
     return 'Todavía no confirmas tu correo. Revisa tu bandeja de entrada (y la carpeta de spam) y toca el enlace que te mandamos antes de iniciar sesión.';

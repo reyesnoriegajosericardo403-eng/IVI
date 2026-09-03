@@ -9,6 +9,12 @@ export interface AuthState {
   loading: boolean;
   userId: string | null;
   email: string | null;
+  // true solo en el primer instante después de volver de un inicio de
+  // sesión con Google/Apple que sí funcionó — para mostrar una
+  // confirmación breve ("tu correo... ya inició sesión") antes de entrar
+  // a la app (spec: "que su primera interacción resulte agradable...
+  // debe aparecer su correo en la pantalla").
+  justSignedInViaOAuth: boolean;
 }
 
 // Si Supabase no está configurado, la app opera en modo local — nunca se
@@ -18,31 +24,54 @@ export function useAuthSession(): AuthState {
     loading: isSupabaseConfigured,
     userId: null,
     email: null,
+    justSignedInViaOAuth: false,
   });
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
-      setState({ loading: false, userId: null, email: null });
+      setState({ loading: false, userId: null, email: null, justSignedInViaOAuth: false });
       return;
     }
     const client = supabase;
 
+    // ¿Venimos de un redirect de OAuth (Google/Apple)? La URL trae un
+    // "?code=" (PKCE) o tokens en el hash. Mientras eso no termine de
+    // canjearse, se ignora cualquier aviso de "no hay sesión" —
+    // onAuthStateChange siempre manda un primer aviso con lo que YA había
+    // en el storage, todavía SIN el code canjeado, y antes eso bastaba
+    // para que index.tsx creyera que no había sesión y mandara de vuelta a
+    // /auth una fracción de segundo antes de que el inicio de sesión
+    // terminara de guardarse (spec: "cuando le picas [Google] retrocede...
+    // tengo que picar dos veces para que funcione"). Un aviso con sesión
+    // real SÍ se respeta de inmediato, venga de donde venga.
+    const hadPendingOAuthRedirect =
+      typeof window !== 'undefined' &&
+      (window.location.search.includes('code=') || window.location.hash.includes('access_token='));
+    let resolvingUrl = hadPendingOAuthRedirect;
+
     const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
-      setState({ loading: false, userId: session?.user.id ?? null, email: session?.user.email ?? null });
+      if (resolvingUrl && !session) return;
+      setState((prev) => ({
+        loading: false,
+        userId: session?.user.id ?? null,
+        email: session?.user.email ?? null,
+        justSignedInViaOAuth: hadPendingOAuthRedirect && !!session && !prev.userId,
+      }));
     });
 
-    // Si venimos de un redirect de OAuth (Google/Apple), la URL trae un
-    // "?code=" (PKCE) o tokens en el hash — el cliente se creó con
-    // detectSessionInUrl:false, así que hay que resolverlo a mano antes de
-    // preguntar si ya hay una sesión guardada; si no, esta llamada no hace
-    // nada (no hay código/hash que procesar).
-    establishSessionFromUrl().finally(() => {
+    establishSessionFromUrl().then((result) => {
+      resolvingUrl = false;
       client.auth.getSession().then(({ data }) => {
-        setState((prev) => (prev.userId ? prev : {
-          loading: false,
-          userId: data.session?.user.id ?? null,
-          email: data.session?.user.email ?? null,
-        }));
+        setState((prev) =>
+          prev.userId
+            ? prev
+            : {
+                loading: false,
+                userId: data.session?.user.id ?? null,
+                email: data.session?.user.email ?? null,
+                justSignedInViaOAuth: hadPendingOAuthRedirect && result.ok && !!data.session,
+              }
+        );
       });
     });
 

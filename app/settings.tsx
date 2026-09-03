@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassCard } from '@/components/GlassCard';
 import type { Currency, UserProfile } from '@/data/types';
 import { getLLMProviderConfig } from '@/providers/llm/secureConfig';
 import { LLM_PROVIDER_LABELS, type LLMProviderId } from '@/providers/llm/types';
-import { signOut } from '@/services/auth/actions';
+import { signOut, updateEmail } from '@/services/auth/actions';
+import { translateAuthError } from '@/services/auth/errorMessages';
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { runSync } from '@/services/sync/SyncEngine';
 import { isSupabaseConfigured } from '@/services/supabase/client';
@@ -33,6 +34,10 @@ export default function Settings() {
   const { userId, email } = useAuthSession();
   const [syncing, setSyncing] = useState(false);
   const [aiProvider, setAiProvider] = useState<LLMProviderId | null>(null);
+  const [editingRecoveryEmail, setEditingRecoveryEmail] = useState(false);
+  const [recoveryEmailInput, setRecoveryEmailInput] = useState('');
+  const [recoveryEmailMsg, setRecoveryEmailMsg] = useState('');
+  const [savingRecoveryEmail, setSavingRecoveryEmail] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,6 +54,24 @@ export default function Settings() {
   const handleSignOut = async () => {
     await signOut();
     router.replace('/auth');
+  };
+
+  const handleSaveRecoveryEmail = async () => {
+    const value = recoveryEmailInput.trim();
+    if (!value.includes('@')) {
+      setRecoveryEmailMsg('Escribe un correo válido.');
+      return;
+    }
+    setSavingRecoveryEmail(true);
+    setRecoveryEmailMsg('');
+    const result = await updateEmail(value);
+    setSavingRecoveryEmail(false);
+    if (!result.ok) {
+      setRecoveryEmailMsg(translateAuthError(result.error));
+      return;
+    }
+    setRecoveryEmailMsg(`Te mandamos un correo de confirmación a ${value}. Ábrelo para terminar el cambio.`);
+    setEditingRecoveryEmail(false);
   };
 
   return (
@@ -104,6 +127,71 @@ export default function Settings() {
             )}
           </GlassCard>
         </View>
+
+        {userId && (
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>CORREO DE RECUPERACIÓN</Text>
+            <GlassCard style={{ gap: spacing.sm }}>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                Si olvidas tu contraseña, el enlace para recuperarla llega a este correo.
+              </Text>
+              {editingRecoveryEmail ? (
+                <>
+                  <TextInput
+                    autoFocus
+                    value={recoveryEmailInput}
+                    onChangeText={setRecoveryEmailInput}
+                    placeholder="tu@correo.com"
+                    placeholderTextColor={colors.textTertiary}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+                  />
+                  {!!recoveryEmailMsg && (
+                    <Text style={[typography.caption, { color: colors.danger }]}>{recoveryEmailMsg}</Text>
+                  )}
+                  <View style={styles.rowGap}>
+                    <Pressable
+                      onPress={() => {
+                        setEditingRecoveryEmail(false);
+                        setRecoveryEmailMsg('');
+                      }}
+                      style={[styles.secondaryBtn, { borderRadius: radius.pill, borderColor: colors.surfaceBorder }]}
+                    >
+                      <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancelar</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleSaveRecoveryEmail}
+                      disabled={savingRecoveryEmail}
+                      style={[styles.secondaryBtn, { borderRadius: radius.pill, borderColor: colors.accentFrom, opacity: savingRecoveryEmail ? 0.6 : 1 }]}
+                    >
+                      <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>
+                        {savingRecoveryEmail ? 'Guardando...' : 'Guardar'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.row}>
+                  <Text style={[typography.body, { color: colors.textPrimary, flex: 1 }]}>{email}</Text>
+                  <Pressable
+                    accessibilityLabel="Cambiar correo de recuperación"
+                    onPress={() => {
+                      setRecoveryEmailInput(email ?? '');
+                      setRecoveryEmailMsg('');
+                      setEditingRecoveryEmail(true);
+                    }}
+                  >
+                    <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>Cambiar</Text>
+                  </Pressable>
+                </View>
+              )}
+              {!!recoveryEmailMsg && !editingRecoveryEmail && (
+                <Text style={[typography.caption, { color: colors.success }]}>{recoveryEmailMsg}</Text>
+              )}
+            </GlassCard>
+          </View>
+        )}
 
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>COPILOTO IA</Text>
@@ -205,4 +293,5 @@ const styles = StyleSheet.create({
   rowGap: { flexDirection: 'row', gap: 10, marginTop: 4 },
   secondaryBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderWidth: 1 },
   fullWidthBtn: { paddingVertical: 12, alignItems: 'center' },
+  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15 },
 });

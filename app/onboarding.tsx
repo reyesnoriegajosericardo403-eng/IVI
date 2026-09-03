@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -69,6 +69,7 @@ export default function Onboarding() {
   const addAccount = useAppStore((s) => s.addAccount);
   const updateAccount = useAppStore((s) => s.updateAccount);
   const deleteAccount = useAppStore((s) => s.deleteAccount);
+  const ensureCashAccount = useAppStore((s) => s.ensureCashAccount);
   const { userId } = useAuthSession();
 
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
@@ -76,6 +77,16 @@ export default function Onboarding() {
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
 
   const [step, setStep] = useState<Step>('profile');
+
+  // Morralla/Efectivo debe poder elegirse como cuenta al armar el
+  // presupuesto aunque la persona no haya anotado un saldo de efectivo en
+  // el paso de Cuentas (spec: "es una de las cuentas... disponibles para
+  // tus operaciones diarias" — mismo arreglo que ya se hizo en Captura por
+  // voz y Registro manual).
+  useEffect(() => {
+    ensureCashAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---------- Paso 1: perfil (apodo, moneda, sexo, edad) ----------
   const [name, setName] = useState('');

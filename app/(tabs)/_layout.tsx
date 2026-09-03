@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, router } from 'expo-router';
 import React from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ValuMark } from '@/components/ValuMark';
@@ -12,9 +12,17 @@ function TabIcon({ name, focused }: { name: keyof typeof Ionicons.glyphMap; focu
   return <Ionicons name={name} size={22} color={focused ? colors.accentFrom : colors.textTertiary} />;
 }
 
-function VoiceFAB() {
+// Alto extra del tab bar, por encima de lo que ya agrega el safe-area
+// inset — sube toda la barra un poco del borde físico de la pantalla
+// (spec: "el TAB... la mitad desaparece") y, de paso, deja espacio de
+// sobra para que el FAB del micrófono (que flota a una distancia fija del
+// borde) nunca quede encima de una pestaña (spec: "el ícono del
+// micrófono está por encima del TAB... dificulta elegir la pestaña").
+const TAB_BAR_EXTRA_HEIGHT = 14;
+const FAB_CLEARANCE_ABOVE_TAB_BAR = 20;
+
+function VoiceFAB({ tabBarHeight }: { tabBarHeight: number }) {
   const { colors, radius } = useTheme();
-  const insets = useSafeAreaInsets();
 
   return (
     <Pressable
@@ -23,7 +31,7 @@ function VoiceFAB() {
       style={[
         styles.fab,
         {
-          bottom: (Platform.OS === 'ios' ? 58 : 54) + insets.bottom,
+          bottom: tabBarHeight + FAB_CLEARANCE_ABOVE_TAB_BAR,
           borderRadius: radius.pill,
           backgroundColor: colors.accentFrom,
         },
@@ -36,6 +44,8 @@ function VoiceFAB() {
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 49 + insets.bottom + TAB_BAR_EXTRA_HEIGHT;
 
   return (
     <View style={{ flex: 1 }}>
@@ -47,6 +57,9 @@ export default function TabsLayout() {
           tabBarStyle: {
             backgroundColor: colors.tabBarBackground,
             borderTopColor: colors.divider,
+            height: tabBarHeight,
+            paddingBottom: insets.bottom + TAB_BAR_EXTRA_HEIGHT,
+            paddingTop: 6,
           },
           tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         }}
@@ -79,7 +92,7 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-      <VoiceFAB />
+      <VoiceFAB tabBarHeight={tabBarHeight} />
     </View>
   );
 }

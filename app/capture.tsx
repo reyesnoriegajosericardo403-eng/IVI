@@ -66,6 +66,7 @@ export default function Capture() {
   const finalTextRef = useRef('');
   const interimTextRef = useRef('');
   const listeningRef = useRef(false);
+  const releaseInFlightRef = useRef(false);
   const registeredRef = useRef<ParsedCapture[]>([]);
   // Puente entre el evento asíncrono del motor de voz (onEnd/onError) y
   // quien pidió detener — así "qué se guardó" siempre lo decide el motor
@@ -339,25 +340,37 @@ export default function Capture() {
   // termina de finalizar de verdad (spec: auditoría del botón que fallaba
   // ~4 de cada 5 veces).
   const handleMicRelease = async () => {
-    if (!listeningRef.current) return;
-    const finalText = await new Promise<string>((resolve) => {
-      finalizeResolveRef.current = resolve;
-      stopListeningRef.current?.();
-      // Respaldo por si el navegador nunca dispara onend/onerror — no se
-      // deja a la persona esperando para siempre.
-      setTimeout(() => {
-        if (finalizeResolveRef.current === resolve) {
-          finalizeResolveRef.current = null;
-          resolve((finalTextRef.current || interimTextRef.current).trim());
-        }
-      }, 2500);
-    });
-    if (!finalText) {
-      setErrorMsg('No se escuchó nada. Mantén presionado el micrófono y vuelve a intentar.');
-      setStage('error');
-      return;
+    // Ahora se puede llegar aquí por dos caminos (soltar tras mantener
+    // presionado, o tocar el propio micrófono ya en "Te escucho..." —
+    // este segundo camino existe para el atajo "Grabar por voz" de la
+    // pantalla de inicio, que arranca a grabar sin que nadie haya
+    // mantenido nada presionado). Sin este candado, ambos podían disparar
+    // casi al mismo tiempo y pisarse el `finalizeResolveRef` uno al otro,
+    // dejando la primera llamada esperando para siempre.
+    if (!listeningRef.current || releaseInFlightRef.current) return;
+    releaseInFlightRef.current = true;
+    try {
+      const finalText = await new Promise<string>((resolve) => {
+        finalizeResolveRef.current = resolve;
+        stopListeningRef.current?.();
+        // Respaldo por si el navegador nunca dispara onend/onerror — no se
+        // deja a la persona esperando para siempre.
+        setTimeout(() => {
+          if (finalizeResolveRef.current === resolve) {
+            finalizeResolveRef.current = null;
+            resolve((finalTextRef.current || interimTextRef.current).trim());
+          }
+        }, 2500);
+      });
+      if (!finalText) {
+        setErrorMsg('No se escuchó nada. Mantén presionado el micrófono y vuelve a intentar.');
+        setStage('error');
+        return;
+      }
+      await runBatchParse(finalText);
+    } finally {
+      releaseInFlightRef.current = false;
     }
-    await runBatchParse(finalText);
   };
 
   // El "soltar" se detecta en window, no en el propio botón — así cuenta
@@ -600,12 +613,19 @@ export default function Capture() {
                 },
               ]}
             >
-              <View style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: 999 }]}>
+              <Pressable
+                accessibilityLabel="Detener y guardar"
+                onPress={handleMicRelease}
+                style={[styles.micBtn, { backgroundColor: colors.accentFrom, borderRadius: 999 }]}
+              >
                 <Ionicons name="mic" size={30} color="#FFFFFF" />
-              </View>
+              </Pressable>
             </Animated.View>
             <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.lg }]}>Te escucho...</Text>
             <Text style={[typography.body, { color: colors.accentFrom, fontWeight: '700', marginTop: 2 }]}>Suelta para guardar</Text>
+            <Text style={[typography.micro, { color: colors.textTertiary, marginTop: 2, textAlign: 'center' }]}>
+              (o toca el micrófono para terminar)
+            </Text>
             <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.xs, textAlign: 'center' }]}>
               Puedes decir varias cosas seguidas, por ejemplo: "65 pesos de café y 200 de uber"
             </Text>
