@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { useProfileReconciliation } from '@/services/auth/useProfileReconciliation';
@@ -14,6 +14,10 @@ import { useTheme } from '@/theme/ThemeProvider';
 // una pantalla de carga rota (spec: "que su primera interacción resulte
 // agradable... debe funcionar a la primera").
 const OAUTH_CONFIRM_MS = 1600;
+// Si reconciliar el perfil con el servidor tarda más que esto (red lenta,
+// hipo del backend), se ofrece un botón para seguir de todos modos — nadie
+// debe quedarse atorado en una pantalla de carga sin salida.
+const PENDING_FAILSAFE_MS = 6000;
 
 export default function Index() {
   const { colors, typography, spacing } = useTheme();
@@ -21,6 +25,8 @@ export default function Index() {
   const { ready } = useProfileReconciliation(userId);
   const onboardingComplete = useAppStore((s) => s.profile.onboardingComplete);
   const [oauthConfirmShown, setOauthConfirmShown] = useState(false);
+  const [forceProceed, setForceProceed] = useState(false);
+  const [showFailsafe, setShowFailsafe] = useState(false);
 
   useEffect(() => {
     if (!justSignedInViaOAuth) return;
@@ -33,7 +39,16 @@ export default function Index() {
   // decidir a dónde navegar — nunca confía en el estado local a ciegas,
   // que puede venir de un intento de registro anterior con otra cuenta
   // en este mismo navegador (spec 76, 77).
-  const authPending = isSupabaseConfigured && (loading || (userId && !ready));
+  const authPending = !forceProceed && isSupabaseConfigured && (loading || (userId && !ready));
+
+  useEffect(() => {
+    if (!authPending) {
+      setShowFailsafe(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowFailsafe(true), PENDING_FAILSAFE_MS);
+    return () => clearTimeout(timer);
+  }, [authPending]);
   const needsAuth = isSupabaseConfigured && !userId;
   // "!oauthConfirmShown" retrasa el salto directo a Captura mientras se ve
   // la confirmación — si no, la navegación desmontaría esta pantalla antes
@@ -63,14 +78,39 @@ export default function Index() {
         {!!email && (
           <Text style={[typography.body, { color: colors.textSecondary, marginTop: 4, textAlign: 'center' }]}>{email}</Text>
         )}
+        {/* Nunca depender solo del temporizador para seguir adelante — si
+            algo tarda (reconciliar el perfil, la red), la persona debe
+            poder tocar para continuar en vez de quedarse atorada aquí
+            (spec: "agregues un botón de iniciar sesión o continuar"). */}
+        <Pressable
+          accessibilityLabel="Continuar"
+          onPress={() => setOauthConfirmShown(false)}
+          style={{ marginTop: spacing.xl, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 999, backgroundColor: colors.accentFrom }}
+        >
+          <Text style={[typography.headline, { color: '#FFFFFF' }]}>Continuar</Text>
+        </Pressable>
       </View>
     );
   }
 
   if (authPending || goesStraightToCapture) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, padding: spacing.xl }}>
         <ActivityIndicator color={colors.accentFrom} />
+        {showFailsafe && (
+          <>
+            <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.lg, textAlign: 'center' }]}>
+              Esto está tardando más de lo normal.
+            </Text>
+            <Pressable
+              accessibilityLabel="Continuar de todos modos"
+              onPress={() => setForceProceed(true)}
+              style={{ marginTop: spacing.md, paddingVertical: 10, paddingHorizontal: 24, borderRadius: 999, borderWidth: 1, borderColor: colors.surfaceBorder }}
+            >
+              <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>Continuar de todos modos</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     );
   }
