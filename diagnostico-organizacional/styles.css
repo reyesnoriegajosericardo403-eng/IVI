@@ -1,0 +1,278 @@
+/* ==========================================================================
+   Selector Interactivo de Técnicas de Diagnóstico Organizacional
+   Sistema de diseño "GrowSphere" — paleta, tarjetas, botones y animaciones
+   ========================================================================== */
+
+:root {
+  --bg-main: #FFFFFF;
+  --bg-secondary: #F8FAFC;
+  --primary-blue: #2563EB;
+  --primary-dark-blue: #0F172A;
+  --accent-blue: #3B82F6;
+  --card-border: #E2E8F0;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --gradient-hero: linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #3B82F6 100%);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* ---------- Vistas de la SPA ---------- */
+.view {
+  animation: fadeSlideIn 0.5s ease both;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Hero ---------- */
+.hero-gradient {
+  background: var(--gradient-hero);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.feature-card {
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05);
+  padding: 28px;
+  background: var(--bg-main);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12);
+}
+.feature-icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ---------- Tarjetas de aplicación ---------- */
+.app-card {
+  background: var(--bg-main);
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05);
+  transition: all 0.3s ease;
+}
+
+/* ---------- Botones píldora ---------- */
+.pill-btn {
+  border-radius: 9999px;
+  font-weight: 600;
+  padding: 12px 28px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.pill-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -8px rgba(15, 23, 42, 0.35);
+}
+.pill-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ---------- Opciones de cuestionario ---------- */
+.quiz-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1.5px solid var(--card-border);
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+.quiz-option:hover {
+  border-color: var(--accent-blue);
+  background: #F5F8FF;
+}
+.quiz-option.selected {
+  border-color: var(--primary-blue);
+  background: #EFF6FF;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.quiz-option .option-dot {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  border: 2px solid var(--card-border);
+  position: relative;
+  transition: border-color 0.2s ease;
+}
+.quiz-option.selected .option-dot {
+  border-color: var(--primary-blue);
+}
+.quiz-option.selected .option-dot::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 9999px;
+  background: var(--primary-blue);
+}
+
+/* ---------- Barra de progreso ---------- */
+.progress-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--card-border);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--primary-blue);
+  transition: width 0.4s ease;
+}
+
+/* ---------- Fichas técnicas ---------- */
+.ficha-card {
+  background: var(--bg-main);
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05);
+  padding: 28px;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+.ficha-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12);
+  border-color: var(--accent-blue);
+}
+.ficha-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #EFF6FF;
+  color: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.ficha-icon svg { width: 26px; height: 26px; }
+
+.ficha-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: step;
+}
+.ficha-steps li {
+  counter-increment: step;
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.ficha-steps li::before {
+  content: counter(step);
+  flex: 0 0 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: #EFF6FF;
+  color: var(--primary-blue);
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Donut chart ---------- */
+#donut-chart circle {
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+}
+#donut-chart circle.dimmed { opacity: 0.35; }
+#donut-chart circle.highlighted { stroke-width: 26; }
+#donut-chart text { font-family: 'Inter', sans-serif; }
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.legend-item:hover, .legend-item.highlighted {
+  background: var(--bg-secondary);
+}
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  flex: 0 0 12px;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--primary-dark-blue);
+  color: white;
+  padding: 12px 22px;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 100;
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.3);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------- Impresión / Exportación PDF ---------- */
+.print-only { display: none; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white; }
+  #results { display: block !important; }
+  #results-print {
+    max-width: 100%;
+    padding: 0;
+  }
+  .app-card {
+    box-shadow: none;
+    border: 1px solid #CBD5E1;
+    break-inside: avoid;
+  }
+  a[href]::after { content: ""; }
+}
