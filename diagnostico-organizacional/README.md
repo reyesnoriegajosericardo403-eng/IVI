@@ -27,7 +27,6 @@ footer de la aplicación:
 | McKinsey & Company | McKinsey 7S Framework |
 | APQC | Process Classification Framework (PCF) y Open Standards Benchmarking |
 | OCDE | SME and Entrepreneurship Policy and Evaluation Framework |
-| JUSE | Total Quality Management (TQM) y herramientas de control de calidad |
 
 Los enlaces incluidos en la app apuntan a los sitios institucionales
 principales de cada organización (no a artículos específicos), ya que son
