@@ -138,12 +138,6 @@ const REFERENCES = [
     marco: 'SME and Entrepreneurship Policy and Evaluation Framework',
     nota: 'Marco de evaluación de políticas para pequeñas y medianas empresas, usado como referencia para el análisis del entorno macroeconómico (PESTEL).',
     url: 'https://www.oecd.org/'
-  },
-  {
-    institucion: 'JUSE',
-    marco: 'Total Quality Management (TQM) y herramientas de control de calidad',
-    nota: 'La Unión de Científicos e Ingenieros Japoneses formalizó el Diagrama de Ishikawa como herramienta central del control de calidad.',
-    url: 'https://www.juse.or.jp/'
   }
 ];
 
