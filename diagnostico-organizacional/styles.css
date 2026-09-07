@@ -1,6 +1,7 @@
 /* ==========================================================================
    Selector Interactivo de Técnicas de Diagnóstico Organizacional
-   Sistema de diseño "GrowSphere" — paleta, tarjetas, botones y animaciones
+   Sistema visual + motion (curvas y reglas basadas en la guía de animación
+   de Emil Kowalski — animations.dev)
    ========================================================================== */
 
 :root {
@@ -13,6 +14,11 @@
   --text-main: #0F172A;
   --text-muted: #64748B;
   --gradient-hero: linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #3B82F6 100%);
+
+  /* Curvas de easing (nunca usar ease-in en UI) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 * { box-sizing: border-box; }
@@ -24,17 +30,40 @@ body {
 
 /* ---------- Vistas de la SPA ---------- */
 .view {
-  animation: fadeSlideIn 0.5s ease both;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
+}
+.view[hidden] { display: none; }
+.view.entering {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Entrada escalonada de bloques dentro de una vista (30-80ms de stagger) */
+.stagger-item {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: staggerIn 500ms var(--ease-out) forwards;
+}
+@keyframes staggerIn {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ---------- Hero ---------- */
 .hero-gradient {
   background: var(--gradient-hero);
+  position: relative;
+  overflow: hidden;
+}
+.hero-gradient::after {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto auto;
+  width: 60%;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .glass-card {
@@ -49,50 +78,82 @@ body {
   box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05);
   padding: 28px;
   background: var(--bg-main);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 240ms var(--ease-out), box-shadow 240ms var(--ease-out), border-color 240ms var(--ease-out);
 }
-.feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12);
+@media (hover: hover) and (pointer: fine) {
+  .feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12);
+    border-color: var(--accent-blue);
+  }
 }
 .feature-icon {
-  font-size: 1.75rem;
-  margin-bottom: 0.75rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #EFF6FF;
+  color: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
 }
+.feature-icon svg { width: 22px; height: 22px; }
 
-/* ---------- Tarjetas de aplicación ---------- */
+/* ---------- Tarjetas de aplicación (fichas planas, dashboard) ---------- */
 .app-card {
   background: var(--bg-main);
   border-radius: 20px;
   border: 1px solid var(--card-border);
   box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05);
-  transition: all 0.3s ease;
 }
 
-/* ---------- Botones píldora ---------- */
+/* ---------- Botones ---------- */
 .pill-btn {
   border-radius: 9999px;
   font-weight: 600;
-  padding: 12px 28px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  padding: 12px 26px;
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), opacity 160ms var(--ease-out);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   white-space: nowrap;
 }
-.pill-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px -8px rgba(15, 23, 42, 0.35);
+.pill-btn svg { width: 16px; height: 16px; flex: none; }
+@media (hover: hover) and (pointer: fine) {
+  .pill-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px -8px rgba(15, 23, 42, 0.35);
+  }
 }
 .pill-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
 
-/* ---------- Opciones de cuestionario ---------- */
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--card-border);
+  background: var(--bg-main);
+  color: var(--text-main);
+  transition: transform 140ms var(--ease-out), background 140ms var(--ease-out), border-color 140ms var(--ease-out);
+}
+.icon-btn svg { width: 18px; height: 18px; }
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover { border-color: var(--accent-blue); background: #F5F8FF; }
+}
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn[hidden] { visibility: hidden; }
+
+/* ---------- Cuestionario ---------- */
 .quiz-option {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
   text-align: left;
   padding: 16px 20px;
@@ -103,12 +164,16 @@ body {
   font-size: 0.95rem;
   line-height: 1.4;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out), transform 140ms var(--ease-out);
 }
-.quiz-option:hover {
-  border-color: var(--accent-blue);
-  background: #F5F8FF;
+@media (hover: hover) and (pointer: fine) {
+  .quiz-option:hover:not(.selected) {
+    border-color: var(--accent-blue);
+    background: #F5F8FF;
+    transform: translateX(2px);
+  }
 }
+.quiz-option:active { transform: scale(0.99); }
 .quiz-option.selected {
   border-color: var(--primary-blue);
   background: #EFF6FF;
@@ -121,20 +186,26 @@ body {
   border-radius: 9999px;
   border: 2px solid var(--card-border);
   position: relative;
-  transition: border-color 0.2s ease;
+  transition: border-color 160ms var(--ease-out);
 }
 .quiz-option.selected .option-dot {
   border-color: var(--primary-blue);
 }
-.quiz-option.selected .option-dot::after {
+.quiz-option .option-dot::after {
   content: "";
   position: absolute;
   inset: 3px;
   border-radius: 9999px;
   background: var(--primary-blue);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+.quiz-option.selected .option-dot::after {
+  transform: scale(1);
+  opacity: 1;
 }
 
-/* ---------- Barra de progreso ---------- */
 .progress-track {
   height: 8px;
   border-radius: 9999px;
@@ -145,37 +216,158 @@ body {
   height: 100%;
   border-radius: 9999px;
   background: var(--primary-blue);
-  transition: width 0.4s ease;
+  transition: width 420ms var(--ease-in-out);
 }
 
-/* ---------- Fichas técnicas ---------- */
-.ficha-card {
-  background: var(--bg-main);
-  border-radius: 20px;
-  border: 1px solid var(--card-border);
-  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05);
-  padding: 28px;
-  transition: all 0.3s ease;
+/* ---------- Tarjetas "editoriales" (estilo destino de viaje) ----------
+   Usadas en el repositorio de fichas y en las tarjetas de resultado.
+   Fondo en degradado por técnica + icono fantasma + contenido anclado abajo. */
+.editorial-card {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  color: #fff;
+  min-height: 340px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
+  padding: 26px;
+  cursor: pointer;
+  transition: transform 260ms var(--ease-out), box-shadow 260ms var(--ease-out);
+  box-shadow: 0 14px 34px -12px rgba(15, 23, 42, 0.28);
 }
-.ficha-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12);
-  border-color: var(--accent-blue);
+@media (hover: hover) and (pointer: fine) {
+  .editorial-card:hover {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 26px 55px -14px rgba(15, 23, 42, 0.38);
+  }
+  .editorial-card:hover .editorial-icon {
+    transform: translate(-4%, -4%) scale(1.06);
+  }
 }
+.editorial-card:active { transform: scale(0.99); }
+
+.editorial-icon {
+  position: absolute;
+  top: -8%;
+  right: -8%;
+  width: 62%;
+  aspect-ratio: 1;
+  opacity: 0.16;
+  color: #fff;
+  transition: transform 400ms var(--ease-out);
+  pointer-events: none;
+}
+.editorial-icon svg { width: 100%; height: 100%; }
+
+.editorial-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+}
+
+.editorial-content { position: relative; z-index: 1; }
+.editorial-meta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+.editorial-title { font-size: 1.375rem; font-weight: 800; line-height: 1.15; margin-bottom: 6px; }
+.editorial-slogan { font-size: 0.875rem; opacity: 0.9; margin-bottom: 18px; line-height: 1.4; }
+
+.editorial-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.28);
+  backdrop-filter: blur(6px);
+  border-radius: 9999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  width: fit-content;
+  transition: background 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.editorial-cta svg { width: 15px; height: 15px; transition: transform 160ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .editorial-card:hover .editorial-cta { background: rgba(255,255,255,0.28); }
+  .editorial-card:hover .editorial-cta svg { transform: translateX(3px); }
+}
+
+.editorial-card.compact { min-height: 220px; }
+.editorial-card.hero-result { min-height: 300px; }
+
+/* ---------- Modal de ficha completa ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms var(--ease-out);
+}
+.modal-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.modal-panel {
+  background: var(--bg-main);
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 32px 28px 40px;
+  transform: translateY(100%);
+  transition: transform 320ms var(--ease-drawer);
+  position: relative;
+}
+.modal-backdrop.open .modal-panel { transform: translateY(0); }
+
+@media (min-width: 768px) {
+  .modal-backdrop { align-items: center; }
+  .modal-panel {
+    border-radius: 24px;
+    transform: translateY(16px) scale(0.96);
+    opacity: 0;
+    transition: transform 260ms var(--ease-out), opacity 220ms var(--ease-out);
+  }
+  .modal-backdrop.open .modal-panel { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+}
+
 .ficha-icon {
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: #EFF6FF;
-  color: var(--primary-blue);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
 }
 .ficha-icon svg { width: 26px; height: 26px; }
+
+/* Icono inline robusto (independiente de que Tailwind haya cargado) */
+.inline-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.inline-icon svg { width: 100%; height: 100%; }
 
 .ficha-steps {
   list-style: none;
@@ -207,12 +399,15 @@ body {
 
 /* ---------- Donut chart ---------- */
 #donut-chart circle {
-  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+  transition: stroke-width 180ms var(--ease-out), opacity 180ms var(--ease-out);
   cursor: pointer;
 }
 #donut-chart circle.dimmed { opacity: 0.35; }
 #donut-chart circle.highlighted { stroke-width: 26; }
 #donut-chart text { font-family: 'Inter', sans-serif; }
+#donut-chart .donut-pct {
+  transition: opacity 200ms var(--ease-out);
+}
 
 .legend-item {
   display: flex;
@@ -222,7 +417,7 @@ body {
   padding: 10px 14px;
   border-radius: 12px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 160ms var(--ease-out);
 }
 .legend-item:hover, .legend-item.highlighted {
   background: var(--bg-secondary);
@@ -234,12 +429,35 @@ body {
   flex: 0 0 12px;
 }
 
+/* ---------- Referencias / metodología ---------- */
+.reference-card {
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  padding: 20px;
+  transition: background 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .reference-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.24); }
+}
+.reference-card a { color: inherit; text-decoration: none; }
+.reference-card .ref-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #93C5FD;
+  margin-top: 10px;
+}
+.reference-card .ref-link svg { width: 13px; height: 13px; }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;
   bottom: 24px;
   left: 50%;
-  transform: translateX(-50%) translateY(20px);
+  transform: translateX(-50%) translateY(16px) scale(0.96);
   background: var(--primary-dark-blue);
   color: white;
   padding: 12px 22px;
@@ -248,13 +466,29 @@ body {
   font-weight: 600;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 100;
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+  z-index: 300;
   box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
+.toast svg { width: 16px; height: 16px; }
 .toast.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* ---------- Accesibilidad: movimiento reducido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .view, .stagger-item, .feature-card, .editorial-card, .editorial-icon,
+  .pill-btn, .icon-btn, .quiz-option, .progress-fill, .modal-panel,
+  .modal-backdrop, .toast, #donut-chart circle {
+    transition-duration: 60ms !important;
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+  .editorial-card:hover, .feature-card:hover { transform: none !important; }
 }
 
 /* ---------- Impresión / Exportación PDF ---------- */
@@ -269,7 +503,7 @@ body {
     max-width: 100%;
     padding: 0;
   }
-  .app-card {
+  .app-card, .editorial-card {
     box-shadow: none;
     border: 1px solid #CBD5E1;
     break-inside: avoid;

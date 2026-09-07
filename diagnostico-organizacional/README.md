@@ -12,19 +12,28 @@ técnicas administrativas:
 - Análisis de la Cadena de Valor (Porter)
 - Matriz BCG (Boston Consulting Group)
 
-> Proyecto académico independiente dentro de este repositorio — vive por
-> completo en esta carpeta `diagnostico-organizacional/` y no depende ni
-> modifica ninguna otra parte del repositorio.
+> Proyecto independiente dentro de este repositorio — vive por completo en
+> esta carpeta `diagnostico-organizacional/` y no depende ni modifica
+> ninguna otra parte del repositorio.
 
-## Créditos académicos
+## Metodología y fuentes
 
-| | |
+El árbol de decisión se apoya en marcos de diagnóstico y clasificación de
+procesos reconocidos internacionalmente. Estos se muestran también en el
+footer de la aplicación:
+
+| Institución | Marco / herramienta |
 |---|---|
-| **Autor** | Ricardo Reyes y Equipo de Consultoría Estudiantil |
-| **Institución** | Universidad Nacional Autónoma de México — FCA UNAM |
-| **Evento** | 32ª Semana Académica Interdisciplinaria (SAI) |
-| **Concurso** | 9º Concurso de diseño de tríptico informativo sobre técnicas administrativas |
-| **Asignatura** | Técnicas de la Administración (5º semestre) |
+| McKinsey & Company | McKinsey 7S Framework |
+| APQC | Process Classification Framework (PCF) y Open Standards Benchmarking |
+| OCDE | SME and Entrepreneurship Policy and Evaluation Framework |
+| JUSE | Total Quality Management (TQM) y herramientas de control de calidad |
+
+Los enlaces incluidos en la app apuntan a los sitios institucionales
+principales de cada organización (no a artículos específicos), ya que son
+los únicos que se pueden verificar con certeza. Si cuentas con las URLs
+exactas de cada artículo o publicación, puedes reemplazarlas en el arreglo
+`REFERENCES` de `app.js`.
 
 ## Estructura del proyecto
 
@@ -45,17 +54,21 @@ usa Tailwind CSS vía CDN y la tipografía Inter de Google Fonts.
 1. **Hero**: presenta el proyecto y da acceso a "Comenzar diagnóstico".
 2. **Cuestionario**: 10 preguntas de opción única. Cada opción suma puntos a
    una o más de las 6 técnicas (ver `QUESTIONS` en `app.js`).
+   Al seleccionar una respuesta se avanza automáticamente a la siguiente
+   pregunta (sin necesidad de un botón "Siguiente"); el botón de flecha
+   permite retroceder para cambiar una respuesta.
 3. **Cálculo**: al responder la última pregunta se suman los puntajes por
-   técnica, se calcula el máximo teórico alcanzable por cada técnica (la suma
-   de su mejor puntaje posible en cada nodo) y el **% de compatibilidad** de
-   cada técnica = `(puntaje obtenido / máximo teórico de esa técnica) × 100`.
-   La técnica con mayor puntaje es la **Técnica Principal**; la segunda, la
-   **Técnica Secundaria**.
-4. **Dashboard de resultados**: gráfico de dona SVG interactivo (hover para
-   ver el % de compatibilidad de cada técnica), ficha ejecutiva de la técnica
+   técnica y el **% de compatibilidad** de cada técnica = `(puntaje obtenido
+   / puntaje total acumulado en las 10 respuestas) × 100`. Este porcentaje es
+   el mismo que determina el tamaño de cada arco en el gráfico de dona, así
+   que el orden y el peso visual siempre coinciden. La técnica con mayor
+   puntaje es la **Técnica Principal**; la segunda, la **Técnica Secundaria**.
+4. **Dashboard de resultados**: gráfico de dona SVG animado (hover para ver
+   el % de compatibilidad de cada técnica), tarjeta ejecutiva de la técnica
    principal y secundaria, y acciones para exportar a PDF o copiar el resumen.
-5. **Repositorio de fichas**: las 6 fichas técnicas completas siempre
-   accesibles desde el menú, independientemente del resultado del cuestionario.
+5. **Repositorio de fichas**: las 6 fichas técnicas, con tarjetas visuales
+   que abren un panel con el detalle completo (pitch, beneficio clave y pasos
+   de ejecución) al hacer clic — siempre accesibles desde el menú.
 
 ## Ejecutarlo en local
 
@@ -112,5 +125,5 @@ pública, por ejemplo `https://selector-diagnostico.vercel.app`.
 
 ## Aviso legal
 
-Esta herramienta tiene fines educativos. Los resultados son orientativos y no
-sustituyen una consultoría profesional en administración de empresas.
+Esta herramienta es de carácter orientativo. Los resultados no sustituyen una
+consultoría profesional en administración de empresas.
