@@ -1,7 +1,7 @@
 /* ==========================================================================
    Selector Interactivo de Técnicas de Diagnóstico Organizacional
-   Lógica de la SPA: estado, árbol de decisión, cálculo de resultados,
-   gráfico de dona SVG, exportación a PDF y copia al portapapeles.
+   Estado, árbol de decisión, cálculo de resultados, gráfico de dona SVG
+   animado, modal de fichas, exportación a PDF y copia al portapapeles.
    ========================================================================== */
 
 'use strict';
@@ -13,75 +13,81 @@
 const TECHNIQUES = {
   FODA: {
     nombre: 'Análisis FODA (SWOT)',
-    slogan: 'Tu mapa de navegación estratégico definitivo',
-    pitch: '¡Esta es la herramienta exacta que tu organización necesita hoy! Has indicado la necesidad de equilibrar tus capacidades internas con el entorno cambiante. El Análisis FODA no es un simple ejercicio de lista; es el pivote estratégico que transformará tus vulnerabilidades en ventajas competitivas y alineará a todo tu equipo hacia las oportunidades de mayor impacto.',
-    beneficio: 'Visión 360° sin cegueras operativas ni omisión de riesgos externos.',
+    slogan: 'Tu mapa de navegación estratégico',
+    pitch: 'Equilibra tus capacidades internas con un entorno que cambia constantemente. El Análisis FODA transforma vulnerabilidades en ventajas competitivas y alinea a todo tu equipo hacia las oportunidades de mayor impacto.',
+    beneficio: 'Visión de 360° sin puntos ciegos operativos ni riesgos externos ignorados.',
     pasos: [
-      'Realizar taller cualitativo con líderes clave.',
-      'Cruzar fortalezas con oportunidades (Estrategia FO).',
-      'Establecer plan de mitigación para debilidades y amenazas.'
+      'Realizar un taller cualitativo con los líderes clave.',
+      'Cruzar fortalezas con oportunidades (estrategia FO).',
+      'Establecer un plan de mitigación para debilidades y amenazas.'
     ],
-    color: '#2563EB'
+    color: '#2563EB',
+    gradient: 'linear-gradient(160deg, #1E3A8A 0%, #2563EB 55%, #60A5FA 100%)'
   },
   PESTEL: {
     nombre: 'Análisis PESTEL',
-    slogan: 'Anticipación estratégica frente a la incertidumbre del entorno',
-    pitch: 'Si el entorno está cambiando las reglas del juego, intentar resolver tus retos solo mirando hacia adentro es un riesgo innecesario. PESTEL es tu radar de alta precisión. Te permitirá blindar a la empresa ante regulaciones, cambios económicos y tecnológicos, convirtiendo las amenazas del mercado en tus próximas grandes oportunidades de innovación.',
-    beneficio: 'Toma de decisiones proactiva que evita pérdidas por imprevistos macroeconómicos.',
+    slogan: 'Anticipación frente a la incertidumbre del entorno',
+    pitch: 'Cuando el entorno cambia las reglas del juego, mirar solo hacia adentro es un riesgo innecesario. PESTEL es tu radar de alta precisión: blinda a la empresa ante regulaciones y cambios económicos o tecnológicos, y convierte las amenazas del mercado en oportunidades de innovación.',
+    beneficio: 'Decisiones proactivas que evitan pérdidas por imprevistos macroeconómicos.',
     pasos: [
       'Mapear las 6 dimensiones macroeconómicas no controlables.',
-      'Evaluar el nivel de impacto de las regulaciones y tendencias tecnológicas.',
+      'Evaluar el nivel de impacto de regulaciones y tendencias tecnológicas.',
       'Diseñar planes de contingencia para riesgos legislativos y de mercado.'
     ],
-    color: '#0891B2'
+    color: '#0891B2',
+    gradient: 'linear-gradient(160deg, #075985 0%, #0891B2 55%, #67E8F9 100%)'
   },
   Benchmarking: {
     nombre: 'Benchmarking Competitivo',
-    slogan: 'Acelera tus resultados aprendiendo de los mejores de la industria',
-    pitch: '¿Por qué reinventar la rueda cuando puedes adoptar los estándares de las organizaciones líderes? El Benchmarking es tu atajo directo a la excelencia. Al comparar tus procesos clave contra la vanguardia del sector, descubrirás brechas de rendimiento exactas y podrás implementar las mejores prácticas comprobadas con el menor margen de error.',
+    slogan: 'Acelera resultados aprendiendo de los mejores',
+    pitch: 'No hace falta reinventar la rueda cuando puedes adoptar los estándares de las organizaciones líderes. Al comparar tus procesos clave contra la vanguardia del sector, identificas brechas de rendimiento exactas y adoptas mejores prácticas con el menor margen de error.',
     beneficio: 'Crecimiento acelerado reduciendo la curva de aprendizaje operativo.',
     pasos: [
       'Seleccionar los procesos e indicadores críticos a comparar.',
-      'Identificar las empresas líderes de referencia (competencia o de otro sector).',
+      'Identificar empresas líderes de referencia (del sector o de otro).',
       'Adaptar e implementar las mejores prácticas detectadas.'
     ],
-    color: '#059669'
+    color: '#059669',
+    gradient: 'linear-gradient(160deg, #065F46 0%, #059669 55%, #6EE7B7 100%)'
   },
   Ishikawa: {
     nombre: 'Diagrama de Ishikawa (Causa-Efecto)',
-    slogan: 'Cirugía de precisión para eliminar la ineficiencia y las fallas',
-    pitch: 'Tus síntomas de retrabajo, quejas o retrasos tienen una causa origen explícita, y el Diagrama de Ishikawa es la herramienta médica por excelencia para encontrarla. Deja de poner parches temporales a los problemas. Con este instrumento desarmarás la complejidad de tus operaciones en las 6 M y erradicarás la causa raíz de raíz.',
+    slogan: 'Precisión para eliminar ineficiencia y fallas',
+    pitch: 'Los síntomas de retrabajo, quejas o retrasos tienen una causa origen explícita, y el Diagrama de Ishikawa es la herramienta por excelencia para encontrarla. En lugar de parches temporales, desarma la complejidad de tus operaciones en las 6 M y llega a la causa raíz.',
     beneficio: 'Eliminación directa de desperdicios, cuellos de botella y costos ocultos.',
     pasos: [
       'Definir con precisión el problema central o defecto a resolver.',
-      "Categorizar las posibles causas en las 6 M (Mano de obra, Método, etc.).",
-      "Aplicar la técnica de los '5 Porqué' hasta hallar la causa raíz."
+      'Categorizar las posibles causas en las 6 M (mano de obra, método, etc.).',
+      "Aplicar la técnica de los '5 porqués' hasta hallar la causa raíz."
     ],
-    color: '#D97706'
+    color: '#D97706',
+    gradient: 'linear-gradient(160deg, #92400E 0%, #D97706 55%, #FCD34D 100%)'
   },
   Cadena_de_Valor: {
-    nombre: 'Análisis de la Cadena de Valor (Porter)',
-    slogan: 'Maximización de márgenes y eficiencia operativa por proceso',
-    pitch: 'Si tu volumen de ventas no se traduce en los márgenes de utilidad esperados, la Cadena de Valor de Porter es tu aliado indispensable. Esta técnica audita quirúrgicamente cada eslabón de tus actividades primarias y de soporte para identificar exactamente dónde estás perdiendo dinero y en qué punto generas la verdadera ventaja competitiva.',
+    nombre: 'Cadena de Valor (Porter)',
+    slogan: 'Maximización de márgenes y eficiencia',
+    pitch: 'Cuando el volumen de ventas no se traduce en los márgenes esperados, la Cadena de Valor de Porter es la herramienta indicada: audita cada eslabón de las actividades primarias y de soporte para identificar dónde se pierde dinero y dónde se genera la verdadera ventaja competitiva.',
     beneficio: 'Optimización de costos y rentabilidad sostenible en cada proceso.',
     pasos: [
       'Descomponer la empresa en actividades primarias y de soporte.',
       'Asignar costos y generadores de valor a cada eslabón.',
       'Optimizar los enlaces para reducir gastos y aumentar el margen.'
     ],
-    color: '#7C3AED'
+    color: '#7C3AED',
+    gradient: 'linear-gradient(160deg, #4C1D95 0%, #7C3AED 55%, #C4B5FD 100%)'
   },
   Matriz_BCG: {
-    nombre: 'Matriz BCG (Boston Consulting Group)',
-    slogan: 'Optimización estratégica de tu portafolio de inversión',
-    pitch: 'No todos tus productos o servicios merecen el mismo capital y esfuerzo. La Matriz BCG es la brújula financiera y comercial que necesitas para saber exactamente dónde invertir para crecer, qué líneas mantener para generar flujo constante y de cuáles desinvertir de inmediato para frenar el goteo de recursos.',
+    nombre: 'Matriz BCG',
+    slogan: 'Optimización del portafolio de inversión',
+    pitch: 'No todos los productos o servicios merecen el mismo capital y esfuerzo. La Matriz BCG es la brújula financiera y comercial para saber dónde invertir para crecer, qué líneas mantener para generar flujo constante y de cuáles desinvertir para frenar la fuga de recursos.',
     beneficio: 'Asignación inteligente del presupuesto para maximizar el retorno de inversión.',
     pasos: [
-      'Clasificar cada producto/servicio por su cuota de mercado y tasa de crecimiento.',
+      'Clasificar cada producto o servicio por cuota de mercado y crecimiento.',
       'Ubicarlos en los cuadrantes: Estrella, Vaca, Incógnita o Perro.',
       'Definir estrategias de inversión, mantenimiento o retiro.'
     ],
-    color: '#DB2777'
+    color: '#DB2777',
+    gradient: 'linear-gradient(160deg, #831843 0%, #DB2777 55%, #F9A8D4 100%)'
   }
 };
 
@@ -94,8 +100,55 @@ const ICONS = {
   Matriz_BCG: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>'
 };
 
+/* Iconos de interfaz (sin emojis) */
+const UI = {
+  target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6-8.5"/><path d="M21 3v6h-6"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M6 3h8l5 5v13H6z"/><path d="M9 13h6M9 17h6"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>',
+  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+  chevronLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg>',
+  externalLink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4L10 14"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></svg>'
+};
+
 /* ---------------------------------------------------------------------- */
-/* 2. BASE DE DATOS: ÁRBOL DE DECISIÓN (10 NODOS)                          */
+/* 2. METODOLOGÍA Y FUENTES                                                */
+/* ---------------------------------------------------------------------- */
+
+const REFERENCES = [
+  {
+    institucion: 'McKinsey & Company',
+    marco: 'McKinsey 7S Framework',
+    nota: 'Estrategia, estructura, sistemas, valores compartidos, habilidades, personal y estilo: el marco de referencia de la consultoría estratégica para el diagnóstico organizacional integral.',
+    url: 'https://www.mckinsey.com/'
+  },
+  {
+    institucion: 'APQC',
+    marco: 'Process Classification Framework (PCF) y Open Standards Benchmarking',
+    nota: 'El estándar internacional para clasificar procesos de negocio y compararlos contra el desempeño de otras organizaciones del sector.',
+    url: 'https://www.apqc.org/'
+  },
+  {
+    institucion: 'OCDE',
+    marco: 'SME and Entrepreneurship Policy and Evaluation Framework',
+    nota: 'Marco de evaluación de políticas para pequeñas y medianas empresas, usado como referencia para el análisis del entorno macroeconómico (PESTEL).',
+    url: 'https://www.oecd.org/'
+  },
+  {
+    institucion: 'JUSE',
+    marco: 'Total Quality Management (TQM) y herramientas de control de calidad',
+    nota: 'La Unión de Científicos e Ingenieros Japoneses formalizó el Diagrama de Ishikawa como herramienta central del control de calidad.',
+    url: 'https://www.juse.or.jp/'
+  }
+];
+
+/* ---------------------------------------------------------------------- */
+/* 3. BASE DE DATOS: ÁRBOL DE DECISIÓN (10 NODOS)                          */
 /* ---------------------------------------------------------------------- */
 
 const QUESTIONS = [
@@ -196,33 +249,46 @@ const QUESTIONS = [
 ];
 
 /* ---------------------------------------------------------------------- */
-/* 3. ESTADO GLOBAL                                                        */
+/* 4. ESTADO GLOBAL                                                        */
 /* ---------------------------------------------------------------------- */
 
 const state = {
-  currentNode: 0,       // índice 0-based dentro de QUESTIONS
-  answers: new Array(QUESTIONS.length).fill(null), // optionId seleccionado por nodo
-  result: null          // se llena al terminar el cuestionario
+  currentNode: 0,
+  answers: new Array(QUESTIONS.length).fill(null),
+  result: null,
+  advanceTimer: null
 };
 
+const prefersReducedMotion = () =>
+  window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /* ---------------------------------------------------------------------- */
-/* 4. NAVEGACIÓN ENTRE VISTAS                                              */
+/* 5. NAVEGACIÓN ENTRE VISTAS                                              */
 /* ---------------------------------------------------------------------- */
 
 function showView(id) {
   document.querySelectorAll('.view').forEach(section => {
-    section.classList.toggle('hidden', section.id !== id);
+    if (section.id === id) {
+      section.hidden = false;
+      section.classList.add('entering');
+      requestAnimationFrame(() => requestAnimationFrame(() => section.classList.remove('entering')));
+    } else {
+      section.hidden = true;
+    }
   });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }
 
 /* ---------------------------------------------------------------------- */
-/* 5. CUESTIONARIO                                                         */
+/* 6. CUESTIONARIO (con avance automático)                                 */
 /* ---------------------------------------------------------------------- */
+
+const AUTO_ADVANCE_DELAY = 380;
 
 function startQuiz() {
   state.currentNode = 0;
   state.answers = new Array(QUESTIONS.length).fill(null);
+  clearTimeout(state.advanceTimer);
   showView('quiz');
   renderNode();
 }
@@ -236,7 +302,6 @@ function renderNode() {
   const questionEl = document.getElementById('quiz-question');
   const optionsEl = document.getElementById('quiz-options');
   const backBtn = document.getElementById('btn-quiz-back');
-  const nextBtn = document.getElementById('btn-quiz-next');
 
   stepLabel.textContent = `Pregunta ${state.currentNode + 1} de ${total}`;
   const progressPct = Math.round((state.currentNode / total) * 100);
@@ -258,51 +323,34 @@ function renderNode() {
     optionsEl.appendChild(btn);
   });
 
-  backBtn.style.visibility = state.currentNode === 0 ? 'hidden' : 'visible';
-  nextBtn.disabled = selected === null;
-  nextBtn.textContent = state.currentNode === total - 1 ? 'Ver resultado →' : 'Siguiente →';
+  backBtn.hidden = state.currentNode === 0;
 }
 
 function selectOption(optionId) {
+  clearTimeout(state.advanceTimer);
   state.answers[state.currentNode] = optionId;
   renderNode();
-}
 
-function goNext() {
-  if (state.answers[state.currentNode] === null) return;
-  if (state.currentNode === QUESTIONS.length - 1) {
-    finishQuiz();
-  } else {
-    state.currentNode += 1;
-    renderNode();
-  }
+  state.advanceTimer = setTimeout(() => {
+    if (state.currentNode === QUESTIONS.length - 1) {
+      finishQuiz();
+    } else {
+      state.currentNode += 1;
+      renderNode();
+    }
+  }, AUTO_ADVANCE_DELAY);
 }
 
 function goBack() {
+  clearTimeout(state.advanceTimer);
   if (state.currentNode === 0) return;
   state.currentNode -= 1;
   renderNode();
 }
 
 /* ---------------------------------------------------------------------- */
-/* 6. CÁLCULO DE RESULTADOS                                                */
+/* 7. CÁLCULO DE RESULTADOS                                                */
 /* ---------------------------------------------------------------------- */
-
-function computeMaxPossiblePerTechnique() {
-  const maxPerTechnique = {};
-  QUESTIONS.forEach(node => {
-    const nodeMax = {};
-    node.opciones.forEach(opt => {
-      Object.entries(opt.puntuacion).forEach(([tech, pts]) => {
-        nodeMax[tech] = Math.max(nodeMax[tech] || 0, pts);
-      });
-    });
-    Object.entries(nodeMax).forEach(([tech, pts]) => {
-      maxPerTechnique[tech] = (maxPerTechnique[tech] || 0) + pts;
-    });
-  });
-  return maxPerTechnique;
-}
 
 function finishQuiz() {
   const scores = {};
@@ -317,20 +365,21 @@ function finishQuiz() {
     });
   });
 
-  const maxPerTechnique = computeMaxPossiblePerTechnique();
+  // El % de compatibilidad es la participación de cada técnica sobre el total
+  // de puntos obtenidos: así el ganador se distingue con claridad y el orden
+  // de la lista siempre coincide con el porcentaje mostrado.
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
 
   const ranking = Object.keys(scores)
     .map(tech => ({
       tech,
       score: scores[tech],
-      maxPosible: maxPerTechnique[tech] || 1,
-      matchPct: Math.min(100, Math.round((scores[tech] / (maxPerTechnique[tech] || 1)) * 100))
+      matchPct: Math.round((scores[tech] / totalScore) * 100)
     }))
     .sort((a, b) => b.score - a.score);
 
   state.result = {
     scores,
-    maxPerTechnique,
     ranking,
     principal: ranking[0],
     secundaria: ranking[1]
@@ -341,26 +390,31 @@ function finishQuiz() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* 7. DASHBOARD DE RESULTADOS                                              */
+/* 8. DASHBOARD DE RESULTADOS                                              */
 /* ---------------------------------------------------------------------- */
 
-function techniqueCardHTML(entry, isPrincipal) {
+function resultCardHTML(entry, kind) {
   const t = TECHNIQUES[entry.tech];
-  const badge = isPrincipal
-    ? `<span class="inline-block px-3 py-1 rounded-full bg-[--primary-blue] text-white text-xs font-bold uppercase tracking-wide mb-4">Técnica principal recomendada · ${entry.matchPct}% de compatibilidad</span>`
-    : `<span class="inline-block px-3 py-1 rounded-full bg-slate-100 text-[--text-muted] text-xs font-bold uppercase tracking-wide mb-4">Técnica secundaria · ${entry.matchPct}% de compatibilidad</span>`;
-
+  const label = kind === 'principal' ? 'Técnica principal recomendada' : 'Técnica secundaria';
   return `
-    ${badge}
-    <div class="flex items-start gap-4 mb-4">
-      <div class="ficha-icon" style="background:${t.color}1A;color:${t.color}">${ICONS[entry.tech]}</div>
-      <div>
-        <h3 class="text-2xl font-extrabold text-[--primary-dark-blue]">${t.nombre}</h3>
-        <p class="text-[--text-muted] italic">${t.slogan}</p>
-      </div>
+    <div class="editorial-icon">${ICONS[entry.tech]}</div>
+    <div class="editorial-scrim"></div>
+    <div class="editorial-content">
+      <div class="editorial-meta">${label} · ${entry.matchPct}% de compatibilidad</div>
+      <div class="editorial-title">${t.nombre}</div>
+      <div class="editorial-slogan">${t.slogan}</div>
     </div>
+  `;
+}
+
+function detailCardHTML(entry) {
+  const t = TECHNIQUES[entry.tech];
+  return `
     <p class="text-[--text-main] leading-relaxed mb-5">${t.pitch}</p>
-    <p class="font-semibold text-[--primary-dark-blue] mb-4">✓ Beneficio clave: <span class="font-normal text-[--text-muted]">${t.beneficio}</span></p>
+    <p class="flex items-start gap-2 font-semibold text-[--primary-dark-blue] mb-4">
+      <span class="inline-icon mt-0.5 text-[--primary-blue]">${UI.check}</span>
+      <span><span class="font-semibold">Beneficio clave:</span> <span class="font-normal text-[--text-muted]">${t.beneficio}</span></span>
+    </p>
     <p class="font-bold text-sm uppercase tracking-wide text-[--text-muted] mb-2">Pasos de ejecución</p>
     <ol class="ficha-steps">
       ${t.pasos.map(p => `<li>${p}</li>`).join('')}
@@ -370,9 +424,20 @@ function techniqueCardHTML(entry, isPrincipal) {
 
 function renderResults() {
   const { principal, secundaria } = state.result;
+  const tp = TECHNIQUES[principal.tech];
+  const ts = TECHNIQUES[secundaria.tech];
 
-  document.getElementById('result-primary-card').innerHTML = techniqueCardHTML(principal, true);
-  document.getElementById('result-secondary-card').innerHTML = techniqueCardHTML(secundaria, false);
+  const primaryCard = document.getElementById('result-primary-card');
+  primaryCard.style.background = tp.gradient;
+  primaryCard.innerHTML = resultCardHTML(principal, 'principal');
+
+  const secondaryCard = document.getElementById('result-secondary-card');
+  secondaryCard.style.background = ts.gradient;
+  secondaryCard.innerHTML = resultCardHTML(secundaria, 'secundaria');
+
+  document.getElementById('result-primary-detail').innerHTML = detailCardHTML(principal);
+  document.getElementById('result-secondary-detail').innerHTML = detailCardHTML(secundaria);
+
   document.getElementById('print-date').textContent = `Generado el ${new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}`;
 
   renderDonutChart();
@@ -384,17 +449,16 @@ function renderDonutChart() {
   svg.innerHTML = '';
   legend.innerHTML = '';
 
-  const { ranking } = state.result;
+  const { ranking, principal } = state.result;
   const visible = ranking.filter(r => r.score > 0);
-  const totalScore = visible.reduce((sum, r) => sum + r.score, 0) || 1;
 
   const cx = 110, cy = 110, r = 80;
   const circumference = 2 * Math.PI * r;
   let cumulative = 0;
+  const reduced = prefersReducedMotion();
 
   const svgNS = 'http://www.w3.org/2000/svg';
 
-  // pista base
   const track = document.createElementNS(svgNS, 'circle');
   track.setAttribute('cx', cx);
   track.setAttribute('cy', cy);
@@ -404,9 +468,9 @@ function renderDonutChart() {
   track.setAttribute('stroke-width', '22');
   svg.appendChild(track);
 
-  visible.forEach(entry => {
+  visible.forEach((entry, i) => {
     const t = TECHNIQUES[entry.tech];
-    const share = entry.score / totalScore;
+    const share = entry.matchPct / 100;
     const dash = share * circumference;
     const circle = document.createElementNS(svgNS, 'circle');
     circle.setAttribute('cx', cx);
@@ -415,13 +479,20 @@ function renderDonutChart() {
     circle.setAttribute('fill', 'none');
     circle.setAttribute('stroke', t.color);
     circle.setAttribute('stroke-width', '22');
-    circle.setAttribute('stroke-dasharray', `${dash} ${circumference - dash}`);
     circle.setAttribute('stroke-dashoffset', `${-cumulative}`);
     circle.setAttribute('transform', `rotate(-90 ${cx} ${cy})`);
+    circle.style.transitionDelay = reduced ? '0ms' : `${i * 70}ms`;
     circle.dataset.tech = entry.tech;
+
+    // Arranca en 0 y crece hacia su valor final vía transición CSS (stroke-dasharray).
+    circle.setAttribute('stroke-dasharray', `0 ${circumference}`);
+    svg.appendChild(circle);
+    requestAnimationFrame(() => {
+      circle.setAttribute('stroke-dasharray', `${dash} ${circumference - dash}`);
+    });
+
     circle.addEventListener('mouseenter', () => highlightTechnique(entry.tech));
     circle.addEventListener('mouseleave', () => highlightTechnique(null));
-    svg.appendChild(circle);
     cumulative += dash;
   });
 
@@ -432,7 +503,7 @@ function renderDonutChart() {
   centerName.setAttribute('font-size', '13');
   centerName.setAttribute('font-weight', '700');
   centerName.setAttribute('fill', '#0F172A');
-  centerName.textContent = state.result.principal.tech.replace(/_/g, ' ');
+  centerName.textContent = TECHNIQUES[principal.tech].nombre.split(' ')[0];
   svg.appendChild(centerName);
 
   const centerPct = document.createElementNS(svgNS, 'text');
@@ -442,8 +513,9 @@ function renderDonutChart() {
   centerPct.setAttribute('font-size', '26');
   centerPct.setAttribute('font-weight', '800');
   centerPct.setAttribute('fill', '#2563EB');
-  centerPct.textContent = `${state.result.principal.matchPct}%`;
+  centerPct.classList.add('donut-pct');
   svg.appendChild(centerPct);
+  animateCounter(centerPct, principal.matchPct, reduced);
 
   visible.forEach(entry => {
     const t = TECHNIQUES[entry.tech];
@@ -463,6 +535,22 @@ function renderDonutChart() {
   });
 }
 
+function animateCounter(el, target, reduced) {
+  if (reduced) {
+    el.textContent = `${target}%`;
+    return;
+  }
+  const duration = 700;
+  const start = performance.now();
+  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+  function tick(now) {
+    const t = Math.min(1, (now - start) / duration);
+    el.textContent = `${Math.round(target * easeOutCubic(t))}%`;
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function highlightTechnique(tech) {
   document.querySelectorAll('#donut-chart circle[data-tech]').forEach(c => {
     c.classList.toggle('dimmed', tech !== null && c.dataset.tech !== tech);
@@ -474,14 +562,15 @@ function highlightTechnique(tech) {
 }
 
 /* ---------------------------------------------------------------------- */
-/* 8. EXPORTAR PDF / COPIAR AL PORTAPAPELES / TOAST                        */
+/* 9. EXPORTAR PDF / COPIAR AL PORTAPAPELES / TOAST                        */
 /* ---------------------------------------------------------------------- */
 
-function showToast(message) {
+function showToast(message, iconSvg) {
   const toast = document.getElementById('toast');
-  toast.textContent = message;
+  toast.innerHTML = `<span style="width:16px;height:16px;display:inline-flex">${iconSvg || UI.check}</span><span>${message}</span>`;
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2400);
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
 function exportPDF() {
@@ -493,7 +582,7 @@ async function copyResults() {
   const tp = TECHNIQUES[principal.tech];
   const ts = TECHNIQUES[secundaria.tech];
   const summary =
-`📊 Diagnóstico Organizacional — Resultado
+`Diagnóstico Organizacional — Resultado
 
 Técnica principal recomendada: ${tp.nombre} (${principal.matchPct}% de compatibilidad)
 "${tp.slogan}"
@@ -501,14 +590,13 @@ Técnica principal recomendada: ${tp.nombre} (${principal.matchPct}% de compatib
 Técnica secundaria: ${ts.nombre} (${secundaria.matchPct}% de compatibilidad)
 
 Generado con el Selector Interactivo de Técnicas de Diagnóstico Organizacional
-FCA UNAM — 32ª Semana Académica Interdisciplinaria
 ${window.location.href}`;
 
   try {
     await navigator.clipboard.writeText(summary);
-    showToast('Resumen copiado al portapapeles');
+    showToast('Resumen copiado al portapapeles', UI.check);
   } catch (err) {
-    showToast('No se pudo copiar automáticamente. Selecciona y copia manualmente.');
+    showToast('No se pudo copiar automáticamente. Selecciona y copia manualmente.', UI.clipboard);
   }
 }
 
@@ -518,56 +606,123 @@ function restartQuiz() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* 9. REPOSITORIO DE FICHAS ACADÉMICAS                                     */
+/* 10. REPOSITORIO DE FICHAS ACADÉMICAS + MODAL                            */
 /* ---------------------------------------------------------------------- */
 
 function renderFichas() {
   const grid = document.getElementById('fichas-grid');
   grid.innerHTML = Object.entries(TECHNIQUES).map(([key, t]) => `
-    <article class="ficha-card">
-      <div class="ficha-icon" style="background:${t.color}1A;color:${t.color}">${ICONS[key]}</div>
-      <h3 class="text-lg font-bold text-[--primary-dark-blue] mb-1">${t.nombre}</h3>
-      <p class="text-sm italic text-[--text-muted] mb-3">${t.slogan}</p>
-      <p class="text-sm text-[--text-main] mb-4 flex-1">${t.pitch}</p>
-      <p class="text-sm font-semibold text-[--primary-dark-blue] mb-3">✓ ${t.beneficio}</p>
-      <p class="text-xs font-bold uppercase tracking-wide text-[--text-muted] mb-2">Pasos de ejecución</p>
-      <ol class="ficha-steps">
-        ${t.pasos.map(p => `<li>${p}</li>`).join('')}
-      </ol>
-    </article>
+    <div class="editorial-card compact" style="background:${t.gradient}" data-tech="${key}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Ver ficha completa de ${t.nombre}">
+      <div class="editorial-icon">${ICONS[key]}</div>
+      <div class="editorial-scrim"></div>
+      <div class="editorial-content">
+        <div class="editorial-meta">Técnica de diagnóstico</div>
+        <div class="editorial-title">${t.nombre}</div>
+        <div class="editorial-slogan">${t.slogan}</div>
+        <span class="editorial-cta">Ver ficha completa ${UI.chevronRight}</span>
+      </div>
+    </div>
   `).join('');
+
+  grid.querySelectorAll('.editorial-card').forEach(card => {
+    card.addEventListener('click', () => openFichaModal(card.dataset.tech));
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openFichaModal(card.dataset.tech);
+      }
+    });
+  });
 }
 
-function renderHeroTechniquesList() {
-  const list = document.getElementById('hero-techniques-list');
-  list.innerHTML = Object.entries(TECHNIQUES).map(([key, t]) => `
-    <div class="flex items-center gap-3 text-white">
-      <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-white/15" style="color:white">${ICONS[key]}</span>
-      <span class="text-sm font-medium">${t.nombre}</span>
+function openFichaModal(techKey) {
+  const t = TECHNIQUES[techKey];
+  const modal = document.getElementById('ficha-modal');
+  modal.innerHTML = `
+    <div class="modal-panel app-card">
+      <button type="button" class="icon-btn modal-close" id="modal-close-btn" aria-label="Cerrar">${UI.close}</button>
+      <div class="ficha-icon" style="background:${t.color}1A;color:${t.color}">${ICONS[techKey]}</div>
+      <h3 class="text-2xl font-extrabold text-[--primary-dark-blue] mb-1">${t.nombre}</h3>
+      <p class="italic text-[--text-muted] mb-5">${t.slogan}</p>
+      <p class="text-[--text-main] leading-relaxed mb-5">${t.pitch}</p>
+      <p class="flex items-start gap-2 font-semibold text-[--primary-dark-blue] mb-5">
+        <span class="inline-icon mt-0.5 text-[--primary-blue]">${UI.check}</span>
+        <span><span class="font-semibold">Beneficio clave:</span> <span class="font-normal text-[--text-muted]">${t.beneficio}</span></span>
+      </p>
+      <p class="font-bold text-sm uppercase tracking-wide text-[--text-muted] mb-2">Pasos de ejecución</p>
+      <ol class="ficha-steps">${t.pasos.map(p => `<li>${p}</li>`).join('')}</ol>
+    </div>
+  `;
+  modal.hidden = false;
+  requestAnimationFrame(() => modal.classList.add('open'));
+  document.getElementById('modal-close-btn').addEventListener('click', closeFichaModal);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFichaModal() {
+  const modal = document.getElementById('ficha-modal');
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+  setTimeout(() => { modal.hidden = true; modal.innerHTML = ''; }, prefersReducedMotion() ? 0 : 320);
+}
+
+/* ---------------------------------------------------------------------- */
+/* 11. METODOLOGÍA Y FUENTES                                               */
+/* ---------------------------------------------------------------------- */
+
+function renderReferences() {
+  const grid = document.getElementById('references-grid');
+  if (!grid) return;
+  grid.innerHTML = REFERENCES.map(ref => `
+    <div class="reference-card">
+      <p class="font-bold text-white mb-1">${ref.institucion}</p>
+      <p class="text-sm text-white/70 mb-1">${ref.marco}</p>
+      <p class="text-sm text-white/50">${ref.nota}</p>
+      <a class="ref-link" href="${ref.url}" target="_blank" rel="noopener noreferrer">
+        Visitar sitio ${UI.externalLink}
+      </a>
     </div>
   `).join('');
 }
 
 /* ---------------------------------------------------------------------- */
-/* 10. INICIALIZACIÓN                                                      */
+/* 12. INICIALIZACIÓN                                                      */
 /* ---------------------------------------------------------------------- */
+
+function renderHeroTechniquesList() {
+  const list = document.getElementById('hero-techniques-list');
+  list.innerHTML = Object.entries(TECHNIQUES).map(([key, t]) => `
+    <div class="flex items-center gap-3 text-white">
+      <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-white/15">${ICONS[key]}</span>
+      <span class="text-sm font-medium">${t.nombre}</span>
+    </div>
+  `).join('');
+}
 
 function init() {
   document.getElementById('footer-year').textContent = new Date().getFullYear();
 
   renderFichas();
+  renderReferences();
   renderHeroTechniquesList();
   showView('hero');
 
   document.getElementById('btn-start-quiz').addEventListener('click', startQuiz);
   document.getElementById('btn-nav-cta').addEventListener('click', startQuiz);
   document.getElementById('btn-quiz-back').addEventListener('click', goBack);
-  document.getElementById('btn-quiz-next').addEventListener('click', goNext);
   document.getElementById('btn-export-pdf').addEventListener('click', exportPDF);
   document.getElementById('btn-copy-results').addEventListener('click', copyResults);
   document.getElementById('btn-restart').addEventListener('click', restartQuiz);
   document.getElementById('btn-view-fichas').addEventListener('click', () => {
-    document.getElementById('fichas').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('fichas').scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  });
+
+  const modal = document.getElementById('ficha-modal');
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeFichaModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeFichaModal();
   });
 
   document.querySelectorAll('[data-nav]').forEach(link => {
