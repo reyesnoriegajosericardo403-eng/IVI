@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Selector de Diagnóstico Organizacional</title>
+<meta name="description" content="Responde 10 preguntas y descubre cuál técnica de diagnóstico organizacional (FODA, PESTEL, Benchmarking, Ishikawa, Cadena de Valor o Matriz BCG) es la más idónea para tu organización.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232563EB'/%3E%3Cpath d='M7 13l3 3 7-7' stroke='white' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        colors: {
+          'primary-blue': '#2563EB',
+          'primary-dark': '#0F172A',
+          'accent-blue': '#3B82F6',
+          'bg-secondary': '#F8FAFC',
+          'card-border': '#E2E8F0',
+          'text-muted': '#64748B'
+        },
+        boxShadow: {
+          soft: '0 10px 30px -5px rgba(15, 23, 42, 0.08)',
+          'soft-lg': '0 20px 45px -10px rgba(15, 23, 42, 0.15)'
+        }
+      }
+    }
+  };
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-white text-[--text-main] font-sans antialiased">
+
+<header class="no-print sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[--card-border]">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <a href="#hero" class="flex items-center gap-2 font-extrabold text-lg text-[--primary-dark-blue]" data-nav="hero">
+      <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-[--primary-blue] text-white text-sm font-bold">SD</span>
+      Selector de Diagnóstico
+    </a>
+    <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-[--text-muted]">
+      <a href="#hero" data-nav="hero" class="hover:text-[--primary-blue] transition">Inicio</a>
+      <a href="#fichas" data-nav="fichas" class="hover:text-[--primary-blue] transition">Fichas técnicas</a>
+      <a href="#footer-info" data-nav="footer-info" class="hover:text-[--primary-blue] transition">Metodología</a>
+    </nav>
+    <button id="btn-nav-cta" class="pill-btn bg-[--primary-blue] text-white text-sm hover:opacity-90">Iniciar diagnóstico</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===================== HERO ===================== -->
+  <section id="hero" class="view no-print">
+    <div class="hero-gradient text-white">
+      <div class="max-w-6xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-12 items-center">
+        <div class="stagger-item" style="animation-delay:0ms">
+          <span class="inline-block px-4 py-1.5 rounded-full bg-white/15 text-xs font-semibold tracking-wide uppercase mb-6">
+            Diagnóstico organizacional en minutos
+          </span>
+          <h1 class="text-4xl md:text-5xl font-extrabold leading-tight mb-6">
+            Encuentra la técnica de diagnóstico organizacional ideal para tu empresa
+          </h1>
+          <p class="text-lg text-white/85 mb-8 max-w-lg">
+            Responde 10 preguntas cualitativas y recibe una recomendación ejecutiva entre
+            FODA, PESTEL, Benchmarking, Diagrama de Ishikawa, Cadena de Valor y Matriz BCG.
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <button id="btn-start-quiz" class="pill-btn bg-white text-[--primary-dark-blue] hover:shadow-soft-lg">
+              Comenzar diagnóstico
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <a href="#fichas" data-nav="fichas" class="pill-btn border border-white/40 text-white hover:bg-white/10">
+              Ver las 6 técnicas
+            </a>
+          </div>
+        </div>
+        <div class="hidden md:flex justify-center stagger-item" style="animation-delay:90ms">
+          <div class="glass-card rounded-2xl p-8 w-full max-w-sm">
+            <p class="text-sm font-semibold text-white/70 mb-4">Técnicas analizadas</p>
+            <div id="hero-techniques-list" class="space-y-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 py-16 grid sm:grid-cols-3 gap-6">
+      <div class="feature-card stagger-item" style="animation-delay:0ms">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg></div>
+        <h3 class="font-bold text-lg mb-1">10 preguntas guiadas</h3>
+        <p class="text-sm text-[--text-muted]">Un árbol de decisión cualitativo diseñado para llegar directo al diagnóstico correcto.</p>
+      </div>
+      <div class="feature-card stagger-item" style="animation-delay:60ms">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6-8.5"/><path d="M21 3v6h-6"/></svg></div>
+        <h3 class="font-bold text-lg mb-1">Resultado visual</h3>
+        <p class="text-sm text-[--text-muted]">Dashboard con gráfico de compatibilidad y ficha ejecutiva lista para compartir.</p>
+      </div>
+      <div class="feature-card stagger-item" style="animation-delay:120ms">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M6 3h8l5 5v13H6z"/><path d="M9 13h6M9 17h6"/></svg></div>
+        <h3 class="font-bold text-lg mb-1">Exporta e imprime</h3>
+        <p class="text-sm text-[--text-muted]">Copia el resumen a WhatsApp/correo o descárgalo como PDF con un clic.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CUESTIONARIO ===================== -->
+  <section id="quiz" class="view no-print" hidden>
+    <div class="max-w-2xl mx-auto px-6 py-16">
+      <div class="flex items-center gap-4 mb-3">
+        <button id="btn-quiz-back" type="button" class="icon-btn" aria-label="Pregunta anterior">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="flex-1 flex items-center justify-between text-sm font-semibold text-[--text-muted]">
+          <span id="quiz-step-label">Pregunta 1 de 10</span>
+          <span id="quiz-percent-label">0%</span>
+        </div>
+      </div>
+      <div class="progress-track mb-10">
+        <div id="quiz-progress-bar" class="progress-fill" style="width:0%"></div>
+      </div>
+
+      <div id="quiz-card" class="app-card p-8 md:p-10">
+        <h2 id="quiz-question" class="text-xl md:text-2xl font-bold text-[--primary-dark-blue] mb-8"></h2>
+        <div id="quiz-options" class="space-y-3"></div>
+      </div>
+      <p class="text-center text-xs text-[--text-muted] mt-6">Al elegir una respuesta avanzarás automáticamente a la siguiente pregunta.</p>
+    </div>
+  </section>
+
+  <!-- ===================== DASHBOARD DE RESULTADOS ===================== -->
+  <section id="results" class="view" hidden>
+    <div id="results-print" class="max-w-5xl mx-auto px-6 py-16 bg-[--bg-secondary]">
+      <div class="text-center mb-12 no-print">
+        <span class="inline-block px-4 py-1.5 rounded-full bg-blue-50 text-[--primary-blue] text-xs font-bold uppercase tracking-wide mb-4">Diagnóstico completado</span>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-[--primary-dark-blue]">Tu resultado ejecutivo</h2>
+      </div>
+
+      <div class="print-only mb-8">
+        <h2 class="text-2xl font-extrabold text-[--primary-dark-blue]">Ficha ejecutiva de diagnóstico organizacional</h2>
+        <p class="text-sm text-[--text-muted]" id="print-date"></p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-10 items-center mb-14 no-print">
+        <div class="flex flex-col items-center">
+          <svg id="donut-chart" viewBox="0 0 220 220" class="w-64 h-64 md:w-72 md:h-72"></svg>
+          <p class="text-xs text-[--text-muted] mt-2">Pasa el cursor sobre las técnicas para ver su nivel de compatibilidad</p>
+        </div>
+        <div id="donut-legend" class="space-y-2"></div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 mb-6">
+        <div id="result-primary-card" class="editorial-card hero-result"></div>
+        <div id="result-secondary-card" class="editorial-card hero-result"></div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 mb-10">
+        <div id="result-primary-detail" class="app-card p-8"></div>
+        <div id="result-secondary-detail" class="app-card p-8"></div>
+      </div>
+
+      <div class="flex flex-wrap gap-4 justify-center no-print">
+        <button id="btn-export-pdf" class="pill-btn bg-[--primary-dark-blue] text-white hover:opacity-90">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+          Exportar a PDF
+        </button>
+        <button id="btn-copy-results" class="pill-btn border border-[--card-border] hover:bg-white">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/></svg>
+          Copiar resumen
+        </button>
+        <button id="btn-view-fichas" class="pill-btn border border-[--card-border] hover:bg-white">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          Ver todas las fichas
+        </button>
+        <button id="btn-restart" class="pill-btn border border-red-200 text-red-600 hover:bg-red-50">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+          Reiniciar diagnóstico
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== REPOSITORIO DE FICHAS ===================== -->
+  <section id="fichas" class="no-print py-20">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-14">
+        <span class="inline-block px-4 py-1.5 rounded-full bg-blue-50 text-[--primary-blue] text-xs font-bold uppercase tracking-wide mb-4">Repositorio técnico</span>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-[--primary-dark-blue] mb-4">Las 6 técnicas de diagnóstico organizacional</h2>
+        <p class="text-[--text-muted] max-w-2xl mx-auto">Explora cada técnica y elige, con criterio, la que mejor se ajusta a tu situación.</p>
+      </div>
+      <div id="fichas-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer id="footer-info" class="no-print bg-[--primary-dark-blue] text-white/80">
+  <div class="max-w-6xl mx-auto px-6 py-14">
+    <div class="grid md:grid-cols-3 gap-10 text-sm mb-12">
+      <div>
+        <p class="font-bold text-white mb-2">Selector de Diagnóstico Organizacional</p>
+        <p class="text-white/60">Una herramienta interactiva para elegir, con criterio, la técnica de diagnóstico administrativo más adecuada a cada situación.</p>
+      </div>
+      <div class="md:col-span-2">
+        <p class="font-bold text-white mb-2">Metodología y fuentes</p>
+        <p class="text-white/60 mb-4">El árbol de decisión se apoya en marcos de diagnóstico y clasificación de procesos reconocidos internacionalmente:</p>
+      </div>
+    </div>
+    <div id="references-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12"></div>
+    <p class="text-xs text-white/40 border-t border-white/10 pt-6">
+      Esta herramienta es de carácter orientativo. Los resultados no sustituyen una consultoría profesional en administración de empresas.
+    </p>
+  </div>
+  <div class="border-t border-white/10 text-center text-xs text-white/40 py-4">
+    © <span id="footer-year"></span> Selector de Diagnóstico Organizacional
+  </div>
+</footer>
+
+<div id="ficha-modal" class="modal-backdrop no-print" hidden></div>
+
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
