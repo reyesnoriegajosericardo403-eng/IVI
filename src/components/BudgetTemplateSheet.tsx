@@ -56,7 +56,7 @@ export function BudgetTemplateSheet({
 
   return (
     <View style={styles.backdrop}>
-      <View style={[styles.card, { backgroundColor: colors.surface, borderRadius: radius.lg }]}>
+      <View style={[styles.card, { backgroundColor: colors.surfaceSolid, borderRadius: radius.lg }]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={[typography.headline, { color: colors.textPrimary }]}>Presupuesto de este periodo</Text>

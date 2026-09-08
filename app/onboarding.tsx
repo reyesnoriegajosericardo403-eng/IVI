@@ -667,7 +667,7 @@ export default function Onboarding() {
 
         {showConfirmContinue && (
           <View style={styles.modalBackdrop}>
-            <View style={[styles.modalCard, { backgroundColor: colors.surface, borderRadius: radius.lg }]}>
+            <View style={[styles.modalCard, { backgroundColor: colors.surfaceSolid, borderRadius: radius.lg }]}>
               <Text style={[typography.title, { color: colors.textPrimary }]}>¿Ya están todas tus tarjetas?</Text>
               <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.sm }]}>
                 Por si se te olvidaba alguna: BBVA, Mercado Pago, Nu, Klar, Movilidad CDMX, Banorte, Banco Azteca,

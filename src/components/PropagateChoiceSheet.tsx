@@ -26,7 +26,7 @@ export function PropagateChoiceSheet({
 
   return (
     <View style={styles.backdrop}>
-      <View style={[styles.card, { backgroundColor: colors.surface, borderRadius: radius.lg }]}>
+      <View style={[styles.card, { backgroundColor: colors.surfaceSolid, borderRadius: radius.lg }]}>
         <Text style={[typography.headline, { color: colors.textPrimary }]}>¿Aplicar también a otros periodos?</Text>
         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
           Guardaste un cambio en este periodo. ¿Quieres que también aplique en los demás periodos que usan

@@ -640,7 +640,7 @@ export default function Presupuesto() {
 
       {introOpen && (
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderRadius: radius.lg }]}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surfaceSolid, borderRadius: radius.lg }]}>
             <Ionicons name="calendar-number-outline" size={30} color={colors.accentFrom} />
             <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.sm }]}>Nuevo: presupuestos con nombre</Text>
             <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.sm }]}>
