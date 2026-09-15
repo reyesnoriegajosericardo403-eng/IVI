@@ -13,6 +13,56 @@ misma claridad, que no hay evidencia suficiente para responderte.
 
 ---
 
+## Ábrelo en tu computadora (2 minutos, sin saber programar)
+
+**¿Por qué no me das un link directo?** Porque cuando hablas conmigo aquí, yo
+corro dentro de un contenedor temporal en la nube — no en tu computadora. Si
+levanto un servidor ahí, solo yo puedo verlo; tu navegador no tiene forma de
+llegar a él, sin importar la URL que te dé. RITCHIE necesita correr en un
+equipo que de verdad sea tuyo, para poder conectarse a internet con tu
+conexión y mostrarte la página en tu propio navegador. Es la única manera
+honesta de que "lo veas funcionando" de verdad, con datos reales.
+
+La buena noticia: una vez instalado, se abre solo con un doble clic.
+
+**Paso 1 — Consigue la carpeta `ritchie/`.** Descarga este repositorio desde
+GitHub (botón verde **Code → Download ZIP**) y descomprímelo, o clónalo si ya
+usas Git. Todo lo que necesitas está dentro de la carpeta `ritchie/`.
+
+**Paso 2 — Ábrelo:**
+
+| Tu computadora | Qué hacer |
+|---|---|
+| **Mac** | Doble clic en **`Iniciar RITCHIE (Mac).command`**. Si macOS dice que no puede verificar al desarrollador: clic derecho sobre el archivo → *Abrir* → *Abrir* (solo la primera vez). |
+| **Windows** | Doble clic en **`Iniciar RITCHIE (Windows).bat`**. |
+| **Cualquier sistema, por terminal** | `cd ritchie` y luego `python3 iniciar.py` |
+
+Eso es todo. Se instala lo que haga falta (una sola vez, ~1-2 minutos), se
+abre tu navegador solo, y ya puedes escribir tu pregunta. La próxima vez que
+lo abras arranca al instante.
+
+**¿No tienes Python?** El lanzador te avisa con un mensaje claro y el enlace
+para instalarlo (es gratis, oficial, y toma dos minutos: python.org).
+
+**¿Quieres verlo funcionando ahora mismo, sin instalar nada?** Es la interfaz
+real (mismo HTML, CSS y JavaScript que corre en tu computadora), con dos
+preguntas de ejemplo ya calculadas por el motor sobre series simuladas —
+etiquetadas en grande como lo que son — para que juzgues el diseño y el
+comportamiento antes de instalar algo: pide la vista previa.
+
+## Diseño
+
+Interfaz minimalista con el vocabulario visual de Apple: materiales
+translúcidos con jerarquía real, resortes en vez de animaciones prescritas
+(interrumpibles, con traspaso de velocidad en el arrastre de la hoja
+inferior), tipografía con seguimiento óptico y un selector de tema
+claro/oscuro/automático con indicador animado — conservando la paleta de
+color viva del proyecto (azul, verde, rojo, ámbar). Principios adaptados de
+[emilkowalski/skills](https://github.com/emilkowalski/skills) (`apple-design`,
+`mobile-native`). Responsivo verificado en móvil, tablet, laptop y escritorio.
+
+---
+
 ## Qué hace, en una frase
 
 Toma la historia verificable de un activo, construye variables que solo
@@ -34,7 +84,9 @@ por si la quieres ver.
 
 ---
 
-## Instalación
+## Instalación (manual, para quien prefiere control total)
+
+Si ya tienes experiencia con Python y prefieres no usar `iniciar.py`:
 
 Requiere Python 3.10 o superior.
 
@@ -53,10 +105,14 @@ están implementados dentro del proyecto, sin nada más.
 ### Interfaz web (lo normal)
 
 ```bash
+python3 iniciar.py            # instala lo que falte y abre el navegador solo
+# — o, si ya instalaste las dependencias a mano —
 python -m ritchie servidor
 ```
 
-Abre `http://127.0.0.1:8777` y escribe tu pregunta.
+Abre `http://127.0.0.1:8777` y escribe tu pregunta. Si ese puerto está
+ocupado, usa `python -m ritchie servidor --puerto 0` para que el sistema
+elija uno libre (la dirección exacta aparece impresa en la terminal).
 
 ### Línea de comandos
 

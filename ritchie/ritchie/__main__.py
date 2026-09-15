@@ -116,7 +116,14 @@ def main(argv: list[str] | None = None) -> int:
 
     serve_parser = sub.add_parser("servidor", parents=[common], help="Levanta la interfaz web.")
     serve_parser.add_argument("--host", default="127.0.0.1")
-    serve_parser.add_argument("--puerto", type=int, default=8777)
+    serve_parser.add_argument(
+        "--puerto", type=int, default=8777,
+        help="Puerto a usar. 0 = que el sistema elija uno libre (útil si el 8777 ya está ocupado).",
+    )
+    serve_parser.add_argument(
+        "--sin-navegador", action="store_true",
+        help="No abrir el navegador automáticamente al iniciar.",
+    )
 
     demo_parser = sub.add_parser(
         "demo", help="Corrida de demostración con datos SIMULADOS y etiquetados como tales."
@@ -143,6 +150,7 @@ def main(argv: list[str] | None = None) -> int:
             profile=args.perfil,
             allow_synthetic=args.permitir_simulados,
             source_order=source_order,
+            open_browser=not args.sin_navegador,
         )
         return 0
 

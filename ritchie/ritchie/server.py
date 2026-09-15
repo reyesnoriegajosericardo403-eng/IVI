@@ -12,8 +12,10 @@ import json
 import mimetypes
 import os
 import threading
+import time
 import traceback
 import uuid
+import webbrowser
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -257,17 +259,36 @@ def serve(
     profile: str = "rapido",
     allow_synthetic: bool = False,
     source_order: tuple[str, ...] = DEFAULT_SOURCE_ORDER,
+    open_browser: bool = True,
 ) -> None:
     ritchie_server = RitchieServer(
         profile=profile, allow_synthetic=allow_synthetic, source_order=source_order
     )
+    # Puerto 0 = "el sistema operativo elige uno libre". Útil cuando el
+    # puerto por defecto ya está ocupado por una corrida anterior.
     httpd = ThreadingHTTPServer((host, port), build_handler(ritchie_server))
+    actual_port = httpd.server_address[1]
+    url = f"http://{host}:{actual_port}"
+
     banner = f"{ENGINE_NAME} {ENGINE_VERSION} — perfil «{profile}»"
     print(banner)
-    print(f"Abre http://{host}:{port} en tu navegador.")
+    print(f"Abre {url} en tu navegador.")
     if allow_synthetic:
         print("AVISO: datos simulados habilitados. Nada de lo que veas es un mercado real.")
     print("Ctrl+C para detener.")
+
+    if open_browser:
+        # Se abre solo, un instante después de que el puerto ya esté
+        # escuchando, para no competir con el arranque del servidor.
+        def _open() -> None:
+            time.sleep(0.6)
+            try:
+                webbrowser.open(url)
+            except Exception:  # noqa: BLE001 - abrir el navegador es una cortesía, no un requisito
+                pass
+
+        threading.Thread(target=_open, daemon=True).start()
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

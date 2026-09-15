@@ -26,6 +26,8 @@
     noSignalCard: $('sin-senal-card'), blockers: $('bloqueos'),
     levels: $('niveles'), disclaimer: $('disclaimer'), provenance: $('procedencia'),
     dialog: $('dialogo'), openDialog: $('acerca-de'), closeDialog: $('cerrar-dialogo'),
+    sheet: $('hoja'), sheetHandle: $('hoja-manija'),
+    themeToggle: $('selector-tema'), themeThumb: $('tema-indicador'),
   };
 
   const DONUT = 2 * Math.PI * 52;
@@ -41,6 +43,68 @@
   const money = (value) => (value === null || value === undefined ? '—' : nf(value >= 100 ? 2 : 4).format(value));
   const esc = (text) => String(text ?? '').replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const sinMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ------------------------------------------------------------ movimiento
+     Un resorte de verdad, no una transición disfrazada: se usa donde el
+     gesto de la persona debe poder interrumpirlo en cualquier instante (la
+     hoja que se arrastra). Parámetros al estilo Apple: damping 1.0 (sin
+     rebote) para asentar, algo menor solo cuando el soltar trae velocidad
+     propia. Semi-implícito de Euler — estable y barato de sobra para 60fps. */
+  function crearResorte({ amortiguacion = 1, respuesta = 0.35 } = {}) {
+    // De (amortiguación, tiempo de respuesta) a rigidez/fricción físicas.
+    const angular = (2 * Math.PI) / Math.max(respuesta, 0.05);
+    const rigidez = angular * angular;
+    const friccion = 2 * amortiguacion * angular;
+    return function paso(valor, velocidad, objetivo, dt) {
+      const fuerza = -rigidez * (valor - objetivo) - friccion * velocidad;
+      const nuevaVelocidad = velocidad + fuerza * dt;
+      const nuevoValor = valor + nuevaVelocidad * dt;
+      const asentado = Math.abs(nuevoValor - objetivo) < 0.4 && Math.abs(nuevaVelocidad) < 30;
+      return { valor: asentado ? objetivo : nuevoValor, velocidad: asentado ? 0 : nuevaVelocidad, listo: asentado };
+    };
+  }
+
+  /** Anima un número desde `desde` hasta `objetivo`, arrancando con
+   * `velocidadInicial` (traspaso de velocidad del gesto — sección 5 de la
+   * guía) y entregando cada cuadro a `escribir(valor)`. Interrumpible:
+   * cancelar el resultado y volver a llamar desde el valor en pantalla es
+   * seguro en cualquier momento, porque nunca se anima "hacia" nada que no
+   * sea el objetivo actual — nunca hacia un punto intermedio ya superado. */
+  function animarConResorte(desde, objetivo, velocidadInicial, opciones, escribir, alTerminar) {
+    const paso = crearResorte(opciones);
+    let valor = desde;
+    let velocidad = velocidadInicial;
+    let anterior = performance.now();
+    let vivo = true;
+    function marco(ahora) {
+      if (!vivo) return;
+      const dt = Math.min((ahora - anterior) / 1000, 1 / 30);
+      anterior = ahora;
+      const resultado = paso(valor, velocidad, objetivo, dt);
+      valor = resultado.valor; velocidad = resultado.velocidad;
+      escribir(valor);
+      if (resultado.listo) { if (alTerminar) alTerminar(); return; }
+      requestAnimationFrame(marco);
+    }
+    requestAnimationFrame(marco);
+    return () => { vivo = false; };
+  }
+
+  /** Resistencia progresiva al tirar más allá de un límite — nunca un tope
+   * duro. `over` es cuánto se pasó del límite; `dimension`, el tamaño de
+   * referencia (alto de la hoja, ancho del riel del interruptor). */
+  function rubberband(over, dimension, constante = 0.55) {
+    return (over * dimension * constante) / (dimension + constante * Math.abs(over));
+  }
+
+  /** current + proyección del punto de reposo a partir de la velocidad de
+   * salida — la misma función que usa Apple para que un tironazo aterrice
+   * más allá del punto de soltado, no exactamente en él. */
+  function proyectarDestino(actual, velocidadPxPorSeg, decel = 0.998) {
+    return actual + (velocidadPxPorSeg / 1000) * decel / (1 - decel);
+  }
 
   /* ------------------------------------------------------------- gráficas */
   const svgNS = 'http://www.w3.org/2000/svg';
@@ -316,10 +380,20 @@
     show(el.errorBox, true);
   }
 
-  /* ------------------------------------------------------------- petición */
+  /* ------------------------------------------------------------- petición
+     Modo vista previa: cuando la página se publica sin el motor de Python
+     detrás (por ejemplo, como Artifact para que alguien la revise sin
+     instalar nada), `window.__RITCHIE_DEMO__` trae dos análisis YA
+     calculados por el motor real sobre series simuladas. La pantalla, la
+     lógica de presentación y hasta la barra de avance son las mismas de
+     siempre — lo único que cambia es de dónde sale el JSON. Nunca se
+     inventa un resultado nuevo aquí: solo se reproduce uno ya calculado. */
+  const DEMO = window.__RITCHIE_DEMO__ || null;
+
   async function ask(question) {
     if (!question.trim()) return;
     setWorking(true);
+    if (DEMO) return askDemo(question);
     el.stage.textContent = 'Enviando';
     el.bar.style.width = '2%';
     try {
@@ -337,6 +411,27 @@
     } catch (error) {
       fail('Sin conexión con el motor', String(error));
     }
+  }
+
+  async function askDemo(question) {
+    const escrita = question.trim().toLowerCase();
+    const coincidencia = DEMO.ejemplos.find((e) => e.pregunta.toLowerCase() === escrita);
+    const elegido = coincidencia || DEMO.ejemplos[0];
+    const etapas = [
+      [12, 'Buscando datos verificables'],
+      [28, 'Construyendo variables sin mirar al futuro'],
+      [50, 'Validando modelos contra el pasado, día por día'],
+      [72, 'Comparando modelos y corrigiendo por pruebas múltiples'],
+      [88, 'Simulando miles de escenarios'],
+      [97, 'Auditando el análisis'],
+    ];
+    for (const [avance, etapa] of etapas) {
+      el.stage.textContent = etapa;
+      el.bar.style.width = `${avance}%`;
+      await new Promise((resolve) => setTimeout(resolve, sinMovimiento() ? 40 : 220));
+    }
+    setWorking(false);
+    render(elegido.payload);
   }
 
   function poll(jobId) {
@@ -465,6 +560,10 @@
         <p class="stat-value">${esc(c.value)}</p>
         <p class="stat-note">${esc(c.note)}</p>
       </div>`).join('');
+    // Reinicia la entrada escalonada en cada respuesta nueva, no solo la primera.
+    el.stats.classList.remove('reveal-stagger');
+    void el.stats.offsetWidth;
+    el.stats.classList.add('reveal-stagger');
     show(el.stats, cards.length > 0);
   }
 
@@ -789,6 +888,7 @@
 
   let interpretTimer = null;
   el.input.addEventListener('input', () => {
+    if (DEMO) return; // la vista previa no tiene motor de lenguaje detrás
     clearTimeout(interpretTimer);
     const question = el.input.value.trim();
     if (question.length < 4) { el.interp.hidden = true; return; }
@@ -808,31 +908,201 @@
     }, 280);
   });
 
-  el.openDialog.addEventListener('click', () => el.dialog.showModal());
-  el.closeDialog.addEventListener('click', () => el.dialog.close());
+  /* --------------------------------------------------------------- hoja
+     "Cómo funciona": tarjeta de vidrio centrada con puntero fino, hoja que
+     se arrastra desde abajo en táctil. El arrastre es de verdad —
+     interrumpible en cualquier cuadro, con la velocidad del soltar pasada
+     al resorte que la asienta o la despide (secciones 3, 5 y 9 de la guía
+     de diseño de Apple). */
+  const esVistaHoja = () => window.matchMedia('(max-width: 680px), (hover: none)').matches;
+  let cancelarResorteHoja = null;
+  let arrastre = null;
+
+  function leerTranslateY(elemento) {
+    const transform = getComputedStyle(elemento).transform;
+    if (!transform || transform === 'none') return 0;
+    const matriz = new DOMMatrixReadOnly(transform);
+    return matriz.m42;
+  }
+
+  function abrirDialogo() {
+    if (cancelarResorteHoja) { cancelarResorteHoja(); cancelarResorteHoja = null; }
+    el.sheet.style.transition = '';
+    el.sheet.style.transform = '';
+    el.dialog.showModal();
+    // Un cuadro después de mostrarlo, para que el navegador pinte el estado
+    // "cerrado" primero y la transición de apertura tenga algo desde dónde
+    // animar (si no, no hay salto que animar y la hoja aparece de golpe).
+    requestAnimationFrame(() => requestAnimationFrame(() => el.dialog.setAttribute('data-open', '')));
+  }
+
+  function cerrarDialogo() {
+    if (!el.dialog.open) return;
+    if (cancelarResorteHoja) { cancelarResorteHoja(); cancelarResorteHoja = null; }
+    el.dialog.removeAttribute('data-open');
+    el.sheet.style.transition = '';
+    el.sheet.style.transform = '';
+    const duracion = sinMovimiento() ? 160 : 340;
+    setTimeout(() => { try { el.dialog.close(); } catch (_) {} }, duracion);
+  }
+
+  el.openDialog.addEventListener('click', abrirDialogo);
+  el.closeDialog.addEventListener('click', cerrarDialogo);
   el.dialog.addEventListener('click', (event) => {
-    if (event.target === el.dialog) el.dialog.close();
+    if (event.target === el.dialog) cerrarDialogo();
+  });
+  el.dialog.addEventListener('cancel', (event) => { // tecla Esc
+    event.preventDefault();
+    cerrarDialogo();
   });
 
-  /* --------------------------------------------------------------- inicio */
-  (async () => {
+  function iniciarArrastre(event) {
+    if (!esVistaHoja() || event.button > 0) return;
+    if (cancelarResorteHoja) { cancelarResorteHoja(); cancelarResorteHoja = null; }
+    el.sheetHandle.setPointerCapture(event.pointerId);
+    el.sheet.style.transition = 'none';
+    arrastre = {
+      puntero: event.pointerId,
+      inicioClienteY: event.clientY,
+      inicioTranslate: leerTranslateY(el.sheet),
+      muestras: [{ t: performance.now(), y: leerTranslateY(el.sheet) }],
+    };
+  }
+
+  function moverArrastre(event) {
+    if (!arrastre || event.pointerId !== arrastre.puntero) return;
+    const alto = el.sheet.getBoundingClientRect().height || 1;
+    const delta = event.clientY - arrastre.inicioClienteY;
+    let y = arrastre.inicioTranslate + delta;
+    if (y < 0) y = -rubberband(-y, alto, 0.55); // resistencia al tirar de más hacia arriba
+    el.sheet.style.transform = `translateY(${y}px)`;
+    arrastre.muestras.push({ t: performance.now(), y });
+    if (arrastre.muestras.length > 6) arrastre.muestras.shift();
+  }
+
+  function soltarArrastre(event) {
+    if (!arrastre || event.pointerId !== arrastre.puntero) return;
+    const muestras = arrastre.muestras;
+    const primera = muestras[0];
+    const ultima = muestras[muestras.length - 1];
+    const dt = Math.max((ultima.t - primera.t) / 1000, 1 / 60);
+    const velocidad = (ultima.y - primera.y) / dt; // px/s, positivo = hacia abajo
+    const alto = el.sheet.getBoundingClientRect().height || 1;
+    const proyectado = proyectarDestino(ultima.y, velocidad);
+    const debeCerrar = proyectado > alto * 0.45 || velocidad > 600;
+
+    el.sheet.style.transition = '';
+    if (debeCerrar) {
+      el.dialog.removeAttribute('data-open');
+      cancelarResorteHoja = animarConResorte(
+        ultima.y, alto + 40, velocidad, { amortiguacion: 1, respuesta: 0.38 },
+        (v) => { el.sheet.style.transform = `translateY(${v}px)`; },
+        () => { try { el.dialog.close(); } catch (_) {} el.sheet.style.transform = ''; },
+      );
+    } else {
+      cancelarResorteHoja = animarConResorte(
+        ultima.y, 0, velocidad, { amortiguacion: 1, respuesta: 0.32 },
+        (v) => { el.sheet.style.transform = `translateY(${v}px)`; },
+        () => { el.sheet.style.transform = ''; },
+      );
+    }
+    arrastre = null;
+  }
+
+  el.sheetHandle.addEventListener('pointerdown', iniciarArrastre);
+  el.sheetHandle.addEventListener('pointermove', moverArrastre);
+  el.sheetHandle.addEventListener('pointerup', soltarArrastre);
+  el.sheetHandle.addEventListener('pointercancel', soltarArrastre);
+
+  /* ------------------------------------------------------------ tema
+     Tres estados persistentes en este dispositivo: sistema, claro, oscuro.
+     El HTML ya aplicó el tema guardado antes de pintar (evita el parpadeo);
+     aquí solo se sincroniza el control visual y se atienden los cambios. */
+  const CLAVE_TEMA = 'ritchie-tema';
+  const botonesTema = Array.from(el.themeToggle.querySelectorAll('button'));
+
+  function temaGuardado() {
     try {
-      const status = await (await fetch('/api/estado')).json();
-      el.chips.innerHTML = (status.ejemplos || []).map(
-        (example) => `<button class="chip" type="button">${esc(example)}</button>`,
-      ).join('');
-      el.chips.querySelectorAll('.chip').forEach((chip) => {
-        chip.addEventListener('click', () => {
-          el.input.value = chip.textContent;
-          ask(chip.textContent);
-        });
+      const valor = localStorage.getItem(CLAVE_TEMA);
+      return valor === 'claro' || valor === 'oscuro' ? valor : 'sistema';
+    } catch (_) { return 'sistema'; }
+  }
+
+  function moverIndicadorTema(instantaneo) {
+    const activo = el.themeToggle.querySelector('button[aria-pressed="true"]');
+    if (!activo) return;
+    // activo.offsetLeft ya es relativo a .theme-toggle (su offsetParent, por
+    // ser el ancestro posicionado más cercano) — igual que la posición base
+    // de la perilla. Nunca mezclar esto con .theme-toggle.offsetLeft: ese es
+    // relativo a SU PROPIO offsetParent (el header, con position:sticky),
+    // una referencia distinta que produce un desplazamiento absurdo.
+    const x = activo.offsetLeft - 3;
+    if (instantaneo) {
+      el.themeThumb.style.transitionProperty = 'none';
+      el.themeThumb.style.width = `${activo.offsetWidth}px`;
+      el.themeThumb.style.transform = `translateX(${x}px)`;
+      void el.themeThumb.offsetWidth; // fuerza a aplicar antes de reactivar la transición
+      el.themeThumb.style.transitionProperty = '';
+    } else {
+      el.themeThumb.style.width = `${activo.offsetWidth}px`;
+      el.themeThumb.style.transform = `translateX(${x}px)`;
+    }
+  }
+
+  function aplicarTema(tema, { instantaneo = false, guardar = true } = {}) {
+    if (tema === 'sistema') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = tema === 'claro' ? 'light' : 'dark';
+    botonesTema.forEach((boton) => {
+      const activo = boton.dataset.tema === tema;
+      boton.setAttribute('aria-pressed', String(activo));
+      boton.setAttribute('aria-checked', String(activo));
+    });
+    moverIndicadorTema(instantaneo);
+    if (guardar) {
+      try { localStorage.setItem(CLAVE_TEMA, tema); } catch (_) {}
+    }
+  }
+
+  botonesTema.forEach((boton) => {
+    boton.addEventListener('click', () => aplicarTema(boton.dataset.tema));
+  });
+  window.addEventListener('resize', () => moverIndicadorTema(true));
+  aplicarTema(temaGuardado(), { instantaneo: true, guardar: false });
+
+  /* --------------------------------------------------------------- inicio */
+  function iniciarChips(ejemplos, alClic) {
+    el.chips.innerHTML = ejemplos.map(
+      (texto) => `<button class="chip" type="button">${esc(texto)}</button>`,
+    ).join('');
+    el.chips.querySelectorAll('.chip').forEach((chip, i) => {
+      chip.addEventListener('click', () => {
+        el.input.value = chip.textContent;
+        alClic(chip.textContent, i);
       });
-      if (status.datos_simulados_permitidos) {
-        el.interp.hidden = false;
-        el.interp.textContent =
-          'Modo con datos simulados habilitado: lo que veas no corresponde a ningún mercado real.';
-      }
-    } catch (_) { /* la interfaz sigue siendo usable sin los ejemplos */ }
+    });
+  }
+
+  if (DEMO) {
+    iniciarChips(DEMO.ejemplos.map((e) => e.pregunta), (texto) => ask(texto));
+    el.input.value = DEMO.ejemplos[0].pregunta;
+    el.interp.hidden = false;
+    el.interp.textContent = DEMO.aviso ||
+      'Vista previa sin conexión: cada pregunta de ejemplo muestra un análisis ya calculado ' +
+      'por el motor real sobre una serie simulada. La versión que corre en tu computadora sí ' +
+      'analiza el activo real que escribas.';
     el.input.focus();
-  })();
+  } else {
+    (async () => {
+      try {
+        const status = await (await fetch('/api/estado')).json();
+        iniciarChips(status.ejemplos || [], (texto) => ask(texto));
+        if (status.datos_simulados_permitidos) {
+          el.interp.hidden = false;
+          el.interp.textContent =
+            'Modo con datos simulados habilitado: lo que veas no corresponde a ningún mercado real.';
+        }
+      } catch (_) { /* la interfaz sigue siendo usable sin los ejemplos */ }
+      el.input.focus();
+    })();
+  }
 })();
