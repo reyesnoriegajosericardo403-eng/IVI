@@ -44,11 +44,55 @@ lo abras arranca al instante.
 **¿No tienes Python?** El lanzador te avisa con un mensaje claro y el enlace
 para instalarlo (es gratis, oficial, y toma dos minutos: python.org).
 
-**¿Quieres verlo funcionando ahora mismo, sin instalar nada?** Es la interfaz
-real (mismo HTML, CSS y JavaScript que corre en tu computadora), con dos
-preguntas de ejemplo ya calculadas por el motor sobre series simuladas —
-etiquetadas en grande como lo que son — para que juzgues el diseño y el
-comportamiento antes de instalar algo: pide la vista previa.
+**¿Quieres ver el diseño antes de instalar algo?** Hay una vista previa (pídela
+aparte) con la misma interfaz, pero es solo eso: una **maqueta estática** con
+dos respuestas ya calculadas de antemano. Escribas lo que escribas ahí, no
+analiza nada nuevo — no tiene el motor corriendo detrás. Sirve para juzgar el
+diseño, no para preguntar por un activo real. Para eso hace falta correr el
+motor de verdad, con alguna de las dos opciones de abajo.
+
+## Solo tienes iPad, celular, o no quieres instalar nada: despliega en la nube (gratis)
+
+Si no tienes una computadora a la mano, la alternativa real es poner RITCHIE
+en un servidor de verdad en internet — gratis — para que te dé una dirección
+normal (`https://algo.onrender.com`) que abres en Safari como cualquier
+página. Uso [Render](https://render.com) porque tiene un plan gratuito que sí
+alcanza a internet libremente (a diferencia de otras opciones gratuitas, que
+bloquean justo las conexiones a Yahoo Finance que RITCHIE necesita) y todo se
+hace con clics, sin terminal ni computadora.
+
+**Paso 1.** Desde tu iPad, entra a [render.com](https://render.com) y crea una
+cuenta gratis — el botón "Sign up with GitHub" es el más rápido si el
+repositorio ya está en tu GitHub (usa la misma cuenta con la que se creó este
+proyecto).
+
+**Paso 2.** Adentro, toca **New +** → **Blueprint**.
+
+**Paso 3.** Conecta tu repositorio (`IVI` o como se llame el que tiene la
+carpeta `ritchie/`). Render va a encontrar solo el archivo `render.yaml` de la
+raíz del repositorio y va a proponerte crear un servicio llamado **ritchie**
+con todo ya configurado — plan **Free**, comando de instalación y de arranque
+correctos. Solo confirma con **Apply** / **Create**.
+
+**Paso 4.** Espera unos minutos (instala las librerías y arranca). Cuando
+termine, Render te muestra una URL como `https://ritchie-xxxx.onrender.com`
+— esa es tu RITCHIE, de verdad, funcionando, accesible desde cualquier
+dispositivo. Guárdala; en iPad puedes tocar el botón de compartir de Safari →
+**Agregar a pantalla de inicio** para que se sienta como una app.
+
+**Cosas que debes saber de este plan gratuito** (para que nada te tome por
+sorpresa):
+
+- **Se duerme.** Si nadie lo usa por 15 minutos, Render lo apaga. La primera
+  pregunta después de eso tarda un poco más (~30-60s extra) mientras despierta.
+- **Es más lento que una computadora normal.** La CPU gratuita es compartida;
+  un análisis puede tardar algunos minutos en vez de ~1 minuto. Es el mismo
+  motor con el mismo rigor, solo con menos músculo.
+- **Sigue el perfil `rapido` por defecto** (ver más abajo, sección "Perfiles
+  de cómputo") — es el que mejor rinde con recursos limitados sin recortar el
+  protocolo de validación.
+- Si algún día quieres algo más rápido y siempre despierto, Render también
+  tiene planes de pago; no hace falta para empezar.
 
 ## Diseño
 
