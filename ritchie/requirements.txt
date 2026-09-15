@@ -1,0 +1,7 @@
+# RITCHIE — dependencias mínimas y reales.
+# Todo lo demás (GARCH, regímenes de Markov, AR, bootstrap, Monte Carlo,
+# servidor HTTP) está implementado dentro del proyecto sin dependencias extra.
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+scikit-learn>=1.4
