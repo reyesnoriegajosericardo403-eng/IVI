@@ -25,9 +25,16 @@
 
 <header class="top">
   <div class="wrap top-inner">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">RITCHIE</span>
+    <div class="top-start">
+      <button class="sidebar-toggle" id="alternar-barra" type="button" aria-label="Mostrar u ocultar la lista de activos" aria-expanded="true" aria-controls="barra-lateral">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9.5 4.5v15"/>
+        </svg>
+      </button>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">RITCHIE</span>
+      </div>
     </div>
     <div class="top-actions">
       <div class="theme-toggle" id="selector-tema" role="radiogroup" aria-label="Tema de la interfaz">
@@ -53,7 +60,17 @@
   </div>
 </header>
 
-<main>
+<div class="shell" id="shell">
+  <!-- ------------------------------------------------------- barra lateral -->
+  <aside class="sidebar" id="barra-lateral" aria-label="Explorar por tipo de activo">
+    <div class="sidebar-inner">
+      <p class="sidebar-title">Explorar por tipo de activo</p>
+      <nav class="sidebar-cats" id="barra-categorias"></nav>
+    </div>
+  </aside>
+  <div class="sidebar-scrim" id="barra-scrim"></div>
+
+  <main id="contenido">
   <!-- ---------------------------------------------------------- pregunta -->
   <section class="hero wrap" id="hero">
     <h1 class="hero-title">¿Qué quieres saber?</h1>
@@ -206,7 +223,8 @@
       <p class="fineprint" id="procedencia"></p>
     </div>
   </section>
-</main>
+  </main>
+</div>
 
 <!-- ----------------------------------------------------------- acerca de -->
 <dialog id="dialogo" aria-labelledby="dialogo-titulo">
@@ -223,6 +241,17 @@
         <li><strong>Tramo final intacto.</strong> Un pedazo del historial no participa en ninguna decisión y se usa una sola vez, al final, para ver si lo elegido se sostiene.</li>
         <li><strong>Derecho a callar.</strong> Si nada de lo anterior aguanta, RITCHIE dice que no hay evidencia suficiente en vez de fabricar un número.</li>
       </ol>
+      <h5 class="sub">Qué activos puede analizar</h5>
+      <p class="fineprint">
+        Acciones, ETFs, índices, criptomonedas, materias primas, divisas y futuros:
+        todos con el mismo método, sobre su serie de precio histórica. Los bonos
+        gubernamentales se analizan a través del rendimiento del Tesoro de EE. UU.
+        (símbolos como el bono a 10 años) o de ETFs de renta fija — es la misma
+        estadística que para una acción, no un modelo especializado de tasas de
+        interés. RITCHIE <strong>no</strong> calcula precios de opciones, primas ni
+        otros derivados que dependen de una fórmula distinta a la de su activo
+        subyacente.
+      </p>
       <p class="fineprint">
         RITCHIE estima probabilidades a partir de precio, volumen y contexto de mercado.
         No lee noticias ni reportes, no conoce tu situación y no es asesoría de inversión.

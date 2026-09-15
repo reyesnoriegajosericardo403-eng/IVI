@@ -176,6 +176,81 @@ img, svg { max-width: 100%; }
 }
 .brand-name { font-weight: 600; letter-spacing: .14em; font-size: 13px; white-space: nowrap; }
 .top-actions { display: flex; align-items: center; gap: 6px; }
+.top-start { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+.sidebar-toggle {
+  display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto;
+  background: none; border: 0; border-radius: 9px; color: var(--text-2); cursor: pointer;
+  transition: color .2s var(--press), background-color .2s var(--press), transform .12s var(--press);
+}
+.sidebar-toggle svg { width: 19px; height: 19px; }
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-toggle:hover { color: var(--text); background: var(--surface-2); }
+}
+.sidebar-toggle:active { transform: scale(0.92); }
+.sidebar-toggle[aria-expanded="true"] { color: var(--accent); }
+
+/* --------------------------------------------------------------- barra
+   Layout de dos columnas: barra lateral fija + contenido. En escritorio se
+   colapsa a ancho 0 (empuja el contenido); en pantallas angostas (iPad
+   vertical, teléfono) se convierte en un cajón que se desliza sobre el
+   contenido, con un velo detrás para cerrarlo al tocar fuera. */
+.shell { display: flex; align-items: flex-start; }
+#contenido { flex: 1; min-width: 0; }
+
+.sidebar {
+  flex: 0 0 auto; width: 272px; overflow: hidden;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  position: sticky; top: calc(56px + env(safe-area-inset-top, 0px));
+  height: calc(100vh - 56px - env(safe-area-inset-top, 0px));
+  transition: width .38s var(--spring), border-color .35s var(--spring-soft);
+}
+.sidebar-inner {
+  width: 272px; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 18px 12px 24px;
+}
+.sidebar-title {
+  margin: 6px 10px 12px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-3); font-weight: 600;
+}
+.shell.barra-cerrada .sidebar { width: 0; border-right-color: transparent; }
+
+.sidebar-cats { display: flex; flex-direction: column; gap: 3px; }
+.sidebar-cat { border-radius: var(--radius-sm); }
+.sidebar-cat-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: none; border: 0; padding: 10px; cursor: pointer; color: var(--text);
+  font: inherit; font-size: 14.5px; font-weight: 500; text-align: left; border-radius: var(--radius-sm);
+  transition: background-color .2s var(--press);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-cat-head:hover { background: var(--surface-2); }
+}
+.sidebar-cat-chevron {
+  flex: 0 0 auto; width: 16px; height: 16px; color: var(--text-3);
+  transition: transform .3s var(--spring);
+}
+.sidebar-cat[data-abierta="true"] .sidebar-cat-chevron { transform: rotate(90deg); }
+.sidebar-cat-desc { margin: 2px 10px 6px; font-size: 12px; color: var(--text-3); line-height: 1.45; }
+.sidebar-cat-list {
+  list-style: none; margin: 0; padding: 0 3px 10px; display: grid; gap: 2px;
+  overflow: hidden;
+}
+.sidebar-cat-item {
+  display: block; width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
+  padding: 8px 10px; border-radius: 9px; color: var(--text-2); font: inherit; font-size: 13px;
+  line-height: 1.4; transition: background-color .2s var(--press), color .2s var(--press);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-cat-item:hover { background: var(--surface-2); color: var(--text); }
+}
+.sidebar-cat-item:active { background: var(--accent-soft); color: var(--text); }
+
+.sidebar-scrim {
+  position: fixed; inset: 0; z-index: 39; background: var(--scrim);
+  opacity: 0; pointer-events: none; transition: opacity .3s var(--spring-soft);
+}
 
 .ghost {
   background: none; border: 0; color: var(--text-2); font: inherit; font-size: 14px;
@@ -588,7 +663,8 @@ dialog[data-open] .sheet { opacity: 1; transform: none; filter: blur(0); }
   .sheet, dialog::backdrop { transition-duration: .15s !important; }
   .sheet { transform: none !important; filter: none !important; }
   html, body, .card, .top, .stat, details.level, .chip, .ask,
-  .donut-value, .bar-fill, .theme-toggle-thumb { transition-duration: .12s !important; }
+  .donut-value, .bar-fill, .theme-toggle-thumb,
+  .sidebar, .sidebar-cat-chevron, .sidebar-scrim { transition-duration: .12s !important; }
 }
 @keyframes fade-only { from { opacity: 0; } to { opacity: 1; } }
 
@@ -606,6 +682,24 @@ dialog[data-open] .sheet { opacity: 1; transform: none; filter: blur(0); }
    auto-fit no puede resolver por sí solo. */
 @media (min-width: 1400px) {
   :root { --max: 1100px; --pad: clamp(40px, 4vw, 64px); }
+}
+
+/* Por debajo de este ancho (iPad vertical, teléfono) la barra deja de
+   empujar el contenido y pasa a ser un cajón que se desliza encima, con
+   velo detrás. El estado abierto/cerrado lo sigue decidiendo la misma
+   clase en `.shell`; solo cambia cómo se ve cada estado. */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed; top: 0; left: 0; z-index: 40;
+    width: min(300px, 84vw); height: 100%;
+    padding-top: env(safe-area-inset-top, 0px);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-100%);
+    transition: transform .38s var(--spring);
+  }
+  .sidebar-inner { width: min(300px, 84vw); }
+  .shell:not(.barra-cerrada) .sidebar { transform: translateX(0); }
+  .shell:not(.barra-cerrada) .sidebar-scrim { opacity: 1; pointer-events: auto; }
 }
 
 @media (max-width: 760px) {

@@ -28,6 +28,8 @@
     dialog: $('dialogo'), openDialog: $('acerca-de'), closeDialog: $('cerrar-dialogo'),
     sheet: $('hoja'), sheetHandle: $('hoja-manija'),
     themeToggle: $('selector-tema'), themeThumb: $('tema-indicador'),
+    shell: $('shell'), sidebarToggle: $('alternar-barra'), sidebar: $('barra-lateral'),
+    sidebarCats: $('barra-categorias'), sidebarScrim: $('barra-scrim'),
   };
 
   const DONUT = 2 * Math.PI * 52;
@@ -1069,6 +1071,87 @@
   window.addEventListener('resize', () => moverIndicadorTema(true));
   aplicarTema(temaGuardado(), { instantaneo: true, guardar: false });
 
+  /* ------------------------------------------------------------ barra
+     Un solo estado (abierta/cerrada) que la persona controla con el botón
+     del encabezado. La MISMA clase decide dos comportamientos distintos
+     según el ancho de pantalla (ver styles.css): en escritorio encoge el
+     ancho de la barra y empuja el contenido; en iPad vertical o teléfono
+     se convierte en un cajón que se desliza encima, con velo detrás. */
+  const CLAVE_BARRA = 'ritchie-barra';
+  const esAngosto = () => window.matchMedia('(max-width: 900px)').matches;
+
+  function barraPreferida() {
+    try {
+      const guardada = localStorage.getItem(CLAVE_BARRA);
+      if (guardada === 'abierta' || guardada === 'cerrada') return guardada;
+    } catch (_) { /* localStorage no disponible: se usa el valor por defecto */ }
+    return esAngosto() ? 'cerrada' : 'abierta';
+  }
+
+  function aplicarBarra(estado, { guardar = true } = {}) {
+    const cerrada = estado === 'cerrada';
+    el.shell.classList.toggle('barra-cerrada', cerrada);
+    el.sidebarToggle.setAttribute('aria-expanded', String(!cerrada));
+    if (guardar) {
+      try { localStorage.setItem(CLAVE_BARRA, estado); } catch (_) {}
+    }
+  }
+
+  el.sidebarToggle.addEventListener('click', () => {
+    const cerradaAhora = el.shell.classList.contains('barra-cerrada');
+    aplicarBarra(cerradaAhora ? 'abierta' : 'cerrada');
+  });
+  el.sidebarScrim.addEventListener('click', () => aplicarBarra('cerrada'));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && esAngosto() && !el.shell.classList.contains('barra-cerrada')) {
+      aplicarBarra('cerrada');
+    }
+  });
+  aplicarBarra(barraPreferida(), { guardar: false });
+
+  /** Pinta las categorías de activos en la barra lateral. Cada categoría es
+   * un acordeón simple (la primera abierta de entrada); cada ejemplo es un
+   * botón que hace la pregunta directamente y, en pantallas angostas,
+   * cierra el cajón para dejar ver el resultado. */
+  function renderBarraCategorias(categorias) {
+    if (!categorias || !categorias.length) { el.sidebarCats.innerHTML = ''; return; }
+    el.sidebarCats.innerHTML = categorias.map((cat, i) => `
+      <div class="sidebar-cat" data-abierta="${i === 0 ? 'true' : 'false'}">
+        <button type="button" class="sidebar-cat-head" aria-expanded="${i === 0 ? 'true' : 'false'}">
+          <span>${esc(cat.etiqueta)}</span>
+          <svg class="sidebar-cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 6l6 6-6 6"/>
+          </svg>
+        </button>
+        ${cat.descripcion ? `<p class="sidebar-cat-desc">${esc(cat.descripcion)}</p>` : ''}
+        <ul class="sidebar-cat-list" ${i === 0 ? '' : 'hidden'}>
+          ${(cat.ejemplos || []).map((texto) =>
+            `<li><button type="button" class="sidebar-cat-item">${esc(texto)}</button></li>`
+          ).join('')}
+        </ul>
+      </div>`).join('');
+
+    el.sidebarCats.querySelectorAll('.sidebar-cat').forEach((catEl) => {
+      const head = catEl.querySelector('.sidebar-cat-head');
+      const list = catEl.querySelector('.sidebar-cat-list');
+      head.addEventListener('click', () => {
+        const abrir = catEl.dataset.abierta !== 'true';
+        catEl.dataset.abierta = String(abrir);
+        head.setAttribute('aria-expanded', String(abrir));
+        show(list, abrir);
+      });
+    });
+
+    el.sidebarCats.querySelectorAll('.sidebar-cat-item').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        el.input.value = boton.textContent;
+        ask(boton.textContent);
+        if (esAngosto()) aplicarBarra('cerrada');
+      });
+    });
+  }
+
   /* --------------------------------------------------------------- inicio */
   function iniciarChips(ejemplos, alClic) {
     el.chips.innerHTML = ejemplos.map(
@@ -1084,6 +1167,11 @@
 
   if (DEMO) {
     iniciarChips(DEMO.ejemplos.map((e) => e.pregunta), (texto) => ask(texto));
+    renderBarraCategorias([{
+      etiqueta: 'Vista previa',
+      descripcion: 'Preguntas de ejemplo ya calculadas sobre series simuladas.',
+      ejemplos: DEMO.ejemplos.map((e) => e.pregunta),
+    }]);
     el.input.value = DEMO.ejemplos[0].pregunta;
     el.interp.hidden = false;
     el.interp.textContent = DEMO.aviso ||
@@ -1096,6 +1184,7 @@
       try {
         const status = await (await fetch('/api/estado')).json();
         iniciarChips(status.ejemplos || [], (texto) => ask(texto));
+        renderBarraCategorias(status.categorias || []);
         if (status.datos_simulados_permitidos) {
           el.interp.hidden = false;
           el.interp.textContent =

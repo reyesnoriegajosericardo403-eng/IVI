@@ -37,6 +37,86 @@ EXAMPLES = [
     "¿SPY se queda dentro de ±3% este mes?",
 ]
 
+#: Los mismos ejemplos (y más), organizados por tipo de activo para la barra
+#: lateral. Cada categoría explica en una frase qué cubre y qué no, para no
+#: prometer de más: RITCHIE analiza la serie de precios (o de rendimiento)
+#: del instrumento con el mismo método estadístico sin importar la categoría
+#: — no calcula primas de opciones ni modela derivados OTC.
+EXAMPLE_CATEGORIES = [
+    {
+        "id": "acciones",
+        "etiqueta": "Acciones",
+        "descripcion": "Empresas que cotizan en bolsa.",
+        "ejemplos": [
+            "¿Qué probabilidad hay de que MARA suba 4% mañana?",
+            "¿Qué podría pasar con AAPL durante los próximos 5 días?",
+            "¿Cuál es el escenario más probable para NVDA en dos semanas?",
+            "¿Qué factores están influyendo en TSLA?",
+        ],
+    },
+    {
+        "id": "criptomonedas",
+        "etiqueta": "Criptomonedas",
+        "descripcion": "Bitcoin, Ethereum y similares, contra dólar.",
+        "ejemplos": [
+            "¿Qué probabilidad hay de que BTC-USD baje 10% en 10 días?",
+            "¿Cuál es el escenario más probable para ETH-USD en un mes?",
+            "¿Qué tan probable es que Solana suba 8% esta semana?",
+        ],
+    },
+    {
+        "id": "indices",
+        "etiqueta": "Índices",
+        "descripcion": "Canastas amplias del mercado, como termómetro general.",
+        "ejemplos": [
+            "¿SPY se queda dentro de ±3% este mes?",
+            "¿Qué probabilidad hay de que el Nasdaq baje 5% en dos semanas?",
+            "¿Cuál es el escenario más probable para el IPC en un mes?",
+        ],
+    },
+    {
+        "id": "materias_primas",
+        "etiqueta": "Materias primas",
+        "descripcion": "Oro, petróleo, granos y otros bienes físicos.",
+        "ejemplos": [
+            "¿Qué probabilidad hay de que el oro suba 3% en 10 días?",
+            "¿Qué podría pasar con el petróleo en dos semanas?",
+            "¿Qué tan probable es que el cobre baje 5% este mes?",
+        ],
+    },
+    {
+        "id": "divisas",
+        "etiqueta": "Divisas",
+        "descripcion": "Tipos de cambio entre monedas.",
+        "ejemplos": [
+            "¿Qué probabilidad hay de que el dólar suba 2% frente al peso en un mes?",
+            "¿Qué podría pasar con el euro en 10 días?",
+        ],
+    },
+    {
+        "id": "bonos",
+        "etiqueta": "Bonos gubernamentales",
+        "descripcion": "Rendimientos del Tesoro de EE. UU. y ETFs de renta fija, "
+        "tratados con el mismo método estadístico que una acción — no es un "
+        "modelo especializado de tasas.",
+        "ejemplos": [
+            "¿Qué probabilidad hay de que el bono a 10 años suba 4% en dos semanas?",
+            "¿Qué podría pasar con los bonos del tesoro largo plazo este mes?",
+            "¿Qué tan probable es que las letras del tesoro bajen esta semana?",
+        ],
+    },
+    {
+        "id": "futuros",
+        "etiqueta": "Futuros",
+        "descripcion": "Contratos sobre índices y materias primas a futuro. "
+        "RITCHIE no calcula opciones ni otros derivados sobre estos contratos.",
+        "ejemplos": [
+            "¿Qué probabilidad hay de que el futuro del S&P500 suba 2% mañana?",
+            "¿Qué podría pasar con el futuro del petróleo en 5 días?",
+        ],
+    },
+]
+
 
 class JobRegistry:
     """Trabajos en curso, con su avance. Vive en memoria del proceso."""
@@ -151,6 +231,7 @@ class RitchieServer:
             "fuentes_disponibles": available_sources(),
             "datos_simulados_permitidos": self.allow_synthetic,
             "ejemplos": EXAMPLES,
+            "categorias": EXAMPLE_CATEGORIES,
         }
 
 

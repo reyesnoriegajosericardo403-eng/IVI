@@ -24,16 +24,59 @@ NAME_TO_SYMBOL = {
     "oro": "GC=F", "gold": "GC=F",
     "plata": "SI=F", "silver": "SI=F",
     "petroleo": "CL=F", "petróleo": "CL=F", "crudo": "CL=F", "oil": "CL=F",
-    "gas natural": "NG=F",
+    "gas natural": "NG=F", "natural gas": "NG=F",
+    "cobre": "HG=F", "copper": "HG=F",
+    "maiz": "ZC=F", "maíz": "ZC=F", "corn": "ZC=F",
+    "trigo": "ZW=F", "wheat": "ZW=F",
+    "soya": "ZS=F", "soybean": "ZS=F", "soja": "ZS=F",
+    "cafe": "KC=F", "café": "KC=F", "coffee": "KC=F",
+    "algodon": "CT=F", "algodón": "CT=F", "cotton": "CT=F",
+    "azucar": "SB=F", "azúcar": "SB=F", "sugar": "SB=F",
     "sp500": "^GSPC", "s&p": "^GSPC", "s&p500": "^GSPC", "sp 500": "^GSPC",
+    "futuro sp500": "ES=F", "futuro s&p500": "ES=F", "futuro del sp500": "ES=F",
+    "futuro del s&p500": "ES=F", "futuro del s&p 500": "ES=F",
     "nasdaq": "^IXIC",
+    "futuro nasdaq": "NQ=F", "futuro del nasdaq": "NQ=F",
     "dow": "^DJI", "dow jones": "^DJI",
+    "futuro dow": "YM=F", "futuro del dow": "YM=F",
     "russell": "^RUT",
     "vix": "^VIX", "volatilidad": "^VIX",
     "ipc": "^MXX", "bolsa mexicana": "^MXX", "bmv": "^MXX",
     "dolar": "MXN=X", "dólar": "MXN=X", "peso": "MXN=X", "usdmxn": "MXN=X",
     "euro": "EURUSD=X",
+    "libra": "GBPUSD=X", "libra esterlina": "GBPUSD=X",
+    "yen": "JPYUSD=X", "yen japones": "JPYUSD=X", "yen japonés": "JPYUSD=X",
+    "yuan": "CNYUSD=X", "yuan chino": "CNYUSD=X",
+    # ---------------------------------------------------- bonos gubernamentales
+    # Rendimientos del Tesoro de EE. UU. (lo que cotiza Yahoo Finance como
+    # índice, no como precio de un bono individual): sirven para preguntar
+    # por "el bono a 10 años" igual que por una acción.
+    "bono a 10 años": "^TNX", "bono del tesoro a 10 años": "^TNX",
+    "treasury 10 años": "^TNX", "t-note": "^TNX", "tnote": "^TNX",
+    "bono a 30 años": "^TYX", "bono del tesoro a 30 años": "^TYX", "t-bond": "^TYX",
+    "bono a 5 años": "^FVX", "bono del tesoro a 5 años": "^FVX",
+    "letras del tesoro": "^IRX", "t-bills": "^IRX", "cetes de eu": "^IRX",
+    # ETFs de renta fija: la forma práctica de "invertir en bonos" y la que
+    # más gente reconoce (TLT, IEF, etc.) — sí tienen precio e historia real.
+    "bonos del tesoro largo plazo": "TLT", "bonos largo plazo": "TLT",
+    "bonos del tesoro mediano plazo": "IEF", "bonos mediano plazo": "IEF",
+    "bonos del tesoro corto plazo": "SHY", "bonos corto plazo": "SHY",
+    "bonos agregados": "AGG", "mercado de bonos": "BND",
+    "bonos corporativos": "LQD", "bonos de alto rendimiento": "HYG",
+    "bonos basura": "HYG", "bonos high yield": "HYG",
+    "bonos del gobierno mexicano": "MXN=X",
 }
+
+#: Símbolos de rendimientos del Tesoro (no tienen "precio" de mercado en el
+#: sentido normal: cotizan en puntos porcentuales). El motor los trata igual
+#: que cualquier serie de precio, pero la interfaz debe llamarlos por su
+#: nombre correcto en vez de "acción" o "precio de cierre".
+TREASURY_YIELD_SYMBOLS = {"^TNX", "^TYX", "^FVX", "^IRX"}
+
+#: ETFs de renta fija muy usados — mismo tratamiento de datos que cualquier
+#: ETF, pero clasificados como "bond" para que la explicación en pantalla
+#: diga "bono"/"renta fija" en vez de "acción".
+BOND_ETF_SYMBOLS = {"TLT", "IEF", "SHY", "IEI", "AGG", "BND", "LQD", "HYG", "GOVT", "SHV", "MUB"}
 
 #: Clasificación gruesa del instrumento a partir del símbolo.
 _INDEX_PREFIX = "^"
@@ -49,6 +92,8 @@ BENCHMARKS = {
     "fx": "^GSPC",
     "equity": "^GSPC",
     "etf": "^GSPC",
+    "bond": "^TNX",
+    "bond_yield": "^TNX",
     "unknown": "^GSPC",
 }
 
@@ -92,6 +137,10 @@ def guess_asset_class(symbol: str, declared: str | None = None) -> str:
         if declared.lower() in mapping:
             return mapping[declared.lower()]
     sym = symbol.upper()
+    if sym in TREASURY_YIELD_SYMBOLS:
+        return "bond_yield"
+    if sym in BOND_ETF_SYMBOLS:
+        return "bond"
     if sym.startswith(_INDEX_PREFIX):
         return "index"
     if sym.endswith(_FUTURE_SUFFIX):
