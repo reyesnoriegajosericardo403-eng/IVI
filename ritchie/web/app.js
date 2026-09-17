@@ -30,6 +30,10 @@
     themeToggle: $('selector-tema'), themeThumb: $('tema-indicador'),
     shell: $('shell'), sidebarToggle: $('alternar-barra'), sidebar: $('barra-lateral'),
     sidebarCats: $('barra-categorias'), sidebarScrim: $('barra-scrim'),
+    estadoMemoria: $('estado-memoria'),
+    abrirCarga: $('abrir-carga'), dialogoCarga: $('dialogo-carga'), cerrarDialogoCarga: $('cerrar-dialogo-carga'),
+    cargaMemoriaNota: $('carga-memoria-nota'), formCarga: $('form-carga'), cargaSimbolo: $('carga-simbolo'),
+    cargaArchivo: $('carga-archivo'), cargaEnviar: $('carga-enviar'), cargaResultado: $('carga-resultado'),
   };
 
   const DONUT = 2 * Math.PI * 52;
@@ -1152,6 +1156,97 @@
     });
   }
 
+  /* ------------------------------------------------------------ carga de
+     datos. Mismo patrón visual que la hoja "Cómo funciona" (sin el gesto
+     de arrastre: esa físca vive atada a UNA sola hoja compartida más
+     arriba, y duplicarla no vale el riesgo para un diálogo secundario). */
+  function abrirDialogoCarga() {
+    el.dialogoCarga.showModal();
+    requestAnimationFrame(() => requestAnimationFrame(() => el.dialogoCarga.setAttribute('data-open', '')));
+  }
+  function cerrarDialogoCarga() {
+    if (!el.dialogoCarga.open) return;
+    el.dialogoCarga.removeAttribute('data-open');
+    const duracion = sinMovimiento() ? 160 : 340;
+    setTimeout(() => { try { el.dialogoCarga.close(); } catch (_) {} }, duracion);
+  }
+  el.abrirCarga.addEventListener('click', () => {
+    el.cargaResultado.hidden = true;
+    abrirDialogoCarga();
+  });
+  el.cerrarDialogoCarga.addEventListener('click', cerrarDialogoCarga);
+  el.dialogoCarga.addEventListener('click', (event) => {
+    if (event.target === el.dialogoCarga) cerrarDialogoCarga();
+  });
+  el.dialogoCarga.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    cerrarDialogoCarga();
+  });
+
+  function pintarEstadoMemoria(configurada) {
+    const texto = configurada
+      ? 'Memoria persistente activa: lo que subas o lo que se descargue queda guardado.'
+      : 'Memoria persistente no configurada: las cargas no sobrevivirán un reinicio del servidor.';
+    el.estadoMemoria.innerHTML = `<span class="dot"></span><span>${esc(texto)}</span>`;
+    el.estadoMemoria.className = `sidebar-memoria ${configurada ? 'activa' : 'inactiva'}`;
+    el.cargaMemoriaNota.textContent = configurada
+      ? ''
+      : 'Nota: este servidor todavía no tiene memoria persistente configurada '
+        + '(RITCHIE_SUPABASE_URL / RITCHIE_SUPABASE_SERVICE_KEY), así que al intentar '
+        + 'guardar te va a explicar exactamente qué falta.';
+  }
+
+  function mostrarResultadoCarga(html, ok) {
+    el.cargaResultado.innerHTML = html;
+    el.cargaResultado.className = `carga-resultado ${ok ? 'ok' : 'error'}`;
+    el.cargaResultado.hidden = false;
+  }
+
+  el.formCarga.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const simbolo = el.cargaSimbolo.value.trim();
+    const archivo = el.cargaArchivo.files[0];
+    if (!simbolo) { mostrarResultadoCarga('Escribe el símbolo del activo.', false); return; }
+    if (!archivo) { mostrarResultadoCarga('Elige un archivo CSV primero.', false); return; }
+
+    const lector = new FileReader();
+    lector.onerror = () => mostrarResultadoCarga('No se pudo leer el archivo.', false);
+    lector.onload = async () => {
+      el.cargaEnviar.disabled = true;
+      el.cargaEnviar.textContent = 'Guardando…';
+      try {
+        const response = await fetch('/api/subir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ simbolo, csv: String(lector.result) }),
+        });
+        const data = await response.json();
+        if (data.ok) {
+          mostrarResultadoCarga(
+            `<strong>Guardado.</strong> ${esc(data.simbolo)}: ${data.filas_guardadas} filas ` +
+            `(${esc(data.desde)} a ${esc(data.hasta)})` +
+            (data.filas_descartadas ? `, ${data.filas_descartadas} descartadas por venir incompletas.` : '.'),
+            true,
+          );
+          el.formCarga.reset();
+        } else {
+          const pasos = (data.como_arreglarlo || []).map((p) => `<li>${esc(p)}</li>`).join('');
+          mostrarResultadoCarga(
+            `<strong>No se guardó.</strong> ${esc(data.error || 'Error desconocido.')}` +
+            (pasos ? `<ul>${pasos}</ul>` : ''),
+            false,
+          );
+        }
+      } catch (error) {
+        mostrarResultadoCarga(`No se pudo conectar con el servidor: ${esc(String(error))}`, false);
+      } finally {
+        el.cargaEnviar.disabled = false;
+        el.cargaEnviar.textContent = 'Guardar en la memoria';
+      }
+    };
+    lector.readAsText(archivo);
+  });
+
   /* --------------------------------------------------------------- inicio */
   function iniciarChips(ejemplos, alClic) {
     el.chips.innerHTML = ejemplos.map(
@@ -1172,6 +1267,7 @@
       descripcion: 'Preguntas de ejemplo ya calculadas sobre series simuladas.',
       ejemplos: DEMO.ejemplos.map((e) => e.pregunta),
     }]);
+    show(el.abrirCarga, false); // la vista previa no tiene servidor detrás
     el.input.value = DEMO.ejemplos[0].pregunta;
     el.interp.hidden = false;
     el.interp.textContent = DEMO.aviso ||
@@ -1185,6 +1281,7 @@
         const status = await (await fetch('/api/estado')).json();
         iniciarChips(status.ejemplos || [], (texto) => ask(texto));
         renderBarraCategorias(status.categorias || []);
+        pintarEstadoMemoria(Boolean(status.memoria_persistente_configurada));
         if (status.datos_simulados_permitidos) {
           el.interp.hidden = false;
           el.interp.textContent =

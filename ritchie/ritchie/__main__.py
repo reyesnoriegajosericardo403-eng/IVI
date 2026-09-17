@@ -140,6 +140,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     source_order = tuple(getattr(args, "fuente", None) or DEFAULT_SOURCE_ORDER)
+    if not getattr(args, "fuente", None):
+        # Si la persona no eligió fuentes a mano y hay memoria persistente
+        # configurada (ver data/supabase_store.py), se prueba primero: es
+        # gratis, no depende de la red y puede tener justo lo que se pidió.
+        from .data import supabase_store
+
+        if supabase_store.configured():
+            source_order = ("supabase_store",) + source_order
 
     if args.comando == "servidor":
         from .server import serve

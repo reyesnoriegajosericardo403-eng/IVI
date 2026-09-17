@@ -8,6 +8,7 @@ se pregunta lo mismo, la respuesta sale de la caché al instante.
 
 from __future__ import annotations
 
+import io
 import json
 import mimetypes
 import os
@@ -20,8 +21,18 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+import pandas as pd
+
 from .config import ENGINE_FULL_NAME, ENGINE_NAME, ENGINE_VERSION, config_for_profile
-from .data.sources import DEFAULT_SOURCE_ORDER, available_sources
+from .data import quality, supabase_store
+from .data.aliases import normalize_symbol
+from .data.sources import (
+    DEFAULT_SOURCE_ORDER,
+    SourceError,
+    _apply_adjustment,
+    available_sources,
+    parse_ohlc_frame,
+)
 from .features.targets import TargetSpec
 from .nlq import parse
 from .pipeline import Ritchie
@@ -232,6 +243,59 @@ class RitchieServer:
             "datos_simulados_permitidos": self.allow_synthetic,
             "ejemplos": EXAMPLES,
             "categorias": EXAMPLE_CATEGORIES,
+            "memoria_persistente_configurada": supabase_store.configured(),
+        }
+
+    def upload_csv(self, symbol: str | None, csv_text: str | None) -> dict:
+        """Recibe un CSV subido a mano y lo guarda en la memoria persistente.
+
+        No pasa por el motor de análisis — solo valida el formato, limpia lo
+        que `quality` ya sabe limpiar (duplicados, precios imposibles) y lo
+        deja en Supabase para que la próxima pregunta sobre ese símbolo lo
+        encuentre ahí antes de salir a internet.
+        """
+        resolved = normalize_symbol((symbol or "").strip())
+        if not resolved:
+            return {"ok": False, "error": "Falta el símbolo del activo (por ejemplo MARA o AAPL)."}
+        if not csv_text or not csv_text.strip():
+            return {"ok": False, "error": "El archivo está vacío."}
+        if not supabase_store.configured():
+            return {
+                "ok": False,
+                "error": "La memoria persistente no está configurada en este servidor.",
+                "como_arreglarlo": [
+                    "En Render: pestaña Environment de este servicio → Add Environment Variable.",
+                    "RITCHIE_SUPABASE_URL: la misma 'Project URL' que ya usa VALU en este proyecto.",
+                    "RITCHIE_SUPABASE_SERVICE_KEY: la clave 'service_role' de Supabase "
+                    "(Settings → API → Project API keys) — NO la 'anon'. Es secreta: no la compartas.",
+                    "Después de guardarlas, Render redespliega solo. Vuelve a intentar la carga.",
+                ],
+            }
+        try:
+            raw = pd.read_csv(io.StringIO(csv_text))
+            frame = parse_ohlc_frame(raw, label="el archivo subido")
+            frame = _apply_adjustment(frame)
+            frame, stats = quality.normalize_frame(frame)
+        except SourceError as exc:
+            return {"ok": False, "error": str(exc)}
+        except Exception as exc:  # noqa: BLE001 - se reporta tal cual, es entrada de la persona
+            return {"ok": False, "error": f"No se pudo leer el archivo: {exc}"}
+        if frame.empty:
+            return {"ok": False, "error": "El archivo no trajo ninguna fila utilizable (revisa fechas y precios)."}
+        saved = supabase_store.write(resolved, frame, source="manual_upload")
+        if saved == 0:
+            return {
+                "ok": False,
+                "error": "No se pudo guardar en la memoria persistente. Revisa que "
+                "RITCHIE_SUPABASE_SERVICE_KEY sea correcta y no haya expirado.",
+            }
+        return {
+            "ok": True,
+            "simbolo": resolved,
+            "filas_guardadas": saved,
+            "desde": frame.index[0].strftime("%Y-%m-%d"),
+            "hasta": frame.index[-1].strftime("%Y-%m-%d"),
+            "filas_descartadas": stats.get("rows_dropped", 0),
         }
 
 
@@ -315,10 +379,26 @@ def build_handler(server: RitchieServer):
         # ------------------------------------------------------------ POST
         def do_POST(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
+            length = int(self.headers.get("Content-Length") or 0)
+            # 12 MB: de sobra para años de velas diarias en CSV; evita que
+            # una carga descuidada tumbe el proceso con un cuerpo enorme.
+            if length > 12 * 1024 * 1024:
+                self._json({"error": "El archivo es demasiado grande (máximo 12 MB)."}, 413)
+                return
+
+            if parsed.path == "/api/subir":
+                try:
+                    body = json.loads(self.rfile.read(length) or b"{}")
+                except json.JSONDecodeError:
+                    self._json({"error": "cuerpo JSON inválido"}, 400)
+                    return
+                result = server.upload_csv(body.get("simbolo"), body.get("csv"))
+                self._json(result, 200 if result.get("ok") else 400)
+                return
+
             if parsed.path != "/api/preguntar":
                 self._json({"error": "ruta no encontrada"}, 404)
                 return
-            length = int(self.headers.get("Content-Length") or 0)
             try:
                 body = json.loads(self.rfile.read(length) or b"{}")
             except json.JSONDecodeError:

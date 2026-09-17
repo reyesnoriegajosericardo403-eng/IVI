@@ -33,17 +33,31 @@ class SourceError(RuntimeError):
     """Una fuente concreta no pudo entregar la serie."""
 
 
-def _http_get(url: str, params: dict | None = None, headers: dict | None = None) -> str:
-    """GET con reintentos cortos. Respeta el proxy del entorno."""
+def _http_get(
+    url: str, params: dict | None = None, headers: dict | None = None, max_attempts: int = 4
+) -> str:
+    """GET con reintentos cortos. Respeta el proxy del entorno.
+
+    Un 429 se reintenta más veces y con más paciencia que cualquier otro
+    fallo: en un servidor gratuito (Render, etc.) la IP de salida se
+    comparte con muchas otras aplicaciones, así que el límite de
+    peticiones de la fuente puede venir de tráfico ajeno, no del propio.
+    Si la fuente manda `Retry-After`, se respeta tal cual.
+    """
     try:
         import requests  # import perezoso: el motor funciona sin red
     except ImportError as exc:  # pragma: no cover - entorno sin requests
         raise SourceError("La librería `requests` no está instalada.") from exc
 
-    merged = {"User-Agent": USER_AGENT, "Accept": "*/*"}
+    merged = {
+        "User-Agent": USER_AGENT,
+        "Accept": "*/*",
+        "Accept-Language": "es-MX,es;q=0.9,en;q=0.8",
+    }
     merged.update(headers or {})
     last_error: Exception | None = None
-    for attempt in range(3):
+    for attempt in range(max_attempts):
+        last_attempt = attempt == max_attempts - 1
         try:
             response = requests.get(
                 url, params=params, headers=merged, timeout=REQUEST_TIMEOUT
@@ -51,8 +65,11 @@ def _http_get(url: str, params: dict | None = None, headers: dict | None = None)
             if response.status_code == 404:
                 raise SourceError(f"El símbolo no existe en esta fuente (404): {url}")
             if response.status_code == 429:
-                time.sleep(1.5 * (attempt + 1))
                 last_error = SourceError("La fuente respondió 429 (demasiadas peticiones).")
+                if not last_attempt:
+                    retry_after = (response.headers.get("Retry-After") or "").strip()
+                    wait = float(retry_after) if retry_after.isdigit() else 2.0 * (attempt + 1)
+                    time.sleep(min(wait, 12.0))
                 continue
             response.raise_for_status()
             return response.text
@@ -60,7 +77,8 @@ def _http_get(url: str, params: dict | None = None, headers: dict | None = None)
             raise
         except Exception as exc:  # noqa: BLE001 - se reporta tal cual
             last_error = exc
-            time.sleep(0.8 * (attempt + 1))
+            if not last_attempt:
+                time.sleep(0.8 * (attempt + 1))
     raise SourceError(f"No se pudo contactar la fuente ({type(last_error).__name__}: {last_error}).")
 
 
@@ -210,7 +228,11 @@ class StooqSource(DataSource):
         if not rows:
             raise SourceError(f"Stooq devolvió un CSV vacío para «{symbol}».")
         frame = pd.DataFrame(rows)
-        frame.columns = [c.strip().lower() for c in frame.columns]
+        # Si alguna fila trae más campos que el encabezado, `DictReader` los
+        # mete bajo la clave `None` (restkey) y pandas la vuelve `nan` — un
+        # float, no un string — al construir las columnas. `str(c)` la
+        # convierte en la columna inofensiva "nan" en vez de tronar aquí.
+        frame.columns = [str(c).strip().lower() for c in frame.columns]
         if "date" not in frame.columns or "close" not in frame.columns:
             raise SourceError("El CSV de Stooq no trae las columnas esperadas.")
         frame = frame.set_index(pd.to_datetime(frame["date"]))
@@ -279,6 +301,38 @@ class AlphaVantageSource(DataSource):
         )
 
 
+def parse_ohlc_frame(raw: pd.DataFrame, *, label: str) -> pd.DataFrame:
+    """Normaliza un DataFrame crudo (columnas en cualquier orden, en
+    español o inglés) a lo que el motor espera. La comparten `CsvSource`
+    (un archivo local) y el apartado de "subir tus datos" del servidor —
+    misma tolerancia de formato en los dos casos.
+    """
+    frame = raw.copy()
+    frame.columns = [str(c).strip().lower().replace(" ", "_") for c in frame.columns]
+    date_column = next((c for c in ("date", "fecha", "timestamp") if c in frame.columns), None)
+    if date_column is None:
+        raise SourceError(f"{label}: falta la columna de fecha (date/fecha/timestamp).")
+    rename = {
+        "adjclose": "adj_close",
+        "adj close": "adj_close",
+        "cierre": "close",
+        "apertura": "open",
+        "maximo": "high",
+        "minimo": "low",
+        "volumen": "volume",
+    }
+    frame = frame.rename(columns=rename)
+    if "close" not in frame.columns:
+        raise SourceError(f"{label}: falta la columna de cierre (close/cierre).")
+    frame = frame.set_index(pd.to_datetime(frame[date_column]))
+    keep = [c for c in ("open", "high", "low", "close", "adj_close", "volume") if c in frame.columns]
+    frame = frame[keep].apply(pd.to_numeric, errors="coerce").sort_index()
+    for column in ("open", "high", "low"):
+        if column not in frame.columns:
+            frame[column] = frame["close"]
+    return frame
+
+
 # ----------------------------------------------------------------------- CSV
 class CsvSource(DataSource):
     """Archivo local con columnas date/open/high/low/close[/adj_close/volume].
@@ -306,29 +360,7 @@ class CsvSource(DataSource):
 
     def fetch(self, symbol: str, days: int) -> MarketData:
         path = self._resolve(symbol)
-        frame = pd.read_csv(path)
-        frame.columns = [c.strip().lower().replace(" ", "_") for c in frame.columns]
-        date_column = next((c for c in ("date", "fecha", "timestamp") if c in frame.columns), None)
-        if date_column is None:
-            raise SourceError(f"{path}: falta la columna de fecha.")
-        rename = {
-            "adjclose": "adj_close",
-            "adj close": "adj_close",
-            "cierre": "close",
-            "apertura": "open",
-            "maximo": "high",
-            "minimo": "low",
-            "volumen": "volume",
-        }
-        frame = frame.rename(columns=rename)
-        if "close" not in frame.columns:
-            raise SourceError(f"{path}: falta la columna de cierre.")
-        frame = frame.set_index(pd.to_datetime(frame[date_column]))
-        keep = [c for c in ("open", "high", "low", "close", "adj_close", "volume") if c in frame.columns]
-        frame = frame[keep].apply(pd.to_numeric, errors="coerce").sort_index()
-        for column in ("open", "high", "low"):
-            if column not in frame.columns:
-                frame[column] = frame["close"]
+        frame = parse_ohlc_frame(pd.read_csv(path), label=path)
         frame = _apply_adjustment(frame)
         return MarketData(
             symbol=symbol.upper(),
@@ -426,6 +458,13 @@ _REGISTRY: dict[str, type[DataSource]] = {
 
 
 def build_source(name: str) -> DataSource:
+    if name == "supabase_store":
+        # Import perezoso: `supabase_store` importa de este módulo, así que
+        # importarlo arriba crearía un ciclo. Solo se necesita si alguien
+        # de verdad pide esta fuente (configurada o no).
+        from .supabase_store import SupabaseStoreSource
+
+        return SupabaseStoreSource()
     if name not in _REGISTRY:
         raise SourceError(f"Fuente desconocida: {name}. Disponibles: {sorted(_REGISTRY)}")
     return _REGISTRY[name]()

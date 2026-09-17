@@ -66,6 +66,15 @@
     <div class="sidebar-inner">
       <p class="sidebar-title">Explorar por tipo de activo</p>
       <nav class="sidebar-cats" id="barra-categorias"></nav>
+      <div class="sidebar-foot">
+        <button class="sidebar-upload-btn" id="abrir-carga" type="button">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+          </svg>
+          <span>Cargar tus datos</span>
+        </button>
+        <p class="sidebar-memoria" id="estado-memoria"></p>
+      </div>
     </div>
   </aside>
   <div class="sidebar-scrim" id="barra-scrim"></div>
@@ -257,6 +266,38 @@
         No lee noticias ni reportes, no conoce tu situación y no es asesoría de inversión.
       </p>
       <button class="primary" id="cerrar-dialogo" type="button">Entendido</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ------------------------------------------------------ cargar datos -->
+<dialog id="dialogo-carga" aria-labelledby="carga-titulo">
+  <div class="sheet" id="hoja-carga">
+    <div class="dialog-inner">
+      <h3 id="carga-titulo">Cargar tus datos</h3>
+      <p class="fineprint" style="margin-top:0">
+        Para cuando ninguna fuente automática responda (o quieras usar tu propio
+        histórico, por ejemplo de un bróker o de un mercado que RITCHIE no cubre).
+        Sube un CSV con columnas <code>date, open, high, low, close, volume</code>
+        (en español también: <code>fecha, apertura, maximo, minimo, cierre, volumen</code>) —
+        solo <code>date</code> y <code>close</code> son obligatorias.
+      </p>
+      <p class="fineprint" id="carga-memoria-nota"></p>
+
+      <form id="form-carga" class="carga-form">
+        <label class="carga-campo">
+          <span>Símbolo</span>
+          <input type="text" id="carga-simbolo" placeholder="Por ejemplo MARA, AAPL o BTC-USD" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="carga-campo">
+          <span>Archivo CSV</span>
+          <input type="file" id="carga-archivo" accept=".csv,text/csv" />
+        </label>
+        <button class="primary" id="carga-enviar" type="submit">Guardar en la memoria</button>
+      </form>
+      <div class="carga-resultado" id="carga-resultado" hidden></div>
+
+      <button class="ghost" id="cerrar-dialogo-carga" type="button" style="margin-top:14px">Cerrar</button>
     </div>
   </div>
 </dialog>

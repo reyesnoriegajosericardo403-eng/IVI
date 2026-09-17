@@ -131,6 +131,14 @@ class MarketDataLoader:
                     raise SourceError("La fuente devolvió una serie vacía.")
                 data = self._finalize(data)
                 self._write_cache(data)
+                if name != "supabase_store" and not data.is_synthetic:
+                    # Best-effort: lo que se acaba de conseguir de una fuente
+                    # en línea queda en la memoria persistente para la
+                    # próxima vez. No hace nada si Supabase no está
+                    # configurado (ver data/supabase_store.py).
+                    from . import supabase_store
+
+                    supabase_store.write(symbol, data.frame, source=name)
                 attempts.append({"source": name, "status": "ok", "rows": len(data.frame)})
                 return data, attempts
             except SourceError as exc:

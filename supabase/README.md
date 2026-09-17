@@ -9,6 +9,7 @@ Cada archivo en `migrations/` es una migración versionada (spec sección 72): t
 | `0003_investments_liabilities.sql` | Inversiones y deudas |
 | `0004_net_worth_snapshots.sql` | Historial diario de patrimonio neto |
 | `0005_audit_log.sql` | Auditoría de cambios de saldo (cliente + triggers automáticos del servidor) |
+| `0015_ritchie_market_data.sql` | Memoria de mercado de **RITCHIE** (otro proyecto de este monorepo, no VALU): velas OHLCV guardadas en línea o subidas a mano. Sin RLS por usuario — solo la `service_role` key puede tocarla. Ver `ritchie/README.md`, sección "Memoria persistente". |
 
 ## Principios aplicados (spec 69-88)
 

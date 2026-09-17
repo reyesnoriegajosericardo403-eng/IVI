@@ -94,6 +94,52 @@ sorpresa):
 - Si algún día quieres algo más rápido y siempre despierto, Render también
   tiene planes de pago; no hace falta para empezar.
 
+### Memoria persistente (opcional): que lo que se descarga se quede guardado
+
+Por defecto, cada vez que Render duerme y despierta, RITCHIE empieza de cero:
+vuelve a pedirle todo a Yahoo/Stooq. Si además quieres que **lo que ya
+consiguió una vez quede guardado para siempre** — y poder subir tú mismo un
+CSV cuando ninguna fuente automática responda — conecta RITCHIE a Supabase.
+Si ya usas VALU en este mismo proyecto, es el mismo proyecto de Supabase, una
+tabla nueva (`ritchie_market_data`) que nadie más puede leer ni escribir.
+
+**Paso 1 — crea la tabla.** Desde Safari, entra a tu proyecto en
+[supabase.com](https://supabase.com) → menú lateral **SQL Editor** → **New
+query**. Pega el contenido completo de
+[`supabase/migrations/0015_ritchie_market_data.sql`](../supabase/migrations/0015_ritchie_market_data.sql)
+y toca **Run**.
+
+**Paso 2 — copia las dos claves.** En el mismo proyecto: **Settings** → **API**.
+Copia:
+- **Project URL** (la misma que ya usa VALU).
+- La clave **`service_role`** en "Project API keys" — **no** la `anon`. Esta sí
+  puede escribir sin restricciones, así que trátala como una contraseña:
+  nunca la pegues en el navegador ni la subas a un repositorio.
+
+**Paso 3 — pégalas en Render.** En tu servicio `ritchie` → pestaña
+**Environment** → **Add Environment Variable**, dos veces:
+
+| Key | Value |
+| --- | --- |
+| `RITCHIE_SUPABASE_URL` | tu Project URL |
+| `RITCHIE_SUPABASE_SERVICE_KEY` | tu clave `service_role` |
+
+Guarda; Render redespliega solo en un par de minutos.
+
+**Listo.** A partir de ahí:
+- Todo lo que RITCHIE consiga de Yahoo/Stooq/Alpha Vantage se guarda solo,
+  sin que hagas nada.
+- La próxima pregunta sobre el mismo símbolo y rango de fechas se responde
+  desde esa memoria antes de intentar salir a internet — más rápido y sin
+  gastar la cuota de las fuentes gratuitas.
+- En la barra lateral aparece **Cargar tus datos**: para cuando ninguna
+  fuente responda, o quieras analizar algo que RITCHIE no cubre (un CSV de tu
+  bróker, un mercado local), puedes subir tú mismo el histórico en CSV y
+  queda guardado igual.
+
+Sin estas dos variables, RITCHIE funciona exactamente igual que siempre —
+esto es un extra, nunca un requisito.
+
 ## Diseño
 
 Interfaz minimalista con el vocabulario visual de Apple: materiales
@@ -139,10 +185,11 @@ cd ritchie
 pip install -r requirements.txt
 ```
 
-Cuatro dependencias, todas estándar en cómputo científico: `numpy`, `pandas`,
-`scipy` y `scikit-learn`. GARCH, los regímenes de Markov, el modelo AR, el
-bootstrap por bloques, la prueba de realidad, el Monte Carlo y el servidor web
-están implementados dentro del proyecto, sin nada más.
+Cinco dependencias: `numpy`, `pandas`, `scipy` y `scikit-learn` (estándar en
+cómputo científico) más `requests` (el cliente HTTP que usan las fuentes de
+datos en línea). GARCH, los regímenes de Markov, el modelo AR, el bootstrap
+por bloques, la prueba de realidad, el Monte Carlo y el servidor web están
+implementados dentro del proyecto, sin nada más.
 
 ## Uso
 
@@ -201,10 +248,16 @@ URL y hora exacta de descarga) viaja pegada a la respuesta.
 
 | Fuente | Cobertura | Requiere llave |
 |---|---|---|
+| `supabase_store` | lo que ya se guardó antes (en línea o subido a mano) | no, pero se salta si no está configurada (ver "Memoria persistente" arriba) |
 | `yahoo_finance` | acciones, ETFs, índices, FIBRAs/REITs, materias primas, criptomonedas | no |
 | `stooq` | acciones e índices (sin precio ajustado) | no |
 | `alpha_vantage` | acciones | sí (`RITCHIE_ALPHAVANTAGE_KEY`) |
 | `csv` | cualquier mercado exportado a CSV | no |
+
+Cuando la memoria persistente está configurada, `supabase_store` se antepone
+solo a este orden (es la primera que se intenta). Además, cualquier serie que
+consiga `yahoo_finance`, `stooq` o `alpha_vantage` se guarda ahí sola, de
+regalo, para la próxima vez.
 
 Para mercados sin API pública (BIVA, BMV, el histórico de tu bróker), exporta
 a CSV con columnas `date,open,high,low,close[,adj_close][,volume]` y:
