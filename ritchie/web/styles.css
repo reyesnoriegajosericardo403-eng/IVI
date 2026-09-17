@@ -11,27 +11,28 @@
    github.com/emilkowalski/skills (apple-design, mobile-native). */
 
 :root {
-  --bg: #fbfbfd;
+  --bg: #fbfaf8;
   --surface: #ffffff;
-  --surface-2: #f5f5f7;
+  --surface-2: #f4efe8;
   --surface-glass: rgba(255, 255, 255, 0.72);
   --surface-glass-strong: rgba(255, 255, 255, 0.86);
   --line: rgba(0, 0, 0, 0.08);
   --line-strong: rgba(0, 0, 0, 0.14);
   --line-glass: rgba(255, 255, 255, 0.5);
-  --text: #1d1d1f;
-  --text-2: #6e6e73;
-  --text-3: #8e8e93;
-  --accent: #0071e3;
-  --accent-2: #0a84ff;
-  --accent-soft: rgba(0, 113, 227, 0.10);
+  --text: #201a12;
+  --text-2: #6e6257;
+  --text-3: #948a7d;
+  --accent: #e8630a;
+  --accent-2: #ff7a1a;
+  --accent-soft: rgba(232, 99, 10, 0.10);
   --up: #1a8a55;
   --up-soft: rgba(26, 138, 85, 0.10);
   --down: #d02b2b;
   --down-soft: rgba(208, 43, 43, 0.10);
-  --warn: #b25000;
-  --warn-soft: rgba(255, 149, 0, 0.12);
+  --warn: #a5720c;
+  --warn-soft: rgba(165, 114, 12, 0.12);
   --scrim: rgba(0, 0, 0, 0.32);
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);
   --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.06);
   --shadow-lg: 0 8px 16px rgba(0,0,0,.06), 0 24px 60px rgba(0,0,0,.12);
@@ -58,54 +59,54 @@
    SO en oscuro no gane sobre una elección explícita de "claro". */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000;
-    --surface: #1c1c1e;
-    --surface-2: #2c2c2e;
-    --surface-glass: rgba(28, 28, 30, 0.66);
-    --surface-glass-strong: rgba(28, 28, 30, 0.86);
-    --line: rgba(255, 255, 255, 0.10);
-    --line-strong: rgba(255, 255, 255, 0.18);
-    --line-glass: rgba(255, 255, 255, 0.14);
-    --text: #f5f5f7;
-    --text-2: #a1a1a6;
-    --text-3: #8e8e93;
-    --accent: #2997ff;
-    --accent-2: #409cff;
-    --accent-soft: rgba(41, 151, 255, 0.14);
-    --up: #32d583;
-    --up-soft: rgba(50, 213, 131, 0.14);
-    --down: #ff6b6b;
-    --down-soft: rgba(255, 107, 107, 0.14);
-    --warn: #ffa53d;
-    --warn-soft: rgba(255, 165, 61, 0.14);
-    --scrim: rgba(0, 0, 0, 0.55);
+    --bg: #0b0906;
+    --surface: #16130f;
+    --surface-2: #201b15;
+    --surface-glass: rgba(20, 17, 13, 0.7);
+    --surface-glass-strong: rgba(20, 17, 13, 0.88);
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --line-glass: rgba(255, 255, 255, 0.12);
+    --text: #f5f0e6;
+    --text-2: #b5a99b;
+    --text-3: #8a7e70;
+    --accent: #ff7a1a;
+    --accent-2: #ff9a42;
+    --accent-soft: rgba(255, 122, 26, 0.16);
+    --up: #33d17a;
+    --up-soft: rgba(51, 209, 122, 0.14);
+    --down: #ff5470;
+    --down-soft: rgba(255, 84, 112, 0.14);
+    --warn: #ffcf5c;
+    --warn-soft: rgba(255, 207, 92, 0.14);
+    --scrim: rgba(0, 0, 0, 0.6);
     --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 34px rgba(0,0,0,.45);
     --shadow-lg: 0 12px 20px rgba(0,0,0,.4), 0 30px 70px rgba(0,0,0,.55);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #000000;
-  --surface: #1c1c1e;
-  --surface-2: #2c2c2e;
-  --surface-glass: rgba(28, 28, 30, 0.66);
-  --surface-glass-strong: rgba(28, 28, 30, 0.86);
-  --line: rgba(255, 255, 255, 0.10);
-  --line-strong: rgba(255, 255, 255, 0.18);
-  --line-glass: rgba(255, 255, 255, 0.14);
-  --text: #f5f5f7;
-  --text-2: #a1a1a6;
-  --text-3: #8e8e93;
-  --accent: #2997ff;
-  --accent-2: #409cff;
-  --accent-soft: rgba(41, 151, 255, 0.14);
-  --up: #32d583;
-  --up-soft: rgba(50, 213, 131, 0.14);
-  --down: #ff6b6b;
-  --down-soft: rgba(255, 107, 107, 0.14);
-  --warn: #ffa53d;
-  --warn-soft: rgba(255, 165, 61, 0.14);
-  --scrim: rgba(0, 0, 0, 0.55);
+  --bg: #0b0906;
+  --surface: #16130f;
+  --surface-2: #201b15;
+  --surface-glass: rgba(20, 17, 13, 0.7);
+  --surface-glass-strong: rgba(20, 17, 13, 0.88);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --line-glass: rgba(255, 255, 255, 0.12);
+  --text: #f5f0e6;
+  --text-2: #b5a99b;
+  --text-3: #8a7e70;
+  --accent: #ff7a1a;
+  --accent-2: #ff9a42;
+  --accent-soft: rgba(255, 122, 26, 0.16);
+  --up: #33d17a;
+  --up-soft: rgba(51, 209, 122, 0.14);
+  --down: #ff5470;
+  --down-soft: rgba(255, 84, 112, 0.14);
+  --warn: #ffcf5c;
+  --warn-soft: rgba(255, 207, 92, 0.14);
+  --scrim: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 34px rgba(0,0,0,.45);
   --shadow-lg: 0 12px 20px rgba(0,0,0,.4), 0 30px 70px rgba(0,0,0,.55);
 }
@@ -421,6 +422,10 @@ img, svg { max-width: 100%; }
   transition: border-color .25s var(--spring), box-shadow .25s var(--spring), transform .12s var(--press);
 }
 .ask:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.ask-prompt {
+  flex: 0 0 auto; font-family: var(--mono); font-size: 18px; font-weight: 600;
+  color: var(--accent); user-select: none;
+}
 .ask-input {
   flex: 1; min-width: 0; border: 0; background: none; color: var(--text);
   font: inherit; font-size: 17px; padding: 12px 0; outline: none;
@@ -457,6 +462,55 @@ img, svg { max-width: 100%; }
   max-width: 640px; margin: 16px auto 0; color: var(--text-3);
   font-size: 14px; min-height: 20px;
 }
+
+/* ------------------------------------------------------------- terminal
+   Cinta de actividad reciente con estética de terminal financiero: fondo
+   casi negro y texto monoespaciado siempre, sin importar el tema claro u
+   oscuro elegido — igual que una terminal de verdad no cambia de tema con
+   el sistema. Vive junto a la barra de pregunta: chat arriba, terminal
+   debajo, la misma superficie. */
+.terminal { margin: 22px auto 0; max-width: 640px; }
+.terminal-panel {
+  background: #100d0a;
+  border: 1px solid rgba(255, 138, 61, 0.22);
+  border-radius: var(--radius);
+  padding: 14px 18px 6px;
+  box-shadow: var(--shadow);
+}
+.terminal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.terminal-title {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: #ff9a42;
+}
+.terminal-status { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #a89a89; font-family: var(--mono); }
+.terminal-status .dot { width: 6px; height: 6px; border-radius: 50%; background: #6b6258; flex: 0 0 auto; }
+.terminal-status.activa .dot { background: #33d17a; box-shadow: 0 0 0 3px rgba(51, 209, 122, .18); }
+.terminal-status.inactiva .dot { background: #ffcf5c; box-shadow: 0 0 0 3px rgba(255, 207, 92, .18); }
+
+.terminal-rows { display: grid; }
+.terminal-row {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 12px;
+  width: 100%; padding: 9px 2px; font-family: var(--mono); font-size: 12.5px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.07); border-left: 0; border-right: 0; border-top: 0;
+  background: none; color: #d8cdbf; text-align: left; cursor: pointer;
+  transition: background-color .2s var(--press);
+}
+.terminal-row:last-child { border-bottom: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .terminal-row:hover { background: rgba(255, 138, 61, 0.08); }
+}
+.terminal-row .col-pregunta {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d8cdbf;
+}
+.terminal-row .col-cifra { color: #a89a89; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.terminal-row .col-estado { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.terminal-row .col-estado.ok { color: #33d17a; }
+.terminal-row .col-estado.sin_senal { color: #ffcf5c; }
+.terminal-row .col-estado.error { color: #ff5470; }
+.terminal-empty { padding: 14px 2px 16px; font-family: var(--mono); font-size: 12px; color: #6b6258; }
 
 /* -------------------------------------------------------------- trabajo */
 .working { padding-top: 12px; }

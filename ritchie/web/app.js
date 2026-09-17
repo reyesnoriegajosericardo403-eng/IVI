@@ -34,6 +34,7 @@
     seccionHistorial: $('seccion-historial'), barraHistorial: $('barra-historial'),
     limpiarHistorial: $('limpiar-historial'),
     estadoMemoria: $('estado-memoria'),
+    terminal: $('terminal'), terminalEstado: $('terminal-estado'), terminalFilas: $('terminal-filas'),
     abrirCarga: $('abrir-carga'), dialogoCarga: $('dialogo-carga'), cerrarDialogoCarga: $('cerrar-dialogo-carga'),
     cargaMemoriaNota: $('carga-memoria-nota'), formCarga: $('form-carga'), cargaSimbolo: $('carga-simbolo'),
     cargaArchivo: $('carga-archivo'), cargaEnviar: $('carga-enviar'), cargaResultado: $('carga-resultado'),
@@ -525,7 +526,11 @@
     renderBlockers(payload.senal || {}, summary.hay_senal);
     renderCharts(payload, scenarios, asset);
     renderLevels(payload);
-    registrarHistorial(preguntaActual, summary.hay_senal ? 'ok' : 'sin_senal');
+    registrarHistorial(preguntaActual, summary.hay_senal ? 'ok' : 'sin_senal', {
+      simbolo: asset.simbolo || null,
+      precio: asset.precio_actual ?? null,
+      probabilidad: summary.probabilidad ?? null,
+    });
 
     const provenance = (payload.nivel_5_tecnico || {}).procedencia || payload.procedencia || {};
     const primary = provenance.primary || {};
@@ -1036,8 +1041,8 @@
   function temaGuardado() {
     try {
       const valor = localStorage.getItem(CLAVE_TEMA);
-      return valor === 'claro' || valor === 'oscuro' ? valor : 'sistema';
-    } catch (_) { return 'sistema'; }
+      return valor === 'claro' || valor === 'oscuro' ? valor : 'oscuro';
+    } catch (_) { return 'oscuro'; }
   }
 
   function moverIndicadorTema(instantaneo) {
@@ -1245,18 +1250,50 @@
     });
   }
 
-  function registrarHistorial(pregunta, estado) {
+  function registrarHistorial(pregunta, estado, extra = {}) {
     if (!pregunta) return;
     let lista = leerHistorial().filter((item) => item.pregunta !== pregunta);
-    lista.unshift({ pregunta, estado, momento: Date.now() });
+    lista.unshift({ pregunta, estado, momento: Date.now(), ...extra });
     lista = lista.slice(0, MAX_HISTORIAL);
     try { localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(lista)); } catch (_) {}
     renderHistorial();
+    renderTerminal();
+  }
+
+  /* -------------------------------------------------------------- terminal
+     Misma fuente de datos que la barra lateral (el historial local), pero
+     presentada como una cinta de cotizaciones: símbolo, precio y el
+     resultado, con tipografía monoespaciada — el "financial terminal" que
+     acompaña al chat, no un panel aparte que haya que ir a buscar. */
+  function renderTerminal() {
+    const lista = leerHistorial();
+    show(el.terminal, lista.length > 0);
+    if (lista.length === 0) return;
+    el.terminalFilas.innerHTML = lista.map((item) => {
+      const cifra = item.probabilidad !== undefined && item.probabilidad !== null
+        ? pct(item.probabilidad)
+        : (item.precio !== undefined && item.precio !== null ? money(item.precio) : '—');
+      const etiqueta = { ok: 'ok', sin_senal: 'sin señal', error: 'error' }[item.estado] || item.estado;
+      return `
+        <button type="button" class="terminal-row" title="${esc(item.pregunta)}">
+          <span class="col-pregunta">${esc(item.simbolo || item.pregunta)}</span>
+          <span class="col-cifra">${esc(cifra)}</span>
+          <span class="col-estado ${esc(item.estado)}">${esc(etiqueta)}</span>
+        </button>`;
+    }).join('');
+    el.terminalFilas.querySelectorAll('.terminal-row').forEach((boton, i) => {
+      boton.addEventListener('click', () => {
+        const pregunta = lista[i].pregunta;
+        el.input.value = pregunta;
+        ask(pregunta);
+      });
+    });
   }
 
   el.limpiarHistorial.addEventListener('click', () => {
     try { localStorage.removeItem(CLAVE_HISTORIAL); } catch (_) {}
     renderHistorial();
+    renderTerminal();
   });
 
   /* ------------------------------------------------------------ carga de
@@ -1292,6 +1329,9 @@
       : 'Memoria persistente no configurada: las cargas no sobrevivirán un reinicio del servidor.';
     el.estadoMemoria.innerHTML = `<span class="dot"></span><span>${esc(texto)}</span>`;
     el.estadoMemoria.className = `sidebar-memoria ${configurada ? 'activa' : 'inactiva'}`;
+    el.terminalEstado.className = `terminal-status ${configurada ? 'activa' : 'inactiva'}`;
+    el.terminalEstado.querySelector('.terminal-status-text').textContent =
+      configurada ? 'memoria conectada' : 'memoria no configurada';
     el.cargaMemoriaNota.textContent = configurada
       ? ''
       : 'Nota: este servidor todavía no tiene memoria persistente configurada '
@@ -1364,6 +1404,7 @@
   }
 
   renderHistorial();
+  renderTerminal();
 
   if (DEMO) {
     iniciarChips(DEMO.ejemplos.map((e) => e.pregunta), (texto) => ask(texto));
