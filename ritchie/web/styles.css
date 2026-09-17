@@ -216,6 +216,58 @@ img, svg { max-width: 100%; }
 }
 .shell.barra-cerrada .sidebar { width: 0; border-right-color: transparent; }
 
+/* ------------------------------------------------------------- buscador */
+.sidebar-search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 9px 12px; margin: 2px 4px 16px; color: var(--text-3);
+  transition: border-color .2s var(--spring), box-shadow .2s var(--spring);
+}
+.sidebar-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.sidebar-search svg { flex: 0 0 auto; }
+.sidebar-search input {
+  flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--text);
+  font: inherit; font-size: 14px;
+}
+.sidebar-search input::placeholder { color: var(--text-3); }
+
+.sidebar-empty { margin: 4px 10px; font-size: 13px; color: var(--text-3); }
+
+/* -------------------------------------------------------------- sección
+   contenedor genérico para agrupar título + lista dentro de la barra
+   (lo usa el historial; las categorías siguen con su propio marcado). */
+.sidebar-section { margin-bottom: 18px; }
+.sidebar-section-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.sidebar-section-head .sidebar-title { margin-bottom: 6px; }
+.sidebar-clear {
+  background: none; border: 0; color: var(--text-3); font: inherit; font-size: 11.5px;
+  cursor: pointer; padding: 2px 4px; margin: 0 6px 6px 0; border-radius: 6px;
+  transition: color .2s var(--press);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-clear:hover { color: var(--down); }
+}
+
+.sidebar-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.sidebar-history-item {
+  width: 100%; display: flex; align-items: center; gap: 8px; text-align: left;
+  background: none; border: 0; cursor: pointer; padding: 8px 10px; border-radius: 9px;
+  color: var(--text-2); font: inherit; font-size: 13px; line-height: 1.35;
+  transition: background-color .2s var(--press), color .2s var(--press);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-history-item:hover { background: var(--surface-2); color: var(--text); }
+}
+.sidebar-history-item .estado {
+  flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--text-3);
+}
+.sidebar-history-item .estado.ok { background: var(--up); }
+.sidebar-history-item .estado.sin_senal { background: var(--warn); }
+.sidebar-history-item .estado.error { background: var(--down); }
+.sidebar-history-item .texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .sidebar-cats { display: flex; flex-direction: column; gap: 3px; }
 .sidebar-cat { border-radius: var(--radius-sm); }
 .sidebar-cat-head {
@@ -224,6 +276,8 @@ img, svg { max-width: 100%; }
   font: inherit; font-size: 14.5px; font-weight: 500; text-align: left; border-radius: var(--radius-sm);
   transition: background-color .2s var(--press);
 }
+.sidebar-cat-label { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sidebar-cat-icon { flex: 0 0 auto; width: 17px; height: 17px; color: var(--text-3); }
 @media (hover: hover) and (pointer: fine) {
   .sidebar-cat-head:hover { background: var(--surface-2); }
 }
@@ -278,6 +332,20 @@ img, svg { max-width: 100%; }
 /* ------------------------------------------------------------- carga de
    datos: mismo patrón visual que el diálogo "Cómo funciona" (hoja de
    vidrio / hoja inferior en móvil), con un formulario simple encima. */
+.carga-pasos { margin: 16px 0 0; padding-left: 22px; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+.carga-pasos li { margin-bottom: 16px; }
+.carga-pasos li:last-child { margin-bottom: 0; }
+.carga-pasos strong { color: var(--text); }
+.carga-pasos code {
+  background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-size: 12.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.carga-ejemplo { margin-top: 10px; overflow-x: auto; }
+.carga-ejemplo table { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.carga-ejemplo th, .carga-ejemplo td {
+  border: 1px solid var(--line); padding: 6px 12px; text-align: left; white-space: nowrap;
+}
+.carga-ejemplo th { background: var(--surface-2); color: var(--text-3); font-weight: 500; }
 .carga-form { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
 .carga-campo { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: var(--text-2); }
 .carga-campo input[type="text"] {

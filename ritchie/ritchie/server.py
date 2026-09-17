@@ -8,7 +8,6 @@ se pregunta lo mismo, la respuesta sale de la caché al instante.
 
 from __future__ import annotations
 
-import io
 import json
 import mimetypes
 import os
@@ -21,8 +20,6 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-import pandas as pd
-
 from .config import ENGINE_FULL_NAME, ENGINE_NAME, ENGINE_VERSION, config_for_profile
 from .data import quality, supabase_store
 from .data.aliases import normalize_symbol
@@ -32,6 +29,7 @@ from .data.sources import (
     _apply_adjustment,
     available_sources,
     parse_ohlc_frame,
+    read_csv_text,
 )
 from .features.targets import TargetSpec
 from .nlq import parse
@@ -259,10 +257,31 @@ class RitchieServer:
             return {"ok": False, "error": "Falta el símbolo del activo (por ejemplo MARA o AAPL)."}
         if not csv_text or not csv_text.strip():
             return {"ok": False, "error": "El archivo está vacío."}
+
+        # Primero se valida el archivo, sin importar si hay dónde guardarlo
+        # todavía — así la persona sabe si el problema es su CSV o el
+        # servidor, nunca los dos mezclados en un solo mensaje confuso.
+        try:
+            raw = read_csv_text(csv_text, label="el archivo subido")
+            frame = parse_ohlc_frame(raw, label="el archivo subido")
+            frame = _apply_adjustment(frame)
+            invalid_dates = frame.attrs.get("invalid_dates_dropped", 0)
+            frame, stats = quality.normalize_frame(frame)
+        except SourceError as exc:
+            return {"ok": False, "error": str(exc)}
+        except Exception as exc:  # noqa: BLE001 - se reporta tal cual, es entrada de la persona
+            return {"ok": False, "error": f"No se pudo leer el archivo: {exc}"}
+        if frame.empty:
+            return {"ok": False, "error": "El archivo no trajo ninguna fila utilizable (revisa fechas y precios)."}
+
         if not supabase_store.configured():
             return {
                 "ok": False,
-                "error": "La memoria persistente no está configurada en este servidor.",
+                "error": (
+                    f"Tu archivo se leyó bien — {len(frame)} filas del "
+                    f"{frame.index[0]:%Y-%m-%d} al {frame.index[-1]:%Y-%m-%d} — pero este "
+                    "servidor todavía no tiene dónde guardarlo de forma permanente."
+                ),
                 "como_arreglarlo": [
                     "En Render: pestaña Environment de este servicio → Add Environment Variable.",
                     "RITCHIE_SUPABASE_URL: la misma 'Project URL' que ya usa VALU en este proyecto.",
@@ -271,17 +290,6 @@ class RitchieServer:
                     "Después de guardarlas, Render redespliega solo. Vuelve a intentar la carga.",
                 ],
             }
-        try:
-            raw = pd.read_csv(io.StringIO(csv_text))
-            frame = parse_ohlc_frame(raw, label="el archivo subido")
-            frame = _apply_adjustment(frame)
-            frame, stats = quality.normalize_frame(frame)
-        except SourceError as exc:
-            return {"ok": False, "error": str(exc)}
-        except Exception as exc:  # noqa: BLE001 - se reporta tal cual, es entrada de la persona
-            return {"ok": False, "error": f"No se pudo leer el archivo: {exc}"}
-        if frame.empty:
-            return {"ok": False, "error": "El archivo no trajo ninguna fila utilizable (revisa fechas y precios)."}
         saved = supabase_store.write(resolved, frame, source="manual_upload")
         if saved == 0:
             return {
@@ -296,6 +304,7 @@ class RitchieServer:
             "desde": frame.index[0].strftime("%Y-%m-%d"),
             "hasta": frame.index[-1].strftime("%Y-%m-%d"),
             "filas_descartadas": stats.get("rows_dropped", 0),
+            "fechas_no_reconocidas": invalid_dates,
         }
 
 

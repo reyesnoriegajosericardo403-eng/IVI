@@ -94,6 +94,40 @@ sorpresa):
 - Si algún día quieres algo más rápido y siempre despierto, Render también
   tiene planes de pago; no hace falta para empezar.
 
+### Si Yahoo y Stooq no responden: una llave gratuita de respaldo
+
+La IP de salida de Render (plan gratuito) la comparten muchas aplicaciones a
+la vez. Si justo en ese momento Yahoo Finance o Stooq están limitando esa IP
+por el tráfico de **otras** apps, RITCHIE lo va a decir tal cual (verás un
+error 429 o una respuesta que no trae lo esperado) — no es que RITCHIE esté
+roto, es que esa IP compartida está topada. Más reintentos no arreglan esto
+porque el límite es por IP, no por cuánto insiste RITCHIE.
+
+La solución de verdad es una fuente que no dependa de tu IP: **Alpha
+Vantage**, con una llave gratuita personal (no compartida con nadie más).
+Un minuto, sin computadora:
+
+**Paso 1.** Desde Safari, entra a
+[alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key).
+Pon tu correo y toca **GET FREE API KEY**. Te da una llave al instante, sin
+tarjeta ni confirmación por correo.
+
+**Paso 2.** En Render, tu servicio `ritchie` → pestaña **Environment** →
+**Add Environment Variable**:
+
+| Key | Value |
+| --- | --- |
+| `RITCHIE_ALPHAVANTAGE_KEY` | la llave que te dio Alpha Vantage |
+
+Guarda; Render redespliega solo. RITCHIE la va a usar automáticamente en
+cuanto Yahoo y Stooq fallen — no hace falta tocar nada más.
+
+**El límite del plan gratuito de Alpha Vantage** es de 25 peticiones al día
+por llave — de sobra para preguntar por varios activos distintos, pero no
+para un uso intensivo. Es un respaldo, no un reemplazo: cuando Yahoo/Stooq sí
+respondan (lo normal la mayoría del tiempo), esas siguen siendo las
+primeras que se intentan.
+
 ### Memoria persistente (opcional): que lo que se descarga se quede guardado
 
 Por defecto, cada vez que Render duerme y despierta, RITCHIE empieza de cero:

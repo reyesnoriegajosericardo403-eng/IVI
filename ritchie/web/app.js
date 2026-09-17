@@ -30,6 +30,9 @@
     themeToggle: $('selector-tema'), themeThumb: $('tema-indicador'),
     shell: $('shell'), sidebarToggle: $('alternar-barra'), sidebar: $('barra-lateral'),
     sidebarCats: $('barra-categorias'), sidebarScrim: $('barra-scrim'),
+    sidebarBuscar: $('barra-buscar'), barraSinResultados: $('barra-sin-resultados'),
+    seccionHistorial: $('seccion-historial'), barraHistorial: $('barra-historial'),
+    limpiarHistorial: $('limpiar-historial'),
     estadoMemoria: $('estado-memoria'),
     abrirCarga: $('abrir-carga'), dialogoCarga: $('dialogo-carga'), cerrarDialogoCarga: $('cerrar-dialogo-carga'),
     cargaMemoriaNota: $('carga-memoria-nota'), formCarga: $('form-carga'), cargaSimbolo: $('carga-simbolo'),
@@ -384,6 +387,7 @@
     el.errorText.textContent = message;
     el.errorList.innerHTML = details.map((d) => `<li>${esc(d)}</li>`).join('');
     show(el.errorBox, true);
+    registrarHistorial(preguntaActual, 'error');
   }
 
   /* ------------------------------------------------------------- petición
@@ -398,6 +402,7 @@
 
   async function ask(question) {
     if (!question.trim()) return;
+    preguntaActual = question.trim();
     setWorking(true);
     if (DEMO) return askDemo(question);
     el.stage.textContent = 'Enviando';
@@ -520,6 +525,7 @@
     renderBlockers(payload.senal || {}, summary.hay_senal);
     renderCharts(payload, scenarios, asset);
     renderLevels(payload);
+    registrarHistorial(preguntaActual, summary.hay_senal ? 'ok' : 'sin_senal');
 
     const provenance = (payload.nivel_5_tecnico || {}).procedencia || payload.procedencia || {};
     const primary = provenance.primary || {};
@@ -1113,28 +1119,55 @@
   });
   aplicarBarra(barraPreferida(), { guardar: false });
 
+  /* Un glifo por categoría, solo para escanear más rápido — el texto
+     manda, el ícono es un atajo visual, no información nueva. */
+  const ICONOS_CATEGORIA = {
+    acciones: '<path d="M4 19V10M9.5 19V5M15 19v-7M20.5 19V8"/>',
+    criptomonedas: '<circle cx="12" cy="12" r="7.5"/><path d="M10 8.5h3a1.8 1.8 0 0 1 0 3.5H9.5m0 0H13a1.8 1.8 0 0 1 0 3.5H9.5M11 7v1.3M11 15.7V17"/>',
+    indices: '<path d="M4 15l5-5 4 3 7-8"/><path d="M15 5h5v5"/>',
+    materias_primas: '<path d="M12 3.5 19.5 8v8L12 20.5 4.5 16V8Z"/><path d="M12 3.5V12m0 8.5V12m7.5-4L12 12m-7.5-4L12 12"/>',
+    divisas: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
+    bonos: '<rect x="4.5" y="4" width="15" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>',
+    futuros: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l3 2M9 2h6"/>',
+  };
+  const iconoCategoria = (id) => ICONOS_CATEGORIA[id] || '<circle cx="12" cy="12" r="7.5"/>';
+
+  /** Última lista de categorías tal como llegó del servidor — el buscador
+   * filtra sobre una copia de esto y nunca la pierde, así que borrar la
+   * búsqueda siempre puede volver al estado original. */
+  let ultimasCategorias = [];
+
   /** Pinta las categorías de activos en la barra lateral. Cada categoría es
-   * un acordeón simple (la primera abierta de entrada); cada ejemplo es un
-   * botón que hace la pregunta directamente y, en pantallas angostas,
-   * cierra el cajón para dejar ver el resultado. */
-  function renderBarraCategorias(categorias) {
+   * un acordeón (la primera abierta de entrada, o todas si `expandirTodo`
+   * viene de una búsqueda); cada ejemplo es un botón que hace la pregunta
+   * directamente y, en pantallas angostas, cierra el cajón para dejar ver
+   * el resultado. */
+  function renderBarraCategorias(categorias, { guardar = true, expandirTodo = false } = {}) {
+    if (guardar) ultimasCategorias = categorias || [];
     if (!categorias || !categorias.length) { el.sidebarCats.innerHTML = ''; return; }
-    el.sidebarCats.innerHTML = categorias.map((cat, i) => `
-      <div class="sidebar-cat" data-abierta="${i === 0 ? 'true' : 'false'}">
-        <button type="button" class="sidebar-cat-head" aria-expanded="${i === 0 ? 'true' : 'false'}">
-          <span>${esc(cat.etiqueta)}</span>
+    el.sidebarCats.innerHTML = categorias.map((cat, i) => {
+      const abierta = expandirTodo || i === 0;
+      return `
+      <div class="sidebar-cat" data-abierta="${abierta ? 'true' : 'false'}">
+        <button type="button" class="sidebar-cat-head" aria-expanded="${abierta ? 'true' : 'false'}">
+          <span class="sidebar-cat-label">
+            <svg class="sidebar-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconoCategoria(cat.id)}</svg>
+            <span>${esc(cat.etiqueta)}</span>
+          </span>
           <svg class="sidebar-cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M9 6l6 6-6 6"/>
           </svg>
         </button>
         ${cat.descripcion ? `<p class="sidebar-cat-desc">${esc(cat.descripcion)}</p>` : ''}
-        <ul class="sidebar-cat-list" ${i === 0 ? '' : 'hidden'}>
+        <ul class="sidebar-cat-list" ${abierta ? '' : 'hidden'}>
           ${(cat.ejemplos || []).map((texto) =>
             `<li><button type="button" class="sidebar-cat-item">${esc(texto)}</button></li>`
           ).join('')}
         </ul>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     el.sidebarCats.querySelectorAll('.sidebar-cat').forEach((catEl) => {
       const head = catEl.querySelector('.sidebar-cat-head');
@@ -1155,6 +1188,76 @@
       });
     });
   }
+
+  /** Filtra `ultimasCategorias` por texto: una categoría cuyo NOMBRE
+   * coincide se queda completa; si no, solo sus ejemplos que coinciden. */
+  function filtrarCategorias(consulta) {
+    const q = consulta.trim().toLowerCase();
+    if (!q) return ultimasCategorias;
+    return ultimasCategorias
+      .map((cat) => {
+        if ((cat.etiqueta || '').toLowerCase().includes(q)) return cat;
+        const ejemplos = (cat.ejemplos || []).filter((texto) => texto.toLowerCase().includes(q));
+        return ejemplos.length ? { ...cat, ejemplos } : null;
+      })
+      .filter(Boolean);
+  }
+
+  el.sidebarBuscar.addEventListener('input', () => {
+    const consulta = el.sidebarBuscar.value;
+    const filtradas = filtrarCategorias(consulta);
+    renderBarraCategorias(filtradas, { guardar: false, expandirTodo: Boolean(consulta.trim()) });
+    show(el.barraSinResultados, Boolean(consulta.trim()) && filtradas.length === 0);
+  });
+
+  /* ------------------------------------------------------------ historial
+     Las últimas preguntas que se hicieron desde este dispositivo, con un
+     punto de color según cómo terminaron. Vive solo en localStorage: es
+     una conveniencia de navegación, no algo que el motor necesite. */
+  const CLAVE_HISTORIAL = 'ritchie-historial';
+  const MAX_HISTORIAL = 10;
+  let preguntaActual = '';
+
+  function leerHistorial() {
+    try {
+      const datos = JSON.parse(localStorage.getItem(CLAVE_HISTORIAL) || '[]');
+      return Array.isArray(datos) ? datos : [];
+    } catch (_) { return []; }
+  }
+
+  function renderHistorial() {
+    const lista = leerHistorial();
+    show(el.seccionHistorial, lista.length > 0);
+    el.barraHistorial.innerHTML = lista.map((item) => `
+      <li>
+        <button type="button" class="sidebar-history-item" title="${esc(item.pregunta)}">
+          <span class="estado ${esc(item.estado)}"></span>
+          <span class="texto">${esc(item.pregunta)}</span>
+        </button>
+      </li>`).join('');
+    el.barraHistorial.querySelectorAll('.sidebar-history-item').forEach((boton, i) => {
+      boton.addEventListener('click', () => {
+        const pregunta = lista[i].pregunta;
+        el.input.value = pregunta;
+        ask(pregunta);
+        if (esAngosto()) aplicarBarra('cerrada');
+      });
+    });
+  }
+
+  function registrarHistorial(pregunta, estado) {
+    if (!pregunta) return;
+    let lista = leerHistorial().filter((item) => item.pregunta !== pregunta);
+    lista.unshift({ pregunta, estado, momento: Date.now() });
+    lista = lista.slice(0, MAX_HISTORIAL);
+    try { localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(lista)); } catch (_) {}
+    renderHistorial();
+  }
+
+  el.limpiarHistorial.addEventListener('click', () => {
+    try { localStorage.removeItem(CLAVE_HISTORIAL); } catch (_) {}
+    renderHistorial();
+  });
 
   /* ------------------------------------------------------------ carga de
      datos. Mismo patrón visual que la hoja "Cómo funciona" (sin el gesto
@@ -1259,6 +1362,8 @@
       });
     });
   }
+
+  renderHistorial();
 
   if (DEMO) {
     iniciarChips(DEMO.ejemplos.map((e) => e.pregunta), (texto) => ask(texto));

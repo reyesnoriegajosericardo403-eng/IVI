@@ -64,8 +64,24 @@
   <!-- ------------------------------------------------------- barra lateral -->
   <aside class="sidebar" id="barra-lateral" aria-label="Explorar por tipo de activo">
     <div class="sidebar-inner">
+      <div class="sidebar-search">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
+        </svg>
+        <input type="text" id="barra-buscar" placeholder="Buscar un activo o pregunta…" autocomplete="off" spellcheck="false" aria-label="Buscar en la lista de activos" />
+      </div>
+
+      <div class="sidebar-section" id="seccion-historial" hidden>
+        <div class="sidebar-section-head">
+          <p class="sidebar-title">Preguntado recientemente</p>
+          <button type="button" class="sidebar-clear" id="limpiar-historial">Limpiar</button>
+        </div>
+        <ul class="sidebar-history" id="barra-historial"></ul>
+      </div>
+
       <p class="sidebar-title">Explorar por tipo de activo</p>
       <nav class="sidebar-cats" id="barra-categorias"></nav>
+      <p class="sidebar-empty" id="barra-sin-resultados" hidden>No hay nada que coincida con tu búsqueda.</p>
       <div class="sidebar-foot">
         <button class="sidebar-upload-btn" id="abrir-carga" type="button">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -276,12 +292,34 @@
     <div class="dialog-inner">
       <h3 id="carga-titulo">Cargar tus datos</h3>
       <p class="fineprint" style="margin-top:0">
-        Para cuando ninguna fuente automática responda (o quieras usar tu propio
-        histórico, por ejemplo de un bróker o de un mercado que RITCHIE no cubre).
-        Sube un CSV con columnas <code>date, open, high, low, close, volume</code>
-        (en español también: <code>fecha, apertura, maximo, minimo, cierre, volumen</code>) —
-        solo <code>date</code> y <code>close</code> son obligatorias.
+        Para cuando ninguna fuente automática responda, o quieras analizar algo
+        que RITCHIE no cubre (un bróker local, un mercado propio). Cuatro pasos:
       </p>
+
+      <ol class="carga-pasos">
+        <li>
+          <strong>Ten tu archivo con al menos dos columnas:</strong> una fecha y un
+          precio de cierre. Si tienes apertura, máximo, mínimo y volumen, mejor —
+          pero no son obligatorias. El orden de las columnas, el de las filas, los
+          acentos y si usas coma o punto para los decimales no importan: RITCHIE
+          los reconoce solos.
+          <div class="carga-ejemplo">
+            <table>
+              <tr><th>fecha</th><th>cierre</th><th>volumen</th></tr>
+              <tr><td>2024-01-02</td><td>17.60</td><td>1,000,000</td></tr>
+              <tr><td>2024-01-03</td><td>17.80</td><td>1,200,000</td></tr>
+            </table>
+          </div>
+        </li>
+        <li><strong>Guárdalo como CSV.</strong> En Excel, Numbers o Google Sheets:
+          Archivo → Exportar (o Descargar) → formato <strong>CSV</strong>.</li>
+        <li><strong>Escribe el símbolo</strong> del activo abajo (por ejemplo
+          <code>MARA</code>, <code>AAPL</code> o <code>BTC-USD</code>) — el mismo
+          que usarías para preguntarle a RITCHIE.</li>
+        <li><strong>Elige el archivo y toca "Guardar".</strong> Te avisa si algo
+          salió mal y por qué — nunca se queda a medias en silencio.</li>
+      </ol>
+
       <p class="fineprint" id="carga-memoria-nota"></p>
 
       <form id="form-carga" class="carga-form">

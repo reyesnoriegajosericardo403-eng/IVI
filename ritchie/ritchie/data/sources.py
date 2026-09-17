@@ -13,6 +13,7 @@ import io
 import json
 import os
 import time
+import unicodedata
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 
@@ -234,7 +235,16 @@ class StooqSource(DataSource):
         # convierte en la columna inofensiva "nan" en vez de tronar aquí.
         frame.columns = [str(c).strip().lower() for c in frame.columns]
         if "date" not in frame.columns or "close" not in frame.columns:
-            raise SourceError("El CSV de Stooq no trae las columnas esperadas.")
+            # Se incluye lo que de verdad llegó (recortado) porque este
+            # error puede significar cosas muy distintas: un bloqueo por
+            # límite de peticiones, un símbolo que Stooq no reconoce, o un
+            # cambio de formato de su lado — sin ver el texto crudo no hay
+            # forma de saber cuál.
+            muestra = text.strip().replace("\n", " ")[:160]
+            raise SourceError(
+                f"El CSV de Stooq no trae las columnas esperadas. Columnas recibidas: "
+                f"{list(frame.columns)}. Respuesta cruda (primeros 160 caracteres): «{muestra}»."
+            )
         frame = frame.set_index(pd.to_datetime(frame["date"]))
         keep = [c for c in ("open", "high", "low", "close", "volume") if c in frame.columns]
         frame = frame[keep].apply(pd.to_numeric, errors="coerce")
@@ -301,35 +311,125 @@ class AlphaVantageSource(DataSource):
         )
 
 
+def _strip_accents(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
+
+
+def read_csv_text(text: str, *, label: str) -> pd.DataFrame:
+    """Lee un CSV siendo tolerante con lo que de verdad exporta la gente.
+
+    Dos variantes muy comunes que `pd.read_csv` por defecto NO adivina:
+    - Excel en español exporta "CSV" separado por `;` (porque usa `,` como
+      separador decimal). Si con `,` todo el archivo cae en una sola
+      columna, se reintenta con `;` — esa es la señal inequívoca de que el
+      separador real era otro.
+    - Un BOM al inicio del archivo (típico de Excel/Windows), que se pide
+      ignorar con `encoding="utf-8-sig"` sin que haga falta que la persona
+      sepa qué es un BOM.
+    """
+    if not text or not text.strip():
+        raise SourceError(f"{label}: el archivo está vacío.")
+    intentos = []
+    for separador in (",", ";", "\t"):
+        try:
+            frame = pd.read_csv(io.StringIO(text), sep=separador, encoding="utf-8-sig")
+        except Exception as exc:  # noqa: BLE001 - se reintenta con el siguiente separador
+            intentos.append(f"separador «{separador}»: {exc}")
+            continue
+        if frame.shape[1] > 1:
+            return frame
+        intentos.append(f"separador «{separador}»: solo se reconoció una columna")
+    raise SourceError(
+        f"{label}: no se pudo identificar cómo están separadas las columnas. " + " / ".join(intentos)
+    )
+
+
+def _parse_dates(series: pd.Series) -> pd.Series:
+    """Convierte a fecha aceptando tanto AAAA-MM-DD (ISO, sin ambigüedad)
+    como DD/MM/AAAA (el que usa la mayoría de bancos y brókeres en
+    español). Nunca se le pasa `dayfirst=True` a una columna que ya viene
+    en ISO: pandas lo interpreta mal incluso con el año por delante
+    («2024-01-02» se volvía 2 de abril) — un bug real que se detectó
+    probando esta misma función."""
+    text = series.astype(str).str.strip()
+    iso = text.str.match(r"^\d{4}-\d{1,2}-\d{1,2}")
+    if iso.all():
+        return pd.to_datetime(text, errors="coerce")
+    return pd.to_datetime(text, errors="coerce", dayfirst=True)
+
+
+def _to_number_series(series: pd.Series) -> pd.Series:
+    """Convierte a número tolerando los formatos que exporta Excel en
+    español: "1.234,56" (miles con punto, decimales con coma), "17,60"
+    (solo decimales con coma) y "1.200.000" (miles con punto, sin parte
+    decimal — típico de un volumen) — para no exigirle a la persona que
+    reformatee su archivo antes de subirlo."""
+    text = series.astype(str).str.strip()
+    miles_y_decimales = text.str.match(r"^-?\d{1,3}(\.\d{3})+,\d+$")
+    solo_decimales = text.str.match(r"^-?\d+,\d+$")
+    solo_miles = text.str.match(r"^-?\d{1,3}(\.\d{3})+$")
+    formato_es = miles_y_decimales | solo_decimales | solo_miles
+    limpio = text.where(
+        ~formato_es,
+        text.str.replace(".", "", regex=False).str.replace(",", ".", regex=False),
+    )
+    return pd.to_numeric(limpio, errors="coerce")
+
+
 def parse_ohlc_frame(raw: pd.DataFrame, *, label: str) -> pd.DataFrame:
-    """Normaliza un DataFrame crudo (columnas en cualquier orden, en
-    español o inglés) a lo que el motor espera. La comparten `CsvSource`
-    (un archivo local) y el apartado de "subir tus datos" del servidor —
-    misma tolerancia de formato en los dos casos.
+    """Normaliza un DataFrame crudo a lo que el motor espera, sin importar:
+
+    - el orden de las columnas o de las filas (se ordena por fecha al final);
+    - si los encabezados llevan acentos, mayúsculas o espacios («Máximo»,
+      MAXIMO, " maximo " son la misma columna);
+    - si los números usan coma decimal en vez de punto;
+    - si algunas fechas no se pudieron leer (esas filas se descartan y se
+      cuentan — no tumban la carga completa).
+
+    La comparten `CsvSource` (un archivo local) y el apartado de "subir tus
+    datos" del servidor — misma tolerancia de formato en los dos casos.
     """
     frame = raw.copy()
-    frame.columns = [str(c).strip().lower().replace(" ", "_") for c in frame.columns]
+    frame.columns = [_strip_accents(str(c)).strip().lower().replace(" ", "_") for c in frame.columns]
     date_column = next((c for c in ("date", "fecha", "timestamp") if c in frame.columns), None)
     if date_column is None:
-        raise SourceError(f"{label}: falta la columna de fecha (date/fecha/timestamp).")
+        raise SourceError(
+            f"{label}: no encontré la columna de fecha. Nombra esa columna "
+            f'"date" o "fecha". Columnas que sí encontré: {list(frame.columns)}.'
+        )
     rename = {
         "adjclose": "adj_close",
-        "adj close": "adj_close",
+        "adj_close": "adj_close",
         "cierre": "close",
+        "precio_cierre": "close",
         "apertura": "open",
+        "precio_apertura": "open",
         "maximo": "high",
+        "precio_maximo": "high",
         "minimo": "low",
+        "precio_minimo": "low",
         "volumen": "volume",
     }
     frame = frame.rename(columns=rename)
     if "close" not in frame.columns:
-        raise SourceError(f"{label}: falta la columna de cierre (close/cierre).")
-    frame = frame.set_index(pd.to_datetime(frame[date_column]))
+        raise SourceError(
+            f"{label}: no encontré la columna de cierre. Nombra esa columna "
+            f'"close" o "cierre". Columnas que sí encontré: {list(frame.columns)}.'
+        )
+
+    dates = _parse_dates(frame[date_column])
+    invalid_dates = int(dates.isna().sum())
+    frame = frame.loc[dates.notna()].set_index(dates[dates.notna()])
+
     keep = [c for c in ("open", "high", "low", "close", "adj_close", "volume") if c in frame.columns]
-    frame = frame[keep].apply(pd.to_numeric, errors="coerce").sort_index()
+    for column in keep:
+        frame[column] = _to_number_series(frame[column])
+    frame = frame[keep].sort_index()
     for column in ("open", "high", "low"):
         if column not in frame.columns:
             frame[column] = frame["close"]
+    if invalid_dates:
+        frame.attrs["invalid_dates_dropped"] = invalid_dates
     return frame
 
 
@@ -360,7 +460,9 @@ class CsvSource(DataSource):
 
     def fetch(self, symbol: str, days: int) -> MarketData:
         path = self._resolve(symbol)
-        frame = parse_ohlc_frame(pd.read_csv(path), label=path)
+        with open(path, encoding="utf-8-sig", errors="replace") as handle:
+            text = handle.read()
+        frame = parse_ohlc_frame(read_csv_text(text, label=path), label=path)
         frame = _apply_adjustment(frame)
         return MarketData(
             symbol=symbol.upper(),
