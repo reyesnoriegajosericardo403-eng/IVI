@@ -103,9 +103,17 @@ error 429 o una respuesta que no trae lo esperado) — no es que RITCHIE esté
 roto, es que esa IP compartida está topada. Más reintentos no arreglan esto
 porque el límite es por IP, no por cuánto insiste RITCHIE.
 
-La solución de verdad es una fuente que no dependa de tu IP: **Alpha
-Vantage**, con una llave gratuita personal (no compartida con nadie más).
-Un minuto, sin computadora:
+**Para las criptomonedas principales (BTC-USD, ETH-USD, SOL-USD y ~23 más)
+esto ya no debería pasar**: RITCHIE las consigue primero por `coingecko`, una
+fuente sin llave que en la práctica no bloquea la IP compartida de Render
+como sí lo hacen Yahoo y Stooq. Si preguntas por una de esas criptomonedas y
+sigue fallando, dínoslo — puede ser una caída puntual de CoinGecko, no el
+mismo problema de siempre.
+
+Para acciones, ETFs, índices, materias primas y divisas —donde `coingecko`
+no aplica— la solución de verdad es una fuente que no dependa de tu IP:
+**Alpha Vantage**, con una llave gratuita personal (no compartida con nadie
+más). Un minuto, sin computadora:
 
 **Paso 1.** Desde Safari, entra a
 [alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key).
@@ -283,15 +291,20 @@ URL y hora exacta de descarga) viaja pegada a la respuesta.
 | Fuente | Cobertura | Requiere llave |
 |---|---|---|
 | `supabase_store` | lo que ya se guardó antes (en línea o subido a mano) | no, pero se salta si no está configurada (ver "Memoria persistente" arriba) |
+| `coingecko` | ~26 criptomonedas principales (BTC-USD, ETH-USD, SOL-USD, etc.) | no |
 | `yahoo_finance` | acciones, ETFs, índices, FIBRAs/REITs, materias primas, criptomonedas | no |
 | `stooq` | acciones e índices (sin precio ajustado) | no |
 | `alpha_vantage` | acciones | sí (`RITCHIE_ALPHAVANTAGE_KEY`) |
 | `csv` | cualquier mercado exportado a CSV | no |
 
 Cuando la memoria persistente está configurada, `supabase_store` se antepone
-solo a este orden (es la primera que se intenta). Además, cualquier serie que
-consiga `yahoo_finance`, `stooq` o `alpha_vantage` se guarda ahí sola, de
-regalo, para la próxima vez.
+solo a este orden (es la primera que se intenta). `coingecko` va justo
+después: para cualquier símbolo que no sea una de sus criptomonedas
+conocidas falla al instante sin tocar la red, así que no le cuesta nada al
+resto — y para las que sí cubre, evita la espera de Yahoo/Stooq cuando esa
+IP compartida está bloqueada. Además, cualquier serie que consiga
+`coingecko`, `yahoo_finance`, `stooq` o `alpha_vantage` se guarda en la
+memoria persistente sola, de regalo, para la próxima vez.
 
 Para mercados sin API pública (BIVA, BMV, el histórico de tu bróker), exporta
 a CSV con columnas `date,open,high,low,close[,adj_close][,volume]` y:

@@ -311,6 +311,87 @@ class AlphaVantageSource(DataSource):
         )
 
 
+# ----------------------------------------------------------------- CoinGecko
+#: Símbolo "TICKER-USD" (el mismo formato que ya usan RITCHIE y Yahoo) →
+#: identificador de moneda en CoinGecko. Solo se listan monedas verificadas
+#: a mano, nunca se adivina un id.
+_COINGECKO_IDS = {
+    "BTC-USD": "bitcoin", "ETH-USD": "ethereum", "SOL-USD": "solana",
+    "XRP-USD": "ripple", "ADA-USD": "cardano", "DOGE-USD": "dogecoin",
+    "LTC-USD": "litecoin", "DOT-USD": "polkadot", "AVAX-USD": "avalanche-2",
+    "LINK-USD": "chainlink", "MATIC-USD": "matic-network", "BNB-USD": "binancecoin",
+    "TRX-USD": "tron", "SHIB-USD": "shiba-inu", "UNI-USD": "uniswap",
+    "ATOM-USD": "cosmos", "XLM-USD": "stellar", "NEAR-USD": "near",
+    "ICP-USD": "internet-computer", "APT-USD": "aptos", "ARB-USD": "arbitrum",
+    "OP-USD": "optimism", "FIL-USD": "filecoin", "ETC-USD": "ethereum-classic",
+    "BCH-USD": "bitcoin-cash", "XMR-USD": "monero", "HBAR-USD": "hedera-hashgraph",
+}
+
+
+class CoinGeckoSource(DataSource):
+    """CoinGecko: API pública de criptomonedas, sin llave.
+
+    Solo atiende símbolos "TICKER-USD" que estén en `_COINGECKO_IDS`; para
+    cualquier otro falla al instante SIN tocar la red, así no le resta
+    tiempo a las fuentes que sí pueden atender ese símbolo. Existe como
+    respaldo de Yahoo/Stooq: en un servidor gratuito con IP compartida
+    (Render, etc.) esas dos suelen bloquearse (429 de Yahoo, verificación
+    anti-robots de Stooq) mientras que CoinGecko, en la práctica, no lo hace.
+    No entrega apertura/máximo/mínimo reales — solo cierre diario — así que
+    esos tres se rellenan con el cierre, igual que hace `parse_ohlc_frame`
+    con un CSV que solo trae fecha y cierre.
+    """
+
+    name = "coingecko"
+
+    def fetch(self, symbol: str, days: int) -> MarketData:
+        coin_id = _COINGECKO_IDS.get(symbol.strip().upper())
+        if coin_id is None:
+            raise SourceError(f"CoinGecko no cubre «{symbol}» (no está en la lista de criptomonedas conocidas).")
+
+        # Por debajo de 90 días CoinGecko entrega velas horarias en vez de
+        # diarias, lo que rompería el supuesto de "un dato por día" del
+        # resto del motor. Se pide siempre lo suficiente y se recorta después.
+        query_days = max(int(days), 91)
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+        params = {"vs_currency": "usd", "days": query_days, "interval": "daily"}
+        payload = json.loads(_http_get(url, params=params))
+
+        prices = payload.get("prices") or []
+        if not prices:
+            raise SourceError(f"CoinGecko no tiene precios para «{symbol}» ({coin_id}).")
+        volumes = {int(t): v for t, v in (payload.get("total_volumes") or [])}
+
+        timestamps = pd.Series([p[0] for p in prices])
+        index = pd.to_datetime(timestamps, unit="ms", utc=True)
+        index = index.dt.tz_convert("UTC").dt.tz_localize(None).dt.normalize()
+        frame = pd.DataFrame(
+            {
+                "close": [p[1] for p in prices],
+                "volume": [volumes.get(int(p[0])) for p in prices],
+            },
+            index=index,
+        )
+        frame = frame[~frame.index.duplicated(keep="last")].sort_index()
+        for column in ("open", "high", "low"):
+            frame[column] = frame["close"]
+        cutoff = pd.Timestamp.utcnow().tz_localize(None).normalize() - pd.Timedelta(days=days)
+        frame = frame[frame.index >= cutoff]
+        frame = _apply_adjustment(frame)
+
+        return MarketData(
+            symbol=symbol.upper(),
+            frame=frame,
+            source=self.name,
+            source_url=f"{url}?vs_currency=usd&days={query_days}&interval=daily",
+            retrieved_at=utcnow(),
+            currency="USD",
+            asset_class="cryptocurrency",
+            long_name=f"{coin_id.replace('-', ' ').title()} / USD",
+            notes=["CoinGecko no entrega apertura/máximo/mínimo reales: se usa el cierre para los tres."],
+        )
+
+
 def _strip_accents(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
@@ -545,10 +626,16 @@ class SyntheticNoiseSource(SyntheticSource):
         return synthetic.random_walk(sessions, seed)
 
 
-#: Orden por defecto en que se intentan las fuentes reales.
-DEFAULT_SOURCE_ORDER = ("yahoo_finance", "stooq", "alpha_vantage", "csv")
+#: Orden por defecto en que se intentan las fuentes reales. `coingecko` va
+#: primero: para cualquier símbolo que no sea una de sus criptomonedas
+#: conocidas falla sin tocar la red (ver `CoinGeckoSource.fetch`), así que
+#: no le cuesta nada a acciones/índices/etc., y para las que sí cubre evita
+#: la espera de los reintentos de Yahoo/Stooq cuando esas dos están
+#: bloqueadas por la IP compartida de un servidor gratuito.
+DEFAULT_SOURCE_ORDER = ("coingecko", "yahoo_finance", "stooq", "alpha_vantage", "csv")
 
 _REGISTRY: dict[str, type[DataSource]] = {
+    CoinGeckoSource.name: CoinGeckoSource,
     YahooFinanceSource.name: YahooFinanceSource,
     StooqSource.name: StooqSource,
     AlphaVantageSource.name: AlphaVantageSource,

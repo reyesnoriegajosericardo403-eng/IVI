@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -91,6 +93,46 @@ def test_fuente_sintetica_es_determinista():
 def test_csv_sin_carpeta_falla_con_mensaje_claro():
     with pytest.raises(SourceError):
         build_source("csv").fetch("LOQUESEA", 365)
+
+
+def test_coingecko_simbolo_desconocido_falla_sin_tocar_la_red(monkeypatch):
+    import ritchie.data.sources as sources
+
+    def _no_deberia_llamarse(*args, **kwargs):
+        raise AssertionError("CoinGecko no debe llamar a la red para un símbolo que no cubre.")
+
+    monkeypatch.setattr(sources, "_http_get", _no_deberia_llamarse)
+    with pytest.raises(SourceError):
+        build_source("coingecko").fetch("AAPL", 365)
+
+
+def test_coingecko_parsea_precios_diarios(monkeypatch):
+    import ritchie.data.sources as sources
+
+    base = pd.Timestamp.utcnow().tz_localize(None).normalize().tz_localize("UTC") - pd.Timedelta(days=94)
+    precios = [
+        [int((base + pd.Timedelta(days=i)).timestamp() * 1000), 100.0 + i]
+        for i in range(95)
+    ]
+    volumenes = [[ts, 1_000_000.0 + i] for i, (ts, _) in enumerate(precios)]
+    payload = {"prices": precios, "total_volumes": volumenes}
+
+    def _falso_http_get(url, params=None, headers=None, max_attempts=4):
+        assert "coins/bitcoin/market_chart" in url
+        return json.dumps(payload)
+
+    monkeypatch.setattr(sources, "_http_get", _falso_http_get)
+    data = build_source("coingecko").fetch("BTC-USD", 90)
+
+    assert data.source == "coingecko"
+    assert data.asset_class == "cryptocurrency"
+    assert not data.frame.empty
+    assert (data.frame["open"] == data.frame["close"]).all()
+    assert (data.frame["high"] == data.frame["close"]).all()
+    assert (data.frame["low"] == data.frame["close"]).all()
+    # Se recorta al rango pedido (90 días), aunque a CoinGecko se le haya
+    # pedido más para forzar granularidad diaria.
+    assert (data.frame.index >= pd.Timestamp.utcnow().tz_localize(None).normalize() - pd.Timedelta(days=90)).all()
 
 
 def test_procedencia_incluye_fuente_y_momento():
