@@ -1,0 +1,11 @@
+# RITCHIE — dependencias mínimas y reales.
+# Todo lo demás (GARCH, regímenes de Markov, AR, bootstrap, Monte Carlo,
+# servidor HTTP) está implementado dentro del proyecto sin dependencias extra.
+# `requests` sí es necesaria: es el único cliente HTTP que usan las fuentes
+# de datos reales (Yahoo Finance, Stooq, Alpha Vantage). Sin ella, el motor
+# arranca pero ninguna fuente con red puede responder.
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+scikit-learn>=1.4
+requests>=2.31
