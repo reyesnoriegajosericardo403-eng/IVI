@@ -95,6 +95,58 @@ def test_csv_sin_carpeta_falla_con_mensaje_claro():
         build_source("csv").fetch("LOQUESEA", 365)
 
 
+def test_twelve_data_sin_llave_falla_con_mensaje_claro(monkeypatch):
+    import ritchie.data.sources as sources
+
+    monkeypatch.delenv("RITCHIE_TWELVEDATA_KEY", raising=False)
+
+    def _no_deberia_llamarse(*args, **kwargs):
+        raise AssertionError("Twelve Data no debe llamar a la red sin llave configurada.")
+
+    monkeypatch.setattr(sources, "_http_get", _no_deberia_llamarse)
+    with pytest.raises(SourceError, match="RITCHIE_TWELVEDATA_KEY"):
+        build_source("twelve_data").fetch("AAPL", 365)
+
+
+def test_twelve_data_parsea_serie_diaria(monkeypatch):
+    import ritchie.data.sources as sources
+
+    monkeypatch.setenv("RITCHIE_TWELVEDATA_KEY", "llave-de-prueba")
+    base = pd.Timestamp.utcnow().tz_localize(None).normalize() - pd.Timedelta(days=59)
+    valores = [
+        {
+            "datetime": (base + pd.Timedelta(days=i)).strftime("%Y-%m-%d"),
+            "open": str(100.0 + i), "high": str(101.0 + i),
+            "low": str(99.0 + i), "close": str(100.5 + i), "volume": str(1_000_000 + i),
+        }
+        for i in range(60)
+    ]
+    payload = {"meta": {"currency": "USD", "exchange": "NASDAQ"}, "values": valores, "status": "ok"}
+
+    def _falso_http_get(url, params=None, headers=None, max_attempts=4):
+        assert "time_series" in url
+        assert params["apikey"] == "llave-de-prueba"
+        return json.dumps(payload)
+
+    monkeypatch.setattr(sources, "_http_get", _falso_http_get)
+    data = build_source("twelve_data").fetch("AAPL", 60)
+
+    assert data.source == "twelve_data"
+    assert data.currency == "USD"
+    assert not data.frame.empty
+    assert list(data.frame.index) == sorted(data.frame.index)
+
+
+def test_twelve_data_reporta_error_dentro_del_cuerpo(monkeypatch):
+    import ritchie.data.sources as sources
+
+    monkeypatch.setenv("RITCHIE_TWELVEDATA_KEY", "llave-de-prueba")
+    payload = {"code": 429, "message": "Ya no te quedan créditos hoy.", "status": "error"}
+    monkeypatch.setattr(sources, "_http_get", lambda *a, **k: json.dumps(payload))
+    with pytest.raises(SourceError, match="créditos"):
+        build_source("twelve_data").fetch("AAPL", 365)
+
+
 def test_coingecko_simbolo_desconocido_falla_sin_tocar_la_red(monkeypatch):
     import ritchie.data.sources as sources
 

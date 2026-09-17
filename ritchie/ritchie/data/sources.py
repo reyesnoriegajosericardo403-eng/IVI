@@ -392,6 +392,62 @@ class CoinGeckoSource(DataSource):
         )
 
 
+# ------------------------------------------------------------- Twelve Data
+class TwelveDataSource(DataSource):
+    """Twelve Data. Requiere llave gratuita en `RITCHIE_TWELVEDATA_KEY`.
+
+    Mismo patrón que Alpha Vantage (llave personal, no depende de la IP de
+    salida del servidor), pero con una cuota gratuita mucho más generosa:
+    800 peticiones al día / 8 por minuto, frente a las 25 al día de Alpha
+    Vantage — mejor opción cuando lo que importa es poder consultar muchas
+    acciones distintas en el mismo día.
+    """
+
+    name = "twelve_data"
+
+    def fetch(self, symbol: str, days: int) -> MarketData:
+        key = os.environ.get("RITCHIE_TWELVEDATA_KEY", "").strip()
+        if not key:
+            raise SourceError("Falta la variable de entorno RITCHIE_TWELVEDATA_KEY.")
+        url = "https://api.twelvedata.com/time_series"
+        params = {
+            "symbol": symbol,
+            "interval": "1day",
+            "outputsize": 5000,
+            "apikey": key,
+            "format": "JSON",
+        }
+        payload = json.loads(_http_get(url, params=params))
+        # Twelve Data a veces responde 200 con el error dentro del cuerpo
+        # (`status: "error"`) en vez de un código HTTP de error — hay que
+        # revisar el cuerpo, no solo confiar en que la petición no tronó.
+        if payload.get("status") == "error" or "values" not in payload:
+            mensaje = payload.get("message") or payload
+            raise SourceError(f"Twelve Data no entregó serie: {mensaje}")
+        values = payload.get("values") or []
+        if not values:
+            raise SourceError(f"Twelve Data devolvió una serie vacía para «{symbol}».")
+
+        frame = pd.DataFrame(values).set_index("datetime")
+        frame.index = pd.to_datetime(frame.index)
+        frame = frame.apply(pd.to_numeric, errors="coerce").sort_index()
+        cutoff = pd.Timestamp.utcnow().tz_localize(None).normalize() - pd.Timedelta(days=days)
+        frame = frame[frame.index >= cutoff]
+        frame = _apply_adjustment(frame)
+
+        meta = payload.get("meta") or {}
+        return MarketData(
+            symbol=symbol.upper(),
+            frame=frame,
+            source=self.name,
+            source_url=url,
+            retrieved_at=utcnow(),
+            currency=meta.get("currency"),
+            exchange=meta.get("exchange"),
+            notes=["Twelve Data no entrega precio ajustado por dividendos/splits en el plan gratuito."],
+        )
+
+
 def _strip_accents(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
@@ -626,16 +682,20 @@ class SyntheticNoiseSource(SyntheticSource):
         return synthetic.random_walk(sessions, seed)
 
 
-#: Orden por defecto en que se intentan las fuentes reales. `coingecko` va
-#: primero: para cualquier símbolo que no sea una de sus criptomonedas
-#: conocidas falla sin tocar la red (ver `CoinGeckoSource.fetch`), así que
-#: no le cuesta nada a acciones/índices/etc., y para las que sí cubre evita
-#: la espera de los reintentos de Yahoo/Stooq cuando esas dos están
-#: bloqueadas por la IP compartida de un servidor gratuito.
-DEFAULT_SOURCE_ORDER = ("coingecko", "yahoo_finance", "stooq", "alpha_vantage", "csv")
+#: Orden por defecto en que se intentan las fuentes reales.
+#:
+#: Las que necesitan llave (`twelve_data`, `alpha_vantage`) y `coingecko` van
+#: primero: sin la llave (o, en el caso de `coingecko`, sin ser una de sus
+#: criptomonedas conocidas) fallan al instante SIN tocar la red, así que no
+#: cuestan nada cuando no están configuradas. `yahoo_finance` y `stooq` van
+#: al final porque, cuando de verdad fallan (IP compartida bloqueada), lo
+#: hacen lento (varios reintentos con espera) — mejor que ese costo lo
+#: pague el último intento, no el primero.
+DEFAULT_SOURCE_ORDER = ("coingecko", "twelve_data", "alpha_vantage", "yahoo_finance", "stooq", "csv")
 
 _REGISTRY: dict[str, type[DataSource]] = {
     CoinGeckoSource.name: CoinGeckoSource,
+    TwelveDataSource.name: TwelveDataSource,
     YahooFinanceSource.name: YahooFinanceSource,
     StooqSource.name: StooqSource,
     AlphaVantageSource.name: AlphaVantageSource,

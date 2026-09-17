@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=None,
         help="Fuente de datos a usar (se puede repetir para definir el orden). "
-        "Por defecto: yahoo_finance, stooq, alpha_vantage, csv.",
+        "Por defecto: coingecko, twelve_data, alpha_vantage, yahoo_finance, stooq, csv.",
     )
     common.add_argument("--json", action="store_true", help="Imprime la respuesta completa en JSON.")
 

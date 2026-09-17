@@ -111,30 +111,50 @@ sigue fallando, dínoslo — puede ser una caída puntual de CoinGecko, no el
 mismo problema de siempre.
 
 Para acciones, ETFs, índices, materias primas y divisas —donde `coingecko`
-no aplica— la solución de verdad es una fuente que no dependa de tu IP:
-**Alpha Vantage**, con una llave gratuita personal (no compartida con nadie
-más). Un minuto, sin computadora:
+no aplica— la solución de verdad es una fuente que no dependa de tu IP: una
+llave gratuita personal (no compartida con nadie más) de alguno de estos dos
+proveedores. **Ambas se pueden configurar a la vez** — RITCHIE prueba
+`twelve_data` primero y `alpha_vantage` como respaldo.
+
+| | Cuota gratis | Recomendada para |
+| --- | --- | --- |
+| **Twelve Data** | 800 peticiones/día, 8/minuto | uso normal: consultar varias acciones distintas en el mismo día |
+| **Alpha Vantage** | 25 peticiones/día | respaldo, o si Twelve Data alguna vez falla |
+
+**Twelve Data (recomendada) — un minuto, sin computadora:**
 
 **Paso 1.** Desde Safari, entra a
-[alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key).
-Pon tu correo y toca **GET FREE API KEY**. Te da una llave al instante, sin
-tarjeta ni confirmación por correo.
+[twelvedata.com/pricing](https://twelvedata.com/pricing) → plan **Free** →
+**Get Started for Free**. Pon tu correo (no pide tarjeta) y te da la llave
+(**API Key**) en tu panel apenas confirmas la cuenta.
 
 **Paso 2.** En Render, tu servicio `ritchie` → pestaña **Environment** →
 **Add Environment Variable**:
 
 | Key | Value |
 | --- | --- |
-| `RITCHIE_ALPHAVANTAGE_KEY` | la llave que te dio Alpha Vantage |
+| `RITCHIE_TWELVEDATA_KEY` | la llave que te dio Twelve Data |
 
 Guarda; Render redespliega solo. RITCHIE la va a usar automáticamente en
 cuanto Yahoo y Stooq fallen — no hace falta tocar nada más.
 
-**El límite del plan gratuito de Alpha Vantage** es de 25 peticiones al día
-por llave — de sobra para preguntar por varios activos distintos, pero no
-para un uso intensivo. Es un respaldo, no un reemplazo: cuando Yahoo/Stooq sí
-respondan (lo normal la mayoría del tiempo), esas siguen siendo las
-primeras que se intentan.
+**Alpha Vantage (respaldo adicional, opcional):**
+
+**Paso 1.** Desde Safari, entra a
+[alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key).
+Pon tu correo y toca **GET FREE API KEY**. Te da una llave al instante, sin
+tarjeta ni confirmación por correo.
+
+**Paso 2.** En Render, agrega otra variable de entorno:
+
+| Key | Value |
+| --- | --- |
+| `RITCHIE_ALPHAVANTAGE_KEY` | la llave que te dio Alpha Vantage |
+
+Ninguna de las dos es un reemplazo de Yahoo/Stooq: cuando esas dos sí
+respondan (lo normal la mayoría del tiempo, fuera de una IP compartida
+castigada), siguen siendo válidas — pero con `twelve_data` configurada ya no
+dependes de que eso pase.
 
 ### Memoria persistente (opcional): que lo que se descarga se quede guardado
 
@@ -292,19 +312,21 @@ URL y hora exacta de descarga) viaja pegada a la respuesta.
 |---|---|---|
 | `supabase_store` | lo que ya se guardó antes (en línea o subido a mano) | no, pero se salta si no está configurada (ver "Memoria persistente" arriba) |
 | `coingecko` | ~26 criptomonedas principales (BTC-USD, ETH-USD, SOL-USD, etc.) | no |
+| `twelve_data` | acciones, ETFs, índices, divisas | sí (`RITCHIE_TWELVEDATA_KEY`) |
+| `alpha_vantage` | acciones | sí (`RITCHIE_ALPHAVANTAGE_KEY`) |
 | `yahoo_finance` | acciones, ETFs, índices, FIBRAs/REITs, materias primas, criptomonedas | no |
 | `stooq` | acciones e índices (sin precio ajustado) | no |
-| `alpha_vantage` | acciones | sí (`RITCHIE_ALPHAVANTAGE_KEY`) |
 | `csv` | cualquier mercado exportado a CSV | no |
 
 Cuando la memoria persistente está configurada, `supabase_store` se antepone
-solo a este orden (es la primera que se intenta). `coingecko` va justo
-después: para cualquier símbolo que no sea una de sus criptomonedas
-conocidas falla al instante sin tocar la red, así que no le cuesta nada al
-resto — y para las que sí cubre, evita la espera de Yahoo/Stooq cuando esa
-IP compartida está bloqueada. Además, cualquier serie que consiga
-`coingecko`, `yahoo_finance`, `stooq` o `alpha_vantage` se guarda en la
-memoria persistente sola, de regalo, para la próxima vez.
+solo a este orden (es la primera que se intenta). Después, el orden prueba
+primero lo que falla al instante sin red cuando no está configurado
+(`coingecko` para símbolos que no son cripto, `twelve_data` y
+`alpha_vantage` sin llave) y deja al final lo que, cuando de verdad falla
+por una IP compartida bloqueada, tarda varios segundos en reintentos
+(`yahoo_finance`, `stooq`) — así ese costo no lo paga cada pregunta. Además,
+cualquier serie que consiga alguna fuente en línea se guarda en la memoria
+persistente sola, de regalo, para la próxima vez.
 
 Para mercados sin API pública (BIVA, BMV, el histórico de tu bróker), exporta
 a CSV con columnas `date,open,high,low,close[,adj_close][,volume]` y:
