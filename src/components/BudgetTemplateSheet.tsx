@@ -7,7 +7,7 @@ import type { BudgetTemplate, BudgetTemplateKind } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { PeriodScope } from '@/utils/budgetPeriods';
 
-const KIND_LABELS: Record<BudgetTemplateKind, string> = {
+export const KIND_LABELS: Record<BudgetTemplateKind, string> = {
   week: 'Semanal',
   month: 'Mensual',
   day: 'Día (evento único)',

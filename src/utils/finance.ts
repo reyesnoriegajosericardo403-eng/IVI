@@ -816,7 +816,23 @@ export function resolveBudgetForPeriod(input: {
 
   const ownLines = template ? templateLines.filter((l) => l.templateId === template.id) : [];
   const overridesHere = assignment ? overrides.filter((o) => o.assignmentId === assignment.id) : [];
+  const lines = buildLinesFromTemplateLines(ownLines, overridesHere, conceptSpend, subcategorySpend, incomeConceptActual, thresholds);
 
+  return { template, assignment, lines, conceptSpend, subcategorySpend, incomeConceptActual };
+}
+
+// Arma las `BudgetLine[]` de un conjunto de renglones de plantilla, con
+// sus ajustes de periodo ya combinados (o sin ninguno — arrays vacíos —
+// para editar la plantilla misma sin el contexto de un periodo, spec:
+// "editar montos" desde la lista de "Mis presupuestos").
+export function buildLinesFromTemplateLines(
+  ownLines: TemplateBudgetLine[],
+  overridesHere: PeriodBudgetOverride[],
+  conceptSpend: Record<string, number>,
+  subcategorySpend: Record<string, number>,
+  incomeConceptActual: Record<string, number>,
+  thresholds: { attention: number; warning: number; exceeded: number }
+): BudgetLine[] {
   const lines: BudgetLine[] = [];
   for (const raw of ownLines) {
     const merged = mergeLineWithOverride(raw, overridesHere.find((o) => o.categoryId === raw.categoryId));
@@ -848,8 +864,7 @@ export function resolveBudgetForPeriod(input: {
       includedAccountIds: expenseConcept ? merged.includedAccountIds : undefined,
     });
   }
-
-  return { template, assignment, lines, conceptSpend, subcategorySpend, incomeConceptActual };
+  return lines;
 }
 
 // Las próximas N asignaciones de la MISMA plantilla, en orden

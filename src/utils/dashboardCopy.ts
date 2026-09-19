@@ -25,9 +25,9 @@ export function getBudgetBanner(hasBudget: boolean, ref = new Date()): BudgetBan
 
   if (!hasBudget) {
     if (hour < 12) {
-      return { title: 'Buen día para empezar: el primer paso es hacer tu presupuesto', cta: 'Crear presupuesto rápido' };
+      return { title: 'Buen día para empezar: el primer paso es hacer tu presupuesto', cta: 'Modificar o crear presupuesto' };
     }
-    return { title: 'Para que todo funcione, el primer paso es hacer tu presupuesto', cta: 'Crear presupuesto rápido' };
+    return { title: 'Para que todo funcione, el primer paso es hacer tu presupuesto', cta: 'Modificar o crear presupuesto' };
   }
 
   if (isWeekend) {

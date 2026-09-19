@@ -335,14 +335,26 @@ export default function Dashboard() {
           <Pressable
             accessibilityLabel={budgetBanner.cta}
             onPress={() => router.push('/presupuesto')}
-            style={[styles.budgetBanner, { backgroundColor: colors.accentFrom, borderRadius: radius.lg }]}
+            style={[styles.budgetInviteBanner, { backgroundColor: colors.accentFrom, borderRadius: radius.lg }]}
           >
-            <Ionicons name="clipboard-outline" size={32} color="rgba(255,255,255,0.85)" />
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text style={[typography.body, { color: '#FFFFFF', fontWeight: '600' }]}>{budgetBanner.title}</Text>
-              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.85)', fontWeight: '700', marginTop: spacing.xs }]}>
-                {budgetBanner.cta} →
-              </Text>
+            {/* Eyebrow: "PRESUPUESTO" debe ser lo primero y más reconocible
+                que se lea — antes quedaba enterrado dentro de la oración
+                (spec: "la palabra presupuesto se debe poder ver y
+                reconocer"). */}
+            <View style={styles.budgetBannerEyebrowRow}>
+              <View style={[styles.budgetBannerIconBadge, { borderRadius: 14 }]}>
+                <Ionicons name="clipboard-outline" size={18} color="#FFFFFF" />
+              </View>
+              <Text style={styles.budgetBannerEyebrowText}>PRESUPUESTO</Text>
+            </View>
+            <Text style={[typography.body, { color: '#FFFFFF', fontWeight: '600', marginTop: spacing.sm }]}>
+              {budgetBanner.title}
+            </Text>
+            {/* El CTA se ve como un botón real (píldora blanca sólida), no
+                solo texto con flecha — spec: "aún más visible". */}
+            <View style={[styles.budgetBannerCta, { borderRadius: radius.pill, marginTop: spacing.md }]}>
+              <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>{budgetBanner.cta}</Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.accentFrom} style={{ marginLeft: 6 }} />
             </View>
           </Pressable>
         )}
@@ -497,6 +509,25 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', alignItems: 'center' },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   budgetBanner: { flexDirection: 'row', alignItems: 'center', padding: 20 },
+  budgetInviteBanner: { padding: 22 },
+  budgetBannerEyebrowRow: { flexDirection: 'row', alignItems: 'center' },
+  budgetBannerIconBadge: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    marginRight: 8,
+  },
+  budgetBannerEyebrowText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13, letterSpacing: 1.4 },
+  budgetBannerCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   tipCard: { flexDirection: 'row', alignItems: 'flex-start', padding: 12, marginTop: -8 },
   summaryRow: { flexDirection: 'row', gap: 10 },
   segmentedBar: { flexDirection: 'row', height: 10, overflow: 'hidden' },

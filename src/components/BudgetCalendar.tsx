@@ -56,7 +56,7 @@ export function BudgetCalendar({
   const oneTimeDates = new Set(oneTimeBudgets.map((b) => b.oneTimeDate).filter((d): d is string => !!d));
 
   return (
-    <View style={{ gap: spacing.sm }}>
+    <View style={{ gap: spacing.xs }}>
       <View style={styles.headerRow}>
         <Pressable accessibilityLabel="Mes anterior" onPress={() => onChangeMonth(addMonths(monthIso, -1))} style={styles.navBtn}>
           <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
@@ -112,21 +112,28 @@ export function BudgetCalendar({
           })}
         </View>
       ))}
+    </View>
+  );
+}
 
-      {templates.length > 0 && (
-        <View style={styles.legendWrap}>
-          {templates.map((t) => (
-            <View key={t.id} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: t.color }]} />
-              <Text style={[typography.micro, { color: colors.textTertiary }]}>{t.name}</Text>
-            </View>
-          ))}
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
-            <Text style={[typography.micro, { color: colors.textTertiary }]}>Evento de un día</Text>
-          </View>
+// Leyenda de colores — se renderiza ARRIBA de la cuadrícula (más fácil de
+// leer de un vistazo al entrar que al final de una cuadrícula larga; spec:
+// "no se entiende... como se ve en tu calendario que ya fue asignado").
+export function BudgetTemplateLegend({ templates }: { templates: BudgetTemplate[] }) {
+  const { colors, typography } = useTheme();
+  if (templates.length === 0) return null;
+  return (
+    <View style={styles.legendWrap}>
+      {templates.map((t) => (
+        <View key={t.id} style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: t.color }]} />
+          <Text style={[typography.micro, { color: colors.textTertiary }]}>{t.name}</Text>
         </View>
-      )}
+      ))}
+      <View style={styles.legendItem}>
+        <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+        <Text style={[typography.micro, { color: colors.textTertiary }]}>Evento de un día</Text>
+      </View>
     </View>
   );
 }
@@ -152,7 +159,7 @@ const styles = StyleSheet.create({
   navBtn: { padding: 6 },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekdayCell: { flex: 1, textAlign: 'center' },
-  dayCell: { flex: 1, aspectRatio: 1, alignItems: 'center', justifyContent: 'center', margin: 1 },
+  dayCell: { flex: 1, height: 34, alignItems: 'center', justifyContent: 'center', margin: 1 },
   eventDot: { position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3 },
   legendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
