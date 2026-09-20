@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AccountCard, ACCOUNT_CARD_WIDTH } from '@/components/AccountCard';
+import { AccountCard } from '@/components/AccountCard';
 import { AccountForm } from '@/components/AccountForm';
 import { BudgetSearchBar, type BudgetSearchEntry } from '@/components/BudgetSearchBar';
 import { ConceptBudgetForm } from '@/components/ConceptBudgetForm';
@@ -552,15 +552,12 @@ export default function Onboarding() {
             </Text>
           </View>
 
-          {/* ---------- Carrusel de tarjetas: Morralla + cuentas de banco ---------- */}
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={ACCOUNT_CARD_WIDTH + 12}
-            decelerationRate="fast"
-            contentContainerStyle={{ gap: 12, paddingRight: spacing.lg }}
-          >
+          {/* ---------- Columna de tarjetas: Morralla + cuentas de banco ----------
+              Se recorren de arriba hacia abajo, como parte del scroll normal
+              de la pantalla (spec: "no quiero que el deslizamiento sea
+              horizontal... quiero que sea de arriba hacia abajo") — nada de
+              un carrusel horizontal ni un ScrollView anidado. */}
+          <View style={{ gap: 12 }}>
             <AccountCard
               accessibilityLabel="Editar Morralla (efectivo)"
               name="Morralla"
@@ -588,13 +585,13 @@ export default function Onboarding() {
             <Pressable
               accessibilityLabel="Agregar tarjetas"
               onPress={() => setShowBankForm(true)}
-              style={[styles.addCardTile, { borderColor: colors.accentFrom, borderRadius: radius.lg, width: ACCOUNT_CARD_WIDTH }]}
+              style={[styles.addCardTile, { borderColor: colors.accentFrom, borderRadius: radius.lg }]}
             >
               <Ionicons name="add-circle-outline" size={26} color={colors.accentFrom} />
               <Text style={[typography.headline, { color: colors.accentFrom, marginTop: 8, textAlign: 'center' }]}>Agregar tarjeta</Text>
               <Text style={[typography.micro, { color: colors.textTertiary, textAlign: 'center' }]}>cuentas de bancos</Text>
             </Pressable>
-          </ScrollView>
+          </View>
 
           {/* ---------- Formularios: aparecen debajo del carrusel según qué se esté editando ---------- */}
           {editingCash && (

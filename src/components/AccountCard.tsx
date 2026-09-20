@@ -12,6 +12,11 @@ import { formatCurrency } from '@/utils/format';
 // placeholder por tipo de cuenta hasta que lleguen los logos reales de
 // cada institución (el usuario los mandará después) — cuando existan,
 // van aquí en vez del ícono de Ionicons.
+//
+// Ancho completo a propósito: se apilan verticalmente en una columna que
+// se recorre de arriba hacia abajo (spec: "no quiero que el deslizamiento
+// sea horizontal... quiero que sea de arriba hacia abajo"), no en un
+// carrusel horizontal de ancho fijo.
 export function AccountCard({
   name,
   typeLabel,
@@ -61,14 +66,10 @@ export function AccountCard({
   );
 }
 
-const CARD_WIDTH = 260;
-
-export const ACCOUNT_CARD_WIDTH = CARD_WIDTH;
-
 const styles = StyleSheet.create({
   card: {
-    width: CARD_WIDTH,
-    height: 160,
+    width: '100%',
+    height: 150,
     padding: 18,
     justifyContent: 'space-between',
   },

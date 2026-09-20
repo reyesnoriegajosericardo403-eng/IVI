@@ -58,15 +58,21 @@ export const lightColors: ThemeColors = {
   divider: 'rgba(15,23,42,0.06)',
 };
 
+// Gris/negro neutro a propósito — nada de navy ni tinte morado (spec:
+// "en el modo oscuro... los tonos oscuros no sean un morado o azul
+// oscuro, sino... tonalidades de gris... para que se vea más formal y
+// tenga un aspecto más profesional"). El acento índigo→teal se conserva
+// para botones y resaltados: es la identidad de marca, no el "tono
+// oscuro" del fondo del que se quejó el usuario.
 export const darkColors: ThemeColors = {
-  background: '#0B1220',
-  backgroundAlt: '#0F1830',
-  surface: 'rgba(255,255,255,0.06)',
+  background: '#121214',
+  backgroundAlt: '#0A0A0B',
+  surface: 'rgba(255,255,255,0.05)',
   surfaceBorder: 'rgba(255,255,255,0.09)',
-  surfaceSolid: '#121A2B',
-  textPrimary: '#F5F7FA',
-  textSecondary: '#9AA4B2',
-  textTertiary: '#6B7484',
+  surfaceSolid: '#1C1C1F',
+  textPrimary: '#FAFAFA',
+  textSecondary: '#A1A1AA',
+  textTertiary: '#71717A',
   accentFrom: palette.indigoLight,
   accentTo: palette.tealLight,
   accentSoft: 'rgba(129,140,248,0.16)',
@@ -74,6 +80,6 @@ export const darkColors: ThemeColors = {
   warning: palette.warningLight,
   danger: palette.dangerLight,
   info: palette.infoLight,
-  tabBarBackground: 'rgba(18,26,43,0.85)',
-  divider: 'rgba(255,255,255,0.07)',
+  tabBarBackground: 'rgba(24,24,27,0.88)',
+  divider: 'rgba(255,255,255,0.08)',
 };
