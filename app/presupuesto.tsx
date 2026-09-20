@@ -8,25 +8,18 @@ import { AssignBudgetFlow } from '@/components/AssignBudgetFlow';
 import { BudgetCalendar, BudgetTemplateLegend } from '@/components/BudgetCalendar';
 import { BudgetTemplateList } from '@/components/BudgetTemplateList';
 import { BudgetTemplateSheet } from '@/components/BudgetTemplateSheet';
-import { ProgressBar } from '@/components/ProgressBar';
-import { budgetConceptsByGroup, type BudgetGroupId } from '@/data/budgetConcepts';
-import type { BudgetTemplateKind } from '@/data/types';
+import type { BudgetTemplate, BudgetTemplateKind } from '@/data/types';
 import {
   selectActiveBudgetAssignments,
   selectActiveBudgets,
   selectActiveBudgetTemplates,
-  selectActivePeriodOverrides,
   selectActiveTemplateBudgetLines,
-  selectActiveTransactions,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
-import { makePeriodKey, periodKeyLabel, shiftPeriodKey } from '@/utils/budgetPeriods';
-import { computeBudgetStatus, resolveBudgetForPeriod } from '@/utils/finance';
-import { formatCurrency } from '@/utils/format';
-
-const GROUPS: BudgetGroupId[] = ['necesidades', 'deseos', 'ahorro'];
+import { isEndingSoon, makePeriodKey, parsePeriodKey, periodKeyLabel, shiftPeriodKey } from '@/utils/budgetPeriods';
+import { buildMonthGrid, parseISODate, toISODate } from '@/utils/date';
+import { resolveTemplateForPeriod } from '@/utils/finance';
 
 type Scope = 'month' | 'week';
 
@@ -39,11 +32,9 @@ export default function Presupuesto() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
   const rawBudgets = useAppStore((s) => s.budgets);
-  const rawTransactions = useAppStore((s) => s.transactions);
   const rawTemplates = useAppStore((s) => s.budgetTemplates);
   const rawTemplateLines = useAppStore((s) => s.templateBudgetLines);
   const rawAssignments = useAppStore((s) => s.budgetAssignments);
-  const rawOverrides = useAppStore((s) => s.periodBudgetOverrides);
   const ensureDefaultBudgetTemplate = useAppStore((s) => s.ensureDefaultBudgetTemplate);
   const addBudgetTemplate = useAppStore((s) => s.addBudgetTemplate);
   const deleteBudgetTemplate = useAppStore((s) => s.deleteBudgetTemplate);
@@ -59,60 +50,120 @@ export default function Presupuesto() {
   }, []);
 
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
-  const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
   const templates = useMemo(() => selectActiveBudgetTemplates(rawTemplates), [rawTemplates]);
   const templateLines = useMemo(() => selectActiveTemplateBudgetLines(rawTemplateLines), [rawTemplateLines]);
   const assignments = useMemo(() => selectActiveBudgetAssignments(rawAssignments), [rawAssignments]);
-  const overrides = useMemo(() => selectActivePeriodOverrides(rawOverrides), [rawOverrides]);
 
   const [scope, setScope] = useState<Scope>('month');
   const [viewingPeriodKey, setViewingPeriodKey] = useState(() => makePeriodKey('month', new Date()));
   const [calendarMonthIso, setCalendarMonthIso] = useState(() => new Date().toISOString().slice(0, 10));
   const [templateSheetOpen, setTemplateSheetOpen] = useState(false);
   const [assignFlowOpen, setAssignFlowOpen] = useState(false);
-  const [periodoOpen, setPeriodoOpen] = useState(false);
   const [introOpen, setIntroOpen] = useState(!profile.seenBudgetTemplatesIntro);
+
+  // Arrastrar una ficha de "Mis presupuestos" hasta el calendario (spec:
+  // "el usuario arrastra una ficha... la suelta sobre un día"). El estado
+  // vive aquí, no en BudgetTemplateList ni en BudgetCalendar, porque la
+  // ficha flotante y la vista previa deben pintarse por encima de ambos.
+  const [gridLayout, setGridLayout] = useState<{ pageX: number; pageY: number; width: number; height: number; rows: number } | null>(
+    null
+  );
+  const [dragTemplate, setDragTemplate] = useState<BudgetTemplate | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [previewDates, setPreviewDates] = useState<Set<string>>(new Set());
+  const [dragTargetKey, setDragTargetKey] = useState<string | null>(null);
+  const [dragMessage, setDragMessage] = useState<string | null>(null);
 
   const switchScope = (next: Scope) => {
     setScope(next);
     setViewingPeriodKey(makePeriodKey(next, new Date()));
   };
 
-  const resolved = useMemo(
-    () =>
-      resolveBudgetForPeriod({
-        periodKey: viewingPeriodKey,
-        templates,
-        templateLines,
-        assignments,
-        overrides,
-        transactions,
-        thresholds: profile.budgetThresholds,
-      }),
-    [viewingPeriodKey, templates, templateLines, assignments, overrides, transactions, profile.budgetThresholds]
+  const activeAssignment = useMemo(
+    () => resolveTemplateForPeriod(viewingPeriodKey, templates, assignments).assignment,
+    [viewingPeriodKey, templates, assignments]
   );
-  const { template: activeTemplate, assignment: activeAssignment, lines, conceptSpend } = resolved;
-  const lineByConcept = useMemo(() => new Map(lines.map((l) => [l.categoryId, l])), [lines]);
-
-  const scopedBudgeted = (monthlyAmount: number) => (scope === 'week' ? monthlyAmount / WEEKS_PER_MONTH : monthlyAmount);
-
-  const totalActualExpense = GROUPS.reduce(
-    (sum, g) => sum + budgetConceptsByGroup(g).reduce((s2, c) => s2 + (conceptSpend[c.id] ?? 0), 0),
-    0
-  );
-  const budgetedExpenseTotal = GROUPS.reduce(
-    (sum, g) => sum + budgetConceptsByGroup(g).reduce((s2, c) => s2 + scopedBudgeted(lineByConcept.get(c.id)?.budgeted ?? 0), 0),
-    0
-  );
-  const remainingToSpend = Math.max(0, budgetedExpenseTotal - totalActualExpense);
-  const expensePercentUsed = budgetedExpenseTotal > 0 ? Math.min(100, Math.round((totalActualExpense / budgetedExpenseTotal) * 100)) : 0;
 
   const oneTimeBudgets = useMemo(() => budgets.filter((b) => !!b.oneTimeDate), [budgets]);
   const isCurrentPeriod = viewingPeriodKey === makePeriodKey(scope, new Date());
 
-  const goEditPeriod = () => {
-    if (!activeTemplate) return;
-    router.push({ pathname: '/budget-template/[id]', params: { id: activeTemplate.id, periodKey: viewingPeriodKey } });
+  // "Repetir presupuesto anterior": solo cuando el periodo REAL de hoy
+  // está por terminar y el periodo pasado tenía un presupuesto con
+  // nombre que el siguiente todavía no tiene (spec: "cuando el
+  // presupuesto del mes esté acabando").
+  const realCurrentKey = makePeriodKey(scope, new Date());
+  const prevKey = shiftPeriodKey(realCurrentKey, -1);
+  const prevTemplate = resolveTemplateForPeriod(prevKey, templates, assignments).template;
+  const currentRealTemplate = resolveTemplateForPeriod(realCurrentKey, templates, assignments).template;
+  const showRepeatPrevious =
+    isEndingSoon(realCurrentKey) && !!prevTemplate && !prevTemplate.isDefault && currentRealTemplate?.id !== prevTemplate.id;
+
+  const handleRepeatPrevious = () => {
+    if (!prevTemplate) return;
+    assignTemplateToPeriod(prevTemplate.id, shiftPeriodKey(realCurrentKey, 1));
+  };
+
+  // Mientras se arrastra: de la posición del dedo/cursor + el tamaño de la
+  // cuadrícula del calendario, calcula sobre qué celda está y resalta TODAS
+  // las fechas que ocuparía la ficha soltada ahí — el mes completo, la
+  // semana de esa celda, o solo ese día, según el `kind` de la ficha.
+  useEffect(() => {
+    if (!dragTemplate || !dragPos || !gridLayout) {
+      setPreviewDates(new Set());
+      setDragTargetKey(null);
+      return;
+    }
+    const { pageX, pageY, width, height, rows } = gridLayout;
+    const relX = dragPos.x - pageX;
+    const relY = dragPos.y - pageY;
+    if (relX < 0 || relY < 0 || relX >= width || relY >= height) {
+      setPreviewDates(new Set());
+      setDragTargetKey(null);
+      return;
+    }
+    const col = Math.min(6, Math.floor((relX / width) * 7));
+    const row = Math.min(rows - 1, Math.floor((relY / height) * rows));
+    const weeks = buildMonthGrid(calendarMonthIso);
+    const cell = weeks[row]?.[col];
+    if (!cell) {
+      setPreviewDates(new Set());
+      setDragTargetKey(null);
+      return;
+    }
+    const key = makePeriodKey(dragTemplate.kind, parseISODate(cell.iso));
+    const parsed = parsePeriodKey(key);
+    if (!parsed) {
+      setPreviewDates(new Set());
+      setDragTargetKey(null);
+      return;
+    }
+    const dates = new Set<string>();
+    for (let d = new Date(parsed.start); d.getTime() <= parsed.end.getTime(); d.setDate(d.getDate() + 1)) {
+      dates.add(toISODate(d));
+    }
+    setPreviewDates(dates);
+    setDragTargetKey(key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragTemplate, dragPos, gridLayout, calendarMonthIso]);
+
+  const handleDragStart = (template: BudgetTemplate) => {
+    setDragTemplate(template);
+    setDragMessage(null);
+  };
+
+  const handleDragMove = (pageX: number, pageY: number) => {
+    setDragPos({ x: pageX, y: pageY });
+  };
+
+  const handleDragEnd = () => {
+    if (dragTemplate && dragTargetKey) {
+      assignTemplateToPeriod(dragTemplate.id, dragTargetKey);
+      setDragMessage(`Presupuesto "${dragTemplate.name}" asignado a ${periodKeyLabel(dragTargetKey)}`);
+    }
+    setDragTemplate(null);
+    setDragPos(null);
+    setPreviewDates(new Set());
+    setDragTargetKey(null);
   };
 
   return (
@@ -131,108 +182,24 @@ export default function Presupuesto() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
-        {/* ---------- 1. Resumen del periodo actual (gráfica simple) ---------- */}
-        <View style={[styles.card, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid }]}>
+        {/* ---------- Calendario (incluye nav de periodo) ---------- */}
+        <View style={[styles.card, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid, gap: spacing.sm }]}>
           <View style={styles.rowCenter}>
             <Pressable accessibilityLabel="Periodo anterior" onPress={() => setViewingPeriodKey((k) => shiftPeriodKey(k, -1))} style={styles.navBtn}>
               <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
             </Pressable>
-            <Pressable
-              accessibilityLabel="Cambiar periodo del presupuesto"
-              onPress={() => setPeriodoOpen((v) => !v)}
-              style={{ flex: 1, alignItems: 'center' }}
-            >
-              <Text style={[typography.caption, { color: colors.textTertiary }]}>Periodo del presupuesto</Text>
-              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '700' }]}>{periodKeyLabel(viewingPeriodKey)}</Text>
-            </Pressable>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={[typography.headline, { color: colors.textPrimary }]}>{periodKeyLabel(viewingPeriodKey)}</Text>
+              {!isCurrentPeriod && (
+                <Pressable accessibilityLabel="Volver al periodo actual" onPress={() => setViewingPeriodKey(makePeriodKey(scope, new Date()))}>
+                  <Text style={{ color: colors.accentFrom, fontWeight: '700', fontSize: 13 }}>Volver a hoy</Text>
+                </Pressable>
+              )}
+            </View>
             <Pressable accessibilityLabel="Periodo siguiente" onPress={() => setViewingPeriodKey((k) => shiftPeriodKey(k, 1))} style={styles.navBtn}>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </Pressable>
           </View>
-
-          {periodoOpen && (
-            <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-              <View style={[styles.scopeToggle, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}>
-                {(['week', 'month'] as Scope[]).map((s) => (
-                  <Pressable
-                    key={s}
-                    onPress={() => switchScope(s)}
-                    style={[styles.scopeBtn, { borderRadius: radius.pill, backgroundColor: scope === s ? colors.accentFrom : 'transparent' }]}
-                  >
-                    <Text style={{ color: scope === s ? '#FFFFFF' : colors.textSecondary, fontWeight: '700' }}>
-                      {s === 'week' ? 'Semanal' : 'Mensual'}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              {!isCurrentPeriod && (
-                <Pressable accessibilityLabel="Volver al periodo actual" onPress={() => setViewingPeriodKey(makePeriodKey(scope, new Date()))} style={{ alignSelf: 'flex-start' }}>
-                  <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>Volver a hoy</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
-
-          <View style={[styles.templateRow, { borderTopColor: colors.divider, marginTop: spacing.sm, paddingTop: spacing.sm }]}>
-            <View style={[styles.colorDot, { backgroundColor: activeTemplate?.color ?? colors.textTertiary }]} />
-            <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600', flex: 1, marginLeft: spacing.sm }]} numberOfLines={1}>
-              {activeTemplate?.name ?? 'Mi presupuesto'}
-            </Text>
-            <Pressable accessibilityLabel="Cambiar presupuesto de este periodo" onPress={() => setTemplateSheetOpen(true)}>
-              <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>Cambiar</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.templateActions}>
-            <Pressable
-              accessibilityLabel="Repetir este presupuesto en el siguiente periodo"
-              onPress={() => {
-                if (!activeTemplate) return;
-                assignTemplateToPeriod(activeTemplate.id, shiftPeriodKey(viewingPeriodKey, 1));
-              }}
-              style={[styles.secondaryBtn, { borderColor: colors.accentFrom, borderRadius: radius.pill }]}
-            >
-              <Ionicons name="repeat-outline" size={15} color={colors.accentFrom} />
-              <Text style={{ color: colors.accentFrom, fontWeight: '700', marginLeft: 6, fontSize: 13 }}>Repetir el siguiente</Text>
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Editar este periodo"
-              onPress={goEditPeriod}
-              style={[styles.secondaryBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}
-            >
-              <Ionicons name="create-outline" size={15} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary, fontWeight: '700', marginLeft: 6, fontSize: 13 }}>Editar este periodo</Text>
-            </Pressable>
-          </View>
-
-          <View style={{ marginTop: spacing.md }}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>Restante para gastar</Text>
-            <Text style={[typography.display, { color: colors.textPrimary, marginTop: 2 }]}>
-              {formatCurrency(remainingToSpend, profile.primaryCurrency)}
-            </Text>
-            {budgetedExpenseTotal > 0 ? (
-              <>
-                <View style={{ marginTop: spacing.sm }}>
-                  <ProgressBar percent={expensePercentUsed} status={computeBudgetStatus(expensePercentUsed, profile.budgetThresholds)} />
-                </View>
-                <View style={[styles.rowBetween, { marginTop: 6 }]}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Has usado {formatCurrency(totalActualExpense, profile.primaryCurrency)} de {formatCurrency(budgetedExpenseTotal, profile.primaryCurrency)}
-                  </Text>
-                  <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '700' }]}>{expensePercentUsed}%</Text>
-                </View>
-              </>
-            ) : (
-              <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.sm }]}>
-                Aún no defines tu presupuesto de gastos — toca &quot;Editar este periodo&quot; para empezar.
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* ---------- 2. Calendario ---------- */}
-        <View style={[styles.card, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid, gap: spacing.sm }]}>
-          <Text style={[typography.headline, { color: colors.textPrimary }]}>Calendario</Text>
 
           <View style={[styles.scopeToggle, { borderColor: colors.surfaceBorder, borderRadius: radius.pill, alignSelf: 'flex-start' }]}>
             {(['week', 'month'] as Scope[]).map((s) => (
@@ -251,6 +218,19 @@ export default function Presupuesto() {
             Tocar un día asigna {scope === 'week' ? 'toda esa semana' : 'todo ese mes'} — o usa el botón de abajo para elegir con calma.
           </Text>
 
+          {showRepeatPrevious && prevTemplate && (
+            <Pressable
+              accessibilityLabel={`Repetir presupuesto de ${prevTemplate.name} para el próximo periodo`}
+              onPress={handleRepeatPrevious}
+              style={[styles.secondaryBtn, { borderColor: colors.accentFrom, borderRadius: radius.pill, alignSelf: 'flex-start' }]}
+            >
+              <Ionicons name="repeat-outline" size={15} color={colors.accentFrom} />
+              <Text style={{ color: colors.accentFrom, fontWeight: '700', marginLeft: 6, fontSize: 13 }}>
+                Repetir presupuesto de &quot;{prevTemplate.name}&quot; para el próximo periodo
+              </Text>
+            </Pressable>
+          )}
+
           <BudgetTemplateLegend templates={templates} />
 
           <BudgetCalendar
@@ -265,6 +245,9 @@ export default function Presupuesto() {
               setViewingPeriodKey(key);
               setTemplateSheetOpen(true);
             }}
+            previewDates={previewDates}
+            previewColor={dragTemplate?.color}
+            onGridLayout={setGridLayout}
           />
 
           <Pressable
@@ -280,9 +263,43 @@ export default function Presupuesto() {
         {/* ---------- 3. Mis presupuestos ---------- */}
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.headline, { color: colors.textPrimary }]}>Mis presupuestos</Text>
-          <BudgetTemplateList templates={templates} templateLines={templateLines} currency={profile.primaryCurrency} />
+          <BudgetTemplateList
+            templates={templates}
+            templateLines={templateLines}
+            currency={profile.primaryCurrency}
+            onDragStart={handleDragStart}
+            onDragMove={handleDragMove}
+            onDragEnd={handleDragEnd}
+          />
         </View>
       </ScrollView>
+
+      {/* Ficha flotante mientras se arrastra — sigue el dedo/cursor por
+          encima del calendario, que vive en otra sección de esta misma
+          pantalla. */}
+      {dragTemplate && dragPos && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.dragGhost,
+            { left: dragPos.x - 90, top: dragPos.y - 24, backgroundColor: dragTemplate.color, borderRadius: radius.pill },
+          ]}
+        >
+          <Ionicons name="reorder-two-outline" size={14} color="#FFFFFF" />
+          <Text style={{ color: '#FFFFFF', fontWeight: '700', marginLeft: 6, fontSize: 13 }} numberOfLines={1}>
+            {dragTemplate.name}
+          </Text>
+        </View>
+      )}
+
+      {/* Anuncio para lectores de pantalla del resultado del arrastre —
+          la vía accesible sin mouse/touch es el botón "Asignar presupuesto
+          a una fecha" (flujo guiado), operable por completo con teclado. */}
+      {dragMessage && (
+        <Text accessibilityLiveRegion="polite" style={styles.srOnly}>
+          {dragMessage}
+        </Text>
+      )}
 
       {templateSheetOpen && (
         <BudgetTemplateSheet
@@ -337,8 +354,7 @@ export default function Presupuesto() {
               que quieras desde el calendario.
             </Text>
             <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.sm }]}>
-              También puedes moverte a periodos pasados o futuros con las flechas, y repetir el presupuesto de
-              este periodo en el siguiente con un toque.
+              También puedes moverte a periodos pasados o futuros con las flechas del calendario.
             </Text>
             <Pressable
               accessibilityLabel="Entendido"
@@ -358,16 +374,12 @@ export default function Presupuesto() {
 }
 
 const styles = StyleSheet.create({
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
   scopeToggle: { flexDirection: 'row', borderWidth: 1, padding: 3, alignSelf: 'flex-start' },
   scopeBtn: { paddingHorizontal: 18, paddingVertical: 8 },
   card: { borderWidth: 1, padding: 14 },
   navBtn: { padding: 6 },
-  templateRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1 },
-  templateActions: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   secondaryBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
-  colorDot: { width: 12, height: 12, borderRadius: 6 },
   assignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginTop: 4 },
   modalBackdrop: {
     position: 'absolute',
@@ -382,4 +394,20 @@ const styles = StyleSheet.create({
   },
   modalCard: { width: '100%', maxWidth: 360, padding: 24 },
   introCta: { paddingVertical: 14, alignItems: 'center' },
+  dragGhost: {
+    position: 'absolute',
+    width: 180,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 20,
+  },
+  srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 },
 });

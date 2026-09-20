@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Budget, BudgetAssignment, BudgetTemplate } from '@/data/types';
@@ -30,6 +30,9 @@ export function BudgetCalendar({
   oneTimeBudgets,
   selectedPeriodKey,
   onSelectPeriod,
+  previewDates,
+  previewColor,
+  onGridLayout,
 }: {
   monthIso: string;
   onChangeMonth: (iso: string) => void;
@@ -43,9 +46,26 @@ export function BudgetCalendar({
   oneTimeBudgets: Budget[];
   selectedPeriodKey: string;
   onSelectPeriod: (periodKey: string) => void;
+  // Vista previa mientras se arrastra una ficha desde "Mis presupuestos"
+  // (spec: "círculo semitransparente o con borde discontinuo... nunca
+  // rectángulos"). Fechas en formato ISO ("2026-09-15").
+  previewDates?: Set<string>;
+  previewColor?: string;
+  // Posición/tamaño en página de la cuadrícula de días — para que la
+  // pantalla que arrastra la ficha sepa sobre qué celda está el dedo o el
+  // cursor sin que este componente tenga que saber nada de arrastre.
+  onGridLayout?: (layout: { pageX: number; pageY: number; width: number; height: number; rows: number }) => void;
 }) {
-  const { colors, typography, spacing, radius } = useTheme();
+  const { colors, typography, spacing } = useTheme();
   const weeks = buildMonthGrid(monthIso);
+  const gridRef = useRef<View>(null);
+
+  const reportGridLayout = () => {
+    if (!onGridLayout) return;
+    gridRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+      onGridLayout({ pageX, pageY, width, height, rows: weeks.length });
+    });
+  };
   const templateById = new Map(templates.map((t) => [t.id, t]));
 
   const templateForKey = (key: string): BudgetTemplate | undefined => {
@@ -75,7 +95,8 @@ export function BudgetCalendar({
         ))}
       </View>
 
-      {weeks.map((week, wIdx) => (
+      <View ref={gridRef} onLayout={reportGridLayout}>
+        {weeks.map((week, wIdx) => (
         <View key={wIdx} style={styles.weekRow}>
           {week.map((cell) => {
             const date = parseISODate(cell.iso);
@@ -86,32 +107,46 @@ export function BudgetCalendar({
             const keyForMode = mode === 'day' ? dayKey : mode === 'week' ? weekKey : monthKey;
             const isSelected = keyForMode === selectedPeriodKey;
             const hasEvent = oneTimeDates.has(cell.iso) || !!templateForKey(dayKey);
+            const isPreview = !!previewDates?.has(cell.iso);
 
             return (
               <Pressable
                 key={cell.iso}
                 accessibilityLabel={`Día ${cell.day} de ${monthLabel(monthIso)}`}
                 onPress={() => onSelectPeriod(keyForMode)}
-                style={[
-                  styles.dayCell,
-                  {
-                    borderRadius: radius.sm,
-                    opacity: cell.inMonth ? 1 : 0.35,
-                    backgroundColor: applied ? `${applied.color}33` : 'transparent',
-                    borderColor: isSelected ? colors.accentFrom : 'transparent',
-                    borderWidth: isSelected ? 2 : 0,
-                  },
-                ]}
+                style={[styles.dayCell, { opacity: cell.inMonth ? 1 : 0.35 }]}
               >
-                <Text style={[typography.caption, { color: applied ? colors.textPrimary : colors.textSecondary, fontWeight: applied ? '700' : '400' }]}>
-                  {cell.day}
-                </Text>
+                {/* Círculo alrededor del número — nunca un rectángulo de fondo
+                    (spec: "las fechas asignadas deben identificarse mediante
+                    círculos... nunca mediante rectángulos"). Sólido cuando ya
+                    está confirmado, punteado y semitransparente en vista previa. */}
+                <View
+                  style={[
+                    styles.dayCircle,
+                    isPreview
+                      ? { borderWidth: 2, borderStyle: 'dashed', borderColor: previewColor, backgroundColor: `${previewColor}40` }
+                      : applied
+                        ? { backgroundColor: applied.color }
+                        : null,
+                    isSelected && { borderWidth: 2, borderColor: colors.accentFrom },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: applied || isPreview ? '#FFFFFF' : colors.textSecondary, fontWeight: applied ? '700' : '400' },
+                    ]}
+                  >
+                    {cell.day}
+                  </Text>
+                </View>
                 {hasEvent && <View style={[styles.eventDot, { backgroundColor: colors.warning }]} />}
               </Pressable>
             );
           })}
         </View>
-      ))}
+        ))}
+      </View>
     </View>
   );
 }
@@ -160,6 +195,7 @@ const styles = StyleSheet.create({
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekdayCell: { flex: 1, textAlign: 'center' },
   dayCell: { flex: 1, height: 34, alignItems: 'center', justifyContent: 'center', margin: 1 },
+  dayCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   eventDot: { position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3 },
   legendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },

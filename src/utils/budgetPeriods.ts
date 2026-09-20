@@ -116,3 +116,15 @@ export function comparePeriodKeys(a: string, b: string): number {
 export function periodScopeOf(key: string): PeriodScope | null {
   return parsePeriodKey(key)?.scope ?? null;
 }
+
+// El periodo REAL de hoy está por terminar — para ofrecer "repetir el
+// presupuesto anterior" justo cuando tiene sentido (spec: "cuando el
+// presupuesto del mes esté acabando"), no todo el tiempo. Mes: últimos 3
+// días. Semana: viernes, sábado o domingo (arranca en lunes).
+export function isEndingSoon(key: string, ref = new Date()): boolean {
+  const parsed = parsePeriodKey(key);
+  if (!parsed) return false;
+  if (parsed.scope === 'month') return daysInMonth(ref) - ref.getDate() <= 3;
+  if (parsed.scope === 'week') return [5, 6, 0].includes(ref.getDay());
+  return false;
+}

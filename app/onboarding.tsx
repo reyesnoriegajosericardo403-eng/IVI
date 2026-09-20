@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AccountCard, ACCOUNT_CARD_WIDTH } from '@/components/AccountCard';
 import { AccountForm } from '@/components/AccountForm';
 import { BudgetSearchBar, type BudgetSearchEntry } from '@/components/BudgetSearchBar';
 import { ConceptBudgetForm } from '@/components/ConceptBudgetForm';
@@ -13,7 +14,7 @@ import { IncomeConceptRow } from '@/components/IncomeConceptRow';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ValuMark } from '@/components/ValuMark';
 import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
-import { ACCOUNT_TYPE_LABELS } from '@/data/accountMeta';
+import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS } from '@/data/accountMeta';
 import {
   BUDGET_CONCEPTS,
   BUDGET_GROUP_EXAMPLES,
@@ -551,8 +552,52 @@ export default function Onboarding() {
             </Text>
           </View>
 
-          {/* ---------- Efectivo: ficha fija "Morralla" ---------- */}
-          {editingCash ? (
+          {/* ---------- Carrusel de tarjetas: Morralla + cuentas de banco ---------- */}
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={ACCOUNT_CARD_WIDTH + 12}
+            decelerationRate="fast"
+            contentContainerStyle={{ gap: 12, paddingRight: spacing.lg }}
+          >
+            <AccountCard
+              accessibilityLabel="Editar Morralla (efectivo)"
+              name="Morralla"
+              typeLabel="Efectivo"
+              balance={cashAccount?.balance ?? 0}
+              currency={profile.primaryCurrency}
+              color={CASH_ACCOUNT_COLOR}
+              iconName="cash-outline"
+              onPress={openCashEditor}
+            />
+            {bankAccounts.map((a) => (
+              <AccountCard
+                key={a.id}
+                accessibilityLabel={`Editar ${a.name}`}
+                name={a.name}
+                typeLabel={ACCOUNT_TYPE_LABELS[a.type]}
+                balance={a.balance}
+                currency={a.currency}
+                color={a.color ?? colors.accentFrom}
+                iconName={ACCOUNT_TYPE_ICONS[a.type]}
+                onPress={() => setEditingBankAccountId(a.id)}
+                onDelete={() => deleteAccount(a.id)}
+              />
+            ))}
+            <Pressable
+              accessibilityLabel="Agregar tarjetas"
+              onPress={() => setShowBankForm(true)}
+              style={[styles.addCardTile, { borderColor: colors.accentFrom, borderRadius: radius.lg, width: ACCOUNT_CARD_WIDTH }]}
+            >
+              <Ionicons name="add-circle-outline" size={26} color={colors.accentFrom} />
+              <Text style={[typography.headline, { color: colors.accentFrom, marginTop: 8, textAlign: 'center' }]}>Agregar tarjeta</Text>
+              <Text style={[typography.micro, { color: colors.textTertiary, textAlign: 'center' }]}>cuentas de bancos</Text>
+            </Pressable>
+          </ScrollView>
+
+          {/* ---------- Formularios: aparecen debajo del carrusel según qué se esté editando ---------- */}
+          {editingCash && (
             <View style={[styles.accountCard, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, gap: spacing.sm }]}>
               <Text style={[typography.headline, { color: colors.textPrimary }]}>Morralla (efectivo)</Text>
               <TextInput
@@ -576,61 +621,27 @@ export default function Onboarding() {
                 </Pressable>
               </View>
             </View>
-          ) : (
-            <Pressable
-              accessibilityLabel="Editar Morralla (efectivo)"
-              onPress={openCashEditor}
-              style={[styles.cashCard, { backgroundColor: CASH_ACCOUNT_COLOR, borderRadius: radius.lg }]}
-            >
-              <View style={styles.cashIconCircle}>
-                <Ionicons name="cash" size={22} color={CASH_ACCOUNT_COLOR} />
-              </View>
-              <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={[typography.headline, { color: '#FFFFFF' }]}>Morralla</Text>
-                <Text style={[typography.micro, { color: 'rgba(255,255,255,0.85)' }]}>efectivo</Text>
-              </View>
-              <Text style={[typography.headline, { color: '#FFFFFF' }]}>
-                {cashAccount ? formatCurrency(cashAccount.balance, profile.primaryCurrency) : 'Agregar'}
-              </Text>
-            </Pressable>
           )}
 
-          {/* ---------- Tarjetas / cuentas de banco ---------- */}
-          {bankAccounts.map((a) =>
-            editingBankAccountId === a.id ? (
-              <AccountForm
-                key={a.id}
-                initial={a}
-                availableTypes={BANK_ACCOUNT_TYPES}
-                defaultCurrency={profile.primaryCurrency}
-                onCancel={() => setEditingBankAccountId(null)}
-                onSave={(patch) => {
-                  updateAccount(a.id, patch);
-                  setEditingBankAccountId(null);
-                }}
-              />
-            ) : (
-              <View key={a.id} style={[styles.accountCard, { borderColor: colors.surfaceBorder, borderRadius: radius.lg }]}>
-                <View style={[styles.accountColorDot, { backgroundColor: a.color ?? colors.accentFrom }]} />
-                <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                  <View style={styles.rowCenter}>
-                    <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
-                  </View>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    {ACCOUNT_TYPE_LABELS[a.type]} · {formatCurrency(a.balance, a.currency)}
-                  </Text>
-                </View>
-                <Pressable accessibilityLabel={`Editar ${a.name}`} onPress={() => setEditingBankAccountId(a.id)} style={{ marginRight: spacing.sm }}>
-                  <Ionicons name="pencil-outline" size={18} color={colors.textTertiary} />
-                </Pressable>
-                <Pressable accessibilityLabel={`Eliminar ${a.name}`} onPress={() => deleteAccount(a.id)}>
-                  <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
-                </Pressable>
-              </View>
-            )
-          )}
+          {editingBankAccountId &&
+            (() => {
+              const editing = bankAccounts.find((a) => a.id === editingBankAccountId);
+              if (!editing) return null;
+              return (
+                <AccountForm
+                  initial={editing}
+                  availableTypes={BANK_ACCOUNT_TYPES}
+                  defaultCurrency={profile.primaryCurrency}
+                  onCancel={() => setEditingBankAccountId(null)}
+                  onSave={(patch) => {
+                    updateAccount(editing.id, patch);
+                    setEditingBankAccountId(null);
+                  }}
+                />
+              );
+            })()}
 
-          {showBankForm ? (
+          {showBankForm && (
             <AccountForm
               availableTypes={BANK_ACCOUNT_TYPES}
               defaultCurrency={profile.primaryCurrency}
@@ -640,18 +651,6 @@ export default function Onboarding() {
                 setShowBankForm(false);
               }}
             />
-          ) : (
-            <Pressable
-              accessibilityLabel="Agregar tarjetas"
-              onPress={() => setShowBankForm(true)}
-              style={[styles.addCardTile, { borderColor: colors.accentFrom, borderRadius: radius.lg }]}
-            >
-              <Ionicons name="add-circle-outline" size={22} color={colors.accentFrom} />
-              <View style={{ marginLeft: spacing.md }}>
-                <Text style={[typography.headline, { color: colors.accentFrom }]}>Agregar tarjetas</Text>
-                <Text style={[typography.micro, { color: colors.textTertiary }]}>cuentas de bancos</Text>
-              </View>
-            </Pressable>
           )}
 
         </ScrollView>
@@ -865,12 +864,16 @@ const styles = StyleSheet.create({
   optionBtn: { borderWidth: 1, paddingVertical: 16, paddingHorizontal: 18 },
   adCard: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 12 },
   surveyIconBadge: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
-  cashCard: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  cashIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   accountCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, padding: 14 },
-  accountColorDot: { width: 10, height: 10, borderRadius: 5 },
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  addCardTile: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderStyle: 'dashed', padding: 16 },
+  addCardTile: {
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    padding: 16,
+  },
   hintRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 4, marginTop: 4 },
   cashFormActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center' },
   formSave: { paddingVertical: 10, paddingHorizontal: 20 },

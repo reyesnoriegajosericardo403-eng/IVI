@@ -100,4 +100,4 @@ export function buildMonthGrid(iso: string): CalendarCell[][] {
   return weeks;
 }
 
-export const WEEKDAY_LABELS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+export const WEEKDAY_LABELS = ['D', 'L', 'M', 'Mc', 'J', 'V', 'S'];

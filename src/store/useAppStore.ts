@@ -173,6 +173,10 @@ interface AppState {
   // plantilla tiene su propio juego de montos.
   setTemplateBudgetLine: (draft: Draft<TemplateBudgetLine>) => void;
   deleteTemplateBudgetLine: (id: string) => void;
+  // Multiplica monthlyAmount de todos los renglones de una plantilla por
+  // `factor` en una sola actualización — para cuando se cambia su
+  // periodo (semanal↔mensual) y hay que re-escalar los montos.
+  rescaleTemplateLines: (templateId: string, factor: number) => void;
   assignTemplateToPeriod: (templateId: string, periodKey: string) => void;
   unassignPeriod: (periodKey: string) => void;
   // Guarda el ajuste de un renglón para un periodo. `propagate` decide a
@@ -535,6 +539,17 @@ export const useAppStore = create<AppState>()(
           set((s) => ({ templateBudgetLines: s.templateBudgetLines.map((l) => (l.id === id ? updated : l)) }));
           enqueue('template_budget_lines', id, 'delete', updated as unknown as Record<string, unknown>);
         },
+        rescaleTemplateLines: (templateId, factor) =>
+          set((s) => {
+            const now = new Date().toISOString();
+            const updated = s.templateBudgetLines.map((l) => {
+              if (l.templateId !== templateId || l.deletedAt) return l;
+              const record = { ...l, monthlyAmount: l.monthlyAmount * factor, updatedAt: now };
+              enqueue('template_budget_lines', record.id, 'upsert', record as unknown as Record<string, unknown>);
+              return record;
+            });
+            return { templateBudgetLines: updated };
+          }),
         assignTemplateToPeriod: (templateId, periodKey) =>
           set((s) => {
             const existing = s.budgetAssignments.find((a) => a.periodKey === periodKey && !a.deletedAt);
