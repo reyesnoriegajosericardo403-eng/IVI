@@ -8,12 +8,17 @@ const LOCALE_BY_CURRENCY: Record<Currency, string> = {
   GBP: 'en-GB',
 };
 
+// Además del símbolo, siempre se agrega la abreviación de la divisa (ej.
+// "$400 MXN") — el símbolo "$" solo no distingue MXN de USD ni de CAD, así
+// que sin la abreviación un monto en pesos y uno en dólares se ven
+// idénticos.
 export function formatCurrency(amount: number, currency: Currency = 'MXN', maximumFractionDigits = 0): string {
-  return new Intl.NumberFormat(LOCALE_BY_CURRENCY[currency] ?? 'es-MX', {
+  const base = new Intl.NumberFormat(LOCALE_BY_CURRENCY[currency] ?? 'es-MX', {
     style: 'currency',
     currency,
     maximumFractionDigits,
   }).format(amount);
+  return `${base} ${currency}`;
 }
 
 export function formatPercent(value: number, digits = 1): string {

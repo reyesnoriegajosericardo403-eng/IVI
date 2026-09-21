@@ -90,15 +90,17 @@ const glassmorphism: VisualStyleDefinition = {
     colors: {
       ...lightColors,
       background: 'transparent',
-      surface: 'rgba(255,255,255,0.62)',
-      surfaceBorder: 'rgba(255,255,255,0.85)',
-      tabBarBackground: 'rgba(255,255,255,0.72)',
+      // Más transparente que antes — spec: "que parezca un poquito mas a
+      // vidrio real", que se note el movimiento de lo que hay detrás.
+      surface: 'rgba(255,255,255,0.42)',
+      surfaceBorder: 'rgba(255,255,255,0.75)',
+      tabBarBackground: 'rgba(255,255,255,0.6)',
     },
     surface: {
       ...softShadow,
       radiusScale: 1.15,
       borderWidth: 1,
-      blur: 18,
+      blur: 22,
       backgroundGradient: ['#E9EEFA', '#EDF6F4'],
       // Dos manchas pastel muy suaves — el ojo casi no las nota como
       // "formas", pero le dan al fondo la variación de luz que hace que el
@@ -114,9 +116,9 @@ const glassmorphism: VisualStyleDefinition = {
     colors: {
       ...darkColors,
       background: 'transparent',
-      surface: 'rgba(255,255,255,0.07)',
-      surfaceBorder: 'rgba(255,255,255,0.14)',
-      tabBarBackground: 'rgba(28,28,31,0.72)',
+      surface: 'rgba(255,255,255,0.055)',
+      surfaceBorder: 'rgba(255,255,255,0.16)',
+      tabBarBackground: 'rgba(28,28,31,0.58)',
     },
     surface: {
       ...softShadow,
@@ -124,7 +126,7 @@ const glassmorphism: VisualStyleDefinition = {
       shadowOpacity: 0.4,
       radiusScale: 1.15,
       borderWidth: 1,
-      blur: 20,
+      blur: 24,
       backgroundGradient: ['#17171A', '#0C0C0E'],
       // Referencia del usuario: un fondo oscuro con un resplandor sutil
       // (nunca un color plano) para que el vidrio esmerilado tenga algo que

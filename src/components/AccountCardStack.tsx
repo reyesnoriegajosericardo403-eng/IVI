@@ -7,11 +7,13 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { AccountCardVisual } from './AccountCard';
 
 const CARD_HEIGHT = 150;
+const CARD_HEIGHT_COMPACT = 110;
 // Cuánto asoma cada tarjeta detrás de la que tiene enfrente — lo justo
 // para ver ícono, nombre y tipo, sin el saldo (spec: "que estas se
 // sobrepongan la una sobre otra", como en la imagen de referencia estilo
 // Wallet).
 const PEEK = 92;
+const PEEK_COMPACT = 64;
 const TAP_THRESHOLD = 10;
 const DRAG_CYCLE_THRESHOLD = 60;
 
@@ -39,6 +41,8 @@ function StackedCard({
   onDragCycle,
   onDelete,
   accessibilityLabel,
+  variant,
+  compact,
 }: {
   item: AccountStackItem;
   isFront: boolean;
@@ -47,6 +51,8 @@ function StackedCard({
   onDragCycle: () => void;
   onDelete?: () => void;
   accessibilityLabel: string;
+  variant: 'solid' | 'glass';
+  compact: boolean;
 }) {
   const { radius } = useTheme();
   const latest = useRef({ isFront, onTap, onDragCycle });
@@ -88,6 +94,8 @@ function StackedCard({
         color={item.color}
         iconName={item.iconName}
         onDelete={isFront ? onDelete : undefined}
+        variant={variant}
+        compact={compact}
       />
     </View>
   );
@@ -105,12 +113,21 @@ export function AccountCardStack({
   onFrontPress,
   onDelete,
   frontLabelPrefix = 'Editar',
+  variant = 'solid',
+  compact = false,
 }: {
   items: AccountStackItem[];
   onFrontPress?: (id: string) => void;
   onDelete?: (id: string) => void;
   frontLabelPrefix?: string;
+  // 'glass' + compact=true: la versión de solo lectura que vive en Inicio
+  // (spec: "solo seran para poder ver no para editar... ya deben tener el
+  // efecto de vidrio también... deben ser mas pequeñas a los lados").
+  variant?: 'solid' | 'glass';
+  compact?: boolean;
 }) {
+  const cardHeight = compact ? CARD_HEIGHT_COMPACT : CARD_HEIGHT;
+  const peek = compact ? PEEK_COMPACT : PEEK;
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
   const positions = useRef<Map<string, Animated.Value>>(new Map());
   const dragY = useRef(new Animated.Value(0)).current;
@@ -154,7 +171,7 @@ export function AccountCardStack({
 
   if (items.length === 0) return null;
 
-  const containerHeight = (order.length - 1) * PEEK + CARD_HEIGHT;
+  const containerHeight = (order.length - 1) * peek + cardHeight;
 
   return (
     <View style={{ height: containerHeight }}>
@@ -163,7 +180,7 @@ export function AccountCardStack({
         const anim = positions.current.get(id);
         if (!item || !anim) return null;
         const isFront = id === frontId;
-        const translateY = Animated.add(Animated.multiply(anim, PEEK), isFront ? dragY : 0);
+        const translateY = Animated.add(Animated.multiply(anim, peek), isFront ? dragY : 0);
 
         return (
           <Animated.View key={id} style={[styles.slotShadow, { transform: [{ translateY }], zIndex: order.indexOf(id) }]}>
@@ -175,6 +192,8 @@ export function AccountCardStack({
               onTap={() => (isFront ? onFrontPress?.(id) : bringToFront(id))}
               onDragCycle={() => sendToBack(id)}
               onDelete={onDelete ? () => onDelete(id) : undefined}
+              variant={variant}
+              compact={compact}
             />
           </Animated.View>
         );

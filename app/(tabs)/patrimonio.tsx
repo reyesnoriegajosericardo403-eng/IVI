@@ -11,8 +11,8 @@ import { DualLineChart } from '@/components/DualLineChart';
 import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { HealthGradientBar } from '@/components/HealthGradientBar';
+import { NetWorthTrendChart } from '@/components/NetWorthTrendChart';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Sparkline } from '@/components/Sparkline';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS, LIABILITY_TYPE_LABELS } from '@/data/accountMeta';
 import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
 import type { Currency, Liability, LiabilityType, SyncMeta } from '@/data/types';
@@ -79,7 +79,6 @@ export default function Patrimonio() {
   const updateLiability = useAppStore((s) => s.updateLiability);
 
   const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency, liveQuotes);
-  const sparkData = netWorthHistory.map((h) => h.netWorth);
   const assetsHistory = netWorthHistory.map((h) => h.assets);
   const liabilitiesHistory = netWorthHistory.map((h) => h.liabilities);
 
@@ -116,7 +115,7 @@ export default function Patrimonio() {
           maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null,
         ]}
       >
-        <ScreenHeader title="Patrimonio" subtitle="Tu panorama financiero" showSettings />
+        <ScreenHeader title="Patrimonio" subtitle="Tu panorama financiero" />
 
         <GlassCard style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>Resumen de hoy</Text>
@@ -138,11 +137,9 @@ export default function Patrimonio() {
               </View>
             )}
           </View>
-          {sparkData.length >= 2 && (
-            <View style={{ marginTop: spacing.xs }}>
-              <Sparkline data={sparkData} color={colors.accentFrom} width={300} height={60} />
-            </View>
-          )}
+          <View style={{ marginTop: spacing.xs }}>
+            <NetWorthTrendChart history={netWorthHistory} color={colors.accentFrom} width={maxWidth ? 380 : 300} height={70} />
+          </View>
         </GlassCard>
 
         <View style={styles.rowGap}>

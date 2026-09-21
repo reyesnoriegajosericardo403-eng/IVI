@@ -6,23 +6,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AssignBudgetFlow } from '@/components/AssignBudgetFlow';
 import { BudgetCalendar, BudgetTemplateLegend } from '@/components/BudgetCalendar';
+import { BudgetProgressChart, type BudgetProgressItem } from '@/components/BudgetProgressChart';
 import { BudgetTemplateList } from '@/components/BudgetTemplateList';
 import { BudgetTemplateSheet } from '@/components/BudgetTemplateSheet';
 import { GlassCard } from '@/components/GlassCard';
 import { MonthBudgetBreakdown } from '@/components/MonthBudgetBreakdown';
+import { findIncomeConcept } from '@/data/budgetConcepts';
 import type { BudgetTemplate, BudgetTemplateKind } from '@/data/types';
 import {
   selectActiveBudgetAssignments,
   selectActiveBudgets,
   selectActiveBudgetTemplates,
+  selectActivePeriodOverrides,
   selectActiveTemplateBudgetLines,
+  selectActiveTransactions,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { surfaceShadow } from '@/theme/surfaceStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 import { isEndingSoon, makePeriodKey, parsePeriodKey, periodKeyLabel, shiftPeriodKey } from '@/utils/budgetPeriods';
 import { buildMonthGrid, parseISODate, toISODate } from '@/utils/date';
-import { resolveTemplateForPeriod } from '@/utils/finance';
+import { resolveBudgetForPeriod, resolveTemplateForPeriod } from '@/utils/finance';
 
 type Scope = 'month' | 'week';
 
@@ -38,6 +42,8 @@ export default function Presupuesto() {
   const rawTemplates = useAppStore((s) => s.budgetTemplates);
   const rawTemplateLines = useAppStore((s) => s.templateBudgetLines);
   const rawAssignments = useAppStore((s) => s.budgetAssignments);
+  const rawOverrides = useAppStore((s) => s.periodBudgetOverrides);
+  const rawTransactions = useAppStore((s) => s.transactions);
   const ensureDefaultBudgetTemplate = useAppStore((s) => s.ensureDefaultBudgetTemplate);
   const addBudgetTemplate = useAppStore((s) => s.addBudgetTemplate);
   const deleteBudgetTemplate = useAppStore((s) => s.deleteBudgetTemplate);
@@ -56,6 +62,8 @@ export default function Presupuesto() {
   const templates = useMemo(() => selectActiveBudgetTemplates(rawTemplates), [rawTemplates]);
   const templateLines = useMemo(() => selectActiveTemplateBudgetLines(rawTemplateLines), [rawTemplateLines]);
   const assignments = useMemo(() => selectActiveBudgetAssignments(rawAssignments), [rawAssignments]);
+  const overrides = useMemo(() => selectActivePeriodOverrides(rawOverrides), [rawOverrides]);
+  const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
 
   const [scope, setScope] = useState<Scope>('month');
   const [viewingPeriodKey, setViewingPeriodKey] = useState(() => makePeriodKey('month', new Date()));
@@ -87,6 +95,26 @@ export default function Presupuesto() {
     () => resolveTemplateForPeriod(viewingPeriodKey, templates, assignments).assignment,
     [viewingPeriodKey, templates, assignments]
   );
+
+  // Presupuestado vs. gastado real, por categoría, del periodo que se
+  // está viendo — la versión "a detalle" de la misma gráfica que ya
+  // aparece resumida por grupo en Inicio (spec: "esta función debe estar
+  // también en la parte de presupuestos pero más a detalle").
+  const budgetProgressItems = useMemo<BudgetProgressItem[]>(() => {
+    const resolved = resolveBudgetForPeriod({
+      periodKey: viewingPeriodKey,
+      templates,
+      templateLines,
+      assignments,
+      overrides,
+      transactions,
+      thresholds: profile.budgetThresholds,
+    });
+    return resolved.lines
+      .filter((l) => !findIncomeConcept(l.categoryId) && l.budgeted > 0)
+      .map((l) => ({ id: l.budgetId, label: l.categoryName, budgeted: l.budgeted, actual: l.actual }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewingPeriodKey, templates, templateLines, assignments, overrides, transactions]);
 
   const oneTimeBudgets = useMemo(() => budgets.filter((b) => !!b.oneTimeDate), [budgets]);
   const isCurrentPeriod = viewingPeriodKey === makePeriodKey(scope, new Date());
@@ -266,6 +294,17 @@ export default function Presupuesto() {
             <Text style={{ color: '#FFFFFF', fontWeight: '700', marginLeft: 6 }}>Asignar presupuesto a una fecha</Text>
           </Pressable>
         </GlassCard>
+
+        {/* ---------- Presupuestado vs. gastado real, por categoría ---------- */}
+        {budgetProgressItems.length > 0 && (
+          <GlassCard style={{ gap: spacing.sm }}>
+            <Text style={[typography.headline, { color: colors.textPrimary }]}>Cómo van tus gastos</Text>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {periodKeyLabel(viewingPeriodKey)} — presupuestado contra lo que ya gastaste, por categoría.
+            </Text>
+            <BudgetProgressChart items={budgetProgressItems} currency={profile.primaryCurrency} />
+          </GlassCard>
+        )}
 
         {/* ---------- 3. Mis presupuestos ---------- */}
         <View style={{ gap: spacing.sm }}>

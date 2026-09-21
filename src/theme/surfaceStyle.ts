@@ -39,7 +39,10 @@ export function surfaceBlur(surface: StyleSurface): ViewStyle {
   } as unknown as ViewStyle;
 }
 
-function withAlpha(color: string, alpha: number): string {
+// Exportado: también lo usan las tarjetas de cuenta en su variante de
+// vidrio (color propio de la cuenta, pero translúcido) y otros lugares que
+// necesitan mezclar un color de marca con transparencia.
+export function withAlpha(color: string, alpha: number): string {
   if (color.startsWith('rgba') || color.startsWith('rgb')) return color;
   const hex = color.replace('#', '');
   const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;

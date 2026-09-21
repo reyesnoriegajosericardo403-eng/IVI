@@ -222,12 +222,15 @@ function MoreMenu({
           bottom,
           opacity: anim,
           transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-          backgroundColor: colors.surfaceSolid,
+          // Translúcido + blur en vez de sólido — es un panel flotante,
+          // como cualquier otro vidrio de la app, no una tarjeta fija.
+          backgroundColor: colors.surface,
           borderColor: colors.surfaceBorder,
           borderWidth: surface.borderWidth || StyleSheet.hairlineWidth,
           borderRadius: radius.lg,
         },
         surfaceShadow(surface),
+        surfaceBlur(surface),
       ]}
     >
       {MORE_TABS.map((item) => (

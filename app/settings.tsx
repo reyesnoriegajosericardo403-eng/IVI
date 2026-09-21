@@ -198,7 +198,7 @@ export default function Settings() {
           <Text style={[typography.caption, { color: colors.textSecondary }]}>COPILOTO IA</Text>
           <Pressable onPress={() => router.push('/ai-settings')}>
             <GlassCard style={styles.row}>
-              <Ionicons name="sparkles-outline" size={18} color={colors.accentFrom} />
+              <Ionicons name="key-outline" size={18} color={colors.accentFrom} />
               <View style={{ flex: 1, marginLeft: spacing.md }}>
                 <Text style={[typography.body, { color: colors.textPrimary }]}>
                   {aiProvider ? LLM_PROVIDER_LABELS[aiProvider] : 'Copiloto local (basado en reglas)'}
@@ -260,37 +260,9 @@ export default function Settings() {
           </GlassCard>
         </View>
 
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>COMPARTIR</Text>
-          <Pressable accessibilityLabel="Instalar VALU" onPress={() => router.push('/instalar')}>
-            <GlassCard style={styles.row}>
-              <Ionicons name="download-outline" size={18} color={colors.accentFrom} />
-              <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={[typography.body, { color: colors.textPrimary }]}>Instalar VALU en tu pantalla</Text>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  Para ti o para compartir con tus amigos, sin pasar por el navegador
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </GlassCard>
-          </Pressable>
-        </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>PRIVACIDAD Y DATOS</Text>
-          <Pressable accessibilityLabel="Privacidad y datos" onPress={() => router.push('/privacidad')}>
-            <GlassCard style={styles.row}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={colors.accentFrom} />
-              <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={[typography.body, { color: colors.textPrimary }]}>Privacidad y datos</Text>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  Qué guardamos, exportar tus datos o eliminar tu cuenta
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </GlassCard>
-          </Pressable>
-        </View>
+        {/* "Instalar VALU" y "Privacidad y datos" viven ahora en el menú
+            de cuenta (arriba, en cualquier pantalla) — spec: "para que
+            ajustes no se vean tan cargado". */}
       </ScrollView>
     </SafeAreaView>
   );

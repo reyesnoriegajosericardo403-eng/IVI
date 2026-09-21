@@ -4,6 +4,8 @@ import { View, type ViewProps } from 'react-native';
 import { surfaceBlur, surfaceShadow } from '@/theme/surfaceStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 
+import { GlassSheen } from './GlassSheen';
+
 interface GlassCardProps extends ViewProps {
   padded?: boolean;
 }
@@ -31,6 +33,9 @@ export function GlassCard({ style, padded = true, children, ...rest }: GlassCard
       ]}
       {...rest}
     >
+      {/* Solo estilos con desenfoque de verdad (glassmorfismo) atrapan luz
+          arriba — el resto de estilos no lo necesita. */}
+      {surface.blur > 0 && <GlassSheen radius={radius.lg} />}
       {children}
     </View>
   );

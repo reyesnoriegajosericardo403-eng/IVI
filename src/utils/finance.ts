@@ -792,9 +792,10 @@ export interface ResolvedPeriodBudget {
 
 // Arma las líneas de presupuesto de UN periodo del calendario, con la
 // plantilla que le toque y los ajustes propios de ese periodo ya
-// aplicados. Sustituye a buildBudgetLines en la pantalla de Presupuesto;
-// buildBudgetLines se queda para el onboarding y el Dashboard, que
-// siguen mirando "ahora".
+// aplicados. Sustituye a buildBudgetLines en Presupuesto y en el
+// Dashboard (Inicio llama esta misma función con el periodo real de
+// "ahora") — buildBudgetLines se queda solo para el paso de presupuesto
+// del onboarding, que todavía escribe en el arreglo `budgets` heredado.
 export function resolveBudgetForPeriod(input: {
   periodKey: string;
   templates: BudgetTemplate[];

@@ -1,20 +1,20 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+
+import { AccountDropdown } from './AccountDropdown';
 
 interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
-  hideAiShortcut?: boolean;
-  showSettings?: boolean;
 }
 
-// Cabecera reutilizable: el icono de IA está accesible desde cualquier
-// módulo (spec sección 45).
-export function ScreenHeader({ title, subtitle, hideAiShortcut, showSettings }: ScreenHeaderProps) {
+// Cabecera reutilizable — antes traía dos íconos sueltos (Ajustes + IA);
+// ahora ambos, y algunas cosas más, viven dentro del AccountDropdown para
+// no repetir el mismo par de botones en cada pantalla (spec: "esos van a
+// ser sustituidos por el Account Dropdown").
+export function ScreenHeader({ title, subtitle }: ScreenHeaderProps) {
   const { colors, typography, spacing } = useTheme();
 
   return (
@@ -25,32 +25,15 @@ export function ScreenHeader({ title, subtitle, hideAiShortcut, showSettings }: 
           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>{subtitle}</Text>
         )}
       </View>
-      <View style={styles.actions}>
-        {showSettings && (
-          <Pressable
-            accessibilityLabel="Ajustes"
-            onPress={() => router.push('/settings')}
-            style={[styles.aiButton, { backgroundColor: colors.accentSoft }]}
-          >
-            <Ionicons name="settings-outline" size={18} color={colors.accentFrom} />
-          </Pressable>
-        )}
-        {!hideAiShortcut && (
-          <Pressable
-            accessibilityLabel="Abrir copiloto IA"
-            onPress={() => router.push('/(tabs)/ia')}
-            style={[styles.aiButton, { backgroundColor: colors.accentSoft }]}
-          >
-            <Ionicons name="sparkles" size={18} color={colors.accentFrom} />
-          </Pressable>
-        )}
-      </View>
+      <AccountDropdown />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  actions: { flexDirection: 'row', gap: 8 },
-  aiButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  // zIndex explícito: el menú de cuenta se despliega hacia abajo y puede
+  // terminar sobre tarjetas de vidrio más abajo en la pantalla — sin
+  // esto, esas tarjetas (que también usan backdrop-filter) pueden
+  // acabar "ganándole" el toque al menú.
+  row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative', zIndex: 20 },
 });
