@@ -1,28 +1,38 @@
 import { router } from 'expo-router';
 import React, { useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { PanResponder, StyleSheet, View } from 'react-native';
 
 import { SWIPE_ORDER } from './AppTabBar';
 
-// Qué tan lejos y qué tan derecho tiene que ir el dedo para contar como
-// "cambiar de sección". Alto a propósito: así un arrastre de tarjetas, un
-// carrusel horizontal o un scroll normal nunca se confunden con navegar.
-const MIN_DISTANCE = 70;
-const HORIZONTAL_DOMINANCE = 2;
+// Qué tan pronto se nota que el dedo va horizontal — mismo criterio de
+// "intención" que ya usa CalendarPicker antes de reclamar un gesto propio.
+const CLAIM_THRESHOLD = 12;
+// Qué tan lejos tiene que llegar el dedo para que YA cuente como "cambiar
+// de sección" (además de solo notarse horizontal).
+const MIN_DISTANCE = 60;
+const HORIZONTAL_DOMINANCE = 1.5;
 
 // Deslizar de lado para moverse entre secciones, sin quitar el TAB (spec:
 // "se van a conservar el Tab pero puedes preferir solo deslizar la
 // pantalla").
 //
-// Observa los eventos de puntero en vez de reclamar el gesto: así NUNCA le
-// quita el control a lo que ya funciona dentro de las pantallas (arrastrar
-// una tarjeta de cuenta, arrastrar un presupuesto al calendario, los
-// carruseles de chips). Solo mira dónde empezó y dónde terminó el dedo.
+// Usa el sistema de "responder" propio de React Native (PanResponder), el
+// mismo que ya usan la pila de tarjetas y el calendario de arrastre — NO
+// simples eventos de puntero. La razón: solo el responder system negocia de
+// verdad quién se queda con un gesto (el nodo más profundo que lo pide
+// gana), así que un scroll vertical o el arrastre de una tarjeta siguen
+// ganando sobre este deslizamiento cuando corresponde, y en un teléfono real
+// el navegador no nos cancela el gesto a media pantalla como sí puede pasar
+// con onPointerDown/onPointerUp sueltos.
 export function TabSwipeArea({ activeRoute, children }: { activeRoute: string; children: React.ReactNode }) {
-  const start = useRef<{ x: number; y: number } | null>(null);
+  // Ref de "último valor": el PanResponder se crea una sola vez (con
+  // useRef), así que sin esto quedaría con el activeRoute del primer
+  // render para siempre.
+  const activeRouteRef = useRef(activeRoute);
+  activeRouteRef.current = activeRoute;
 
   const goByOffset = (offset: number) => {
-    const current = SWIPE_ORDER.indexOf(activeRoute);
+    const current = SWIPE_ORDER.indexOf(activeRouteRef.current);
     if (current === -1) return;
     const next = current + offset;
     // Sin vuelta circular: en los extremos simplemente no pasa nada.
@@ -31,27 +41,29 @@ export function TabSwipeArea({ activeRoute, children }: { activeRoute: string; c
     router.navigate(`/(tabs)/${route === 'index' ? '' : route}` as never);
   };
 
-  return (
-    <View
-      style={styles.root}
-      onPointerDown={(e) => {
-        start.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
-      }}
-      onPointerUp={(e) => {
-        const from = start.current;
-        start.current = null;
-        if (!from) return;
-        const dx = e.nativeEvent.clientX - from.x;
-        const dy = e.nativeEvent.clientY - from.y;
-        if (Math.abs(dx) < MIN_DISTANCE) return;
-        if (Math.abs(dx) < Math.abs(dy) * HORIZONTAL_DOMINANCE) return;
+  const responder = useRef(
+    PanResponder.create({
+      // Nunca al primer toque: así un tap normal, o el inicio de un scroll
+      // o de un arrastre de un hijo (tarjeta, calendario), sigue siendo del
+      // hijo — este contenedor solo entra si nadie más lo reclamó antes.
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_evt, gesture) =>
+        Math.abs(gesture.dx) > CLAIM_THRESHOLD && Math.abs(gesture.dx) > Math.abs(gesture.dy) * HORIZONTAL_DOMINANCE,
+      // Si algo más pide el gesto mientras lo tenemos, se lo cedemos sin
+      // pelear — esto nunca debe "ganarle" a una interacción real.
+      onPanResponderTerminationRequest: () => true,
+      onPanResponderRelease: (_evt, gesture) => {
+        if (Math.abs(gesture.dx) < MIN_DISTANCE) return;
         // Deslizar hacia la izquierda avanza a la siguiente sección.
-        goByOffset(dx < 0 ? 1 : -1);
-      }}
-      onPointerCancel={() => {
-        start.current = null;
-      }}
-    >
+        goByOffset(gesture.dx < 0 ? 1 : -1);
+      },
+    })
+  ).current;
+
+  return (
+    <View style={styles.root} {...responder.panHandlers}>
       {children}
     </View>
   );

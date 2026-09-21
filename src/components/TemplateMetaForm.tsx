@@ -25,7 +25,7 @@ export function TemplateMetaForm({
   onSave: (name: string, color: string, kind: BudgetTemplateKind) => void;
   onCancel: () => void;
 }) {
-  const { colors, typography, spacing, radius } = useTheme();
+  const { colors, typography, spacing, radius, surface } = useTheme();
   const [name, setName] = useState(initial?.name ?? '');
   const [color, setColor] = useState(initial?.color ?? ACCOUNT_COLOR_SWATCHES[0]);
   const [kind, setKind] = useState<BudgetTemplateKind>(initial?.kind ?? 'month');
@@ -42,7 +42,7 @@ export function TemplateMetaForm({
   };
 
   return (
-    <View style={[styles.box, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid }]}>
+    <View style={[styles.box, { borderColor: colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid }]}>
       <TextInput
         autoFocus
         value={name}
@@ -108,7 +108,7 @@ export function TemplateMetaForm({
 }
 
 const styles = StyleSheet.create({
-  box: { borderWidth: 1, padding: 14, gap: 10 },
+  box: { padding: 14, gap: 10 },
   input: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   kindChip: { paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1 },

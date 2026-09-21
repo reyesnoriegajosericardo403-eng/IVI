@@ -35,6 +35,13 @@ export interface StyleSurface {
   // 'transparent' para que el degradado de atrás se vea a través de las
   // pantallas.
   backgroundGradient: string[] | null;
+  // Manchas de luz suaves y difuminadas sobre el degradado — sin esto, un
+  // degradado de solo dos tonos es casi plano y el desenfoque de una
+  // tarjeta de vidrio encima no se nota (no hay nada que "distorsionar").
+  // cx/cy/radius van en fracción del ancho/alto de la pantalla (0 a 1), así
+  // se ven bien en cualquier tamaño. Opcional: los estilos sin vidrio no lo
+  // usan.
+  backgroundGlow?: Array<{ color: string; cx: number; cy: number; radius: number }> | null;
   // Refuerza el peso de la tipografía (brutalista).
   boldText: boolean;
 }
@@ -93,6 +100,13 @@ const glassmorphism: VisualStyleDefinition = {
       borderWidth: 1,
       blur: 18,
       backgroundGradient: ['#E9EEFA', '#EDF6F4'],
+      // Dos manchas pastel muy suaves — el ojo casi no las nota como
+      // "formas", pero le dan al fondo la variación de luz que hace que el
+      // desenfoque de una tarjeta de vidrio encima se vea real.
+      backgroundGlow: [
+        { color: palette.indigoLight, cx: 0.14, cy: 0.08, radius: 0.55 },
+        { color: palette.tealLight, cx: 0.92, cy: 0.42, radius: 0.5 },
+      ],
       boldText: false,
     },
   },
@@ -112,6 +126,13 @@ const glassmorphism: VisualStyleDefinition = {
       borderWidth: 1,
       blur: 20,
       backgroundGradient: ['#17171A', '#0C0C0E'],
+      // Referencia del usuario: un fondo oscuro con un resplandor sutil
+      // (nunca un color plano) para que el vidrio esmerilado tenga algo que
+      // distorsionar cuando una tarjeta pasa por encima.
+      backgroundGlow: [
+        { color: palette.indigo, cx: 0.12, cy: 0.05, radius: 0.6 },
+        { color: palette.teal, cx: 0.9, cy: 0.5, radius: 0.55 },
+      ],
       boldText: false,
     },
   },

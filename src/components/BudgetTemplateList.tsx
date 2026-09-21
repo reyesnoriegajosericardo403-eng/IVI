@@ -12,6 +12,7 @@ import { formatCurrency } from '@/utils/format';
 
 import { DonutChart } from './DonutChart';
 import { KIND_LABELS } from './BudgetTemplateSheet';
+import { GlassCard } from './GlassCard';
 import { TemplateMetaForm } from './TemplateMetaForm';
 
 type Bucket = 'income' | BudgetGroupId;
@@ -182,7 +183,7 @@ export function BudgetTemplateList({
         });
 
         return (
-          <View key={t.id} style={[styles.card, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid }]}>
+          <GlassCard key={t.id} padded={false} style={styles.card}>
             <TemplateDragHandle
               template={t}
               isOpen={isOpen}
@@ -235,7 +236,7 @@ export function BudgetTemplateList({
                 </View>
               </View>
             )}
-          </View>
+          </GlassCard>
         );
       })}
 
@@ -256,7 +257,7 @@ export function BudgetTemplateList({
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, padding: 14 },
+  card: { padding: 14 },
   row: { flexDirection: 'row', alignItems: 'center' },
   colorDot: { width: 12, height: 12, borderRadius: 6 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

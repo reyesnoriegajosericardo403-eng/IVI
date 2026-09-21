@@ -18,12 +18,23 @@ export default function TabsLayout() {
           // La barra propia reemplaza por completo a la de serie: sin
           // etiquetas, con los íconos en círculos y el micrófono al centro.
           tabBar={() => <AppTabBar activeRoute={activeRoute} />}
-          screenOptions={{
+          screenOptions={({ route }) => ({
             headerShown: false,
-            // Transparente para que el fondo del estilo visual (degradado o
-            // color) se vea a través de las pantallas.
-            sceneStyle: { backgroundColor: 'transparent' },
-          }}
+            sceneStyle: {
+              // Transparente para que el fondo del estilo visual (degradado
+              // o color) se vea a través de las pantallas.
+              backgroundColor: 'transparent',
+              // CRÍTICO: en la versión web, react-native-screens no está
+              // disponible, así que el navegador de tabs cae a un <View>
+              // normal para cada pantalla y las apila con posición absoluta
+              // (zIndex) en vez de ocultarlas de verdad. Antes de este
+              // "display", una pantalla transparente dejaba ver TODAS las
+              // pantallas ya visitadas apiladas debajo de ella. Ocultando
+              // aquí explícitamente cada escena que no es la activa, solo
+              // se pinta una a la vez (y su estado se conserva igual).
+              display: route.name === activeRoute ? 'flex' : 'none',
+            },
+          })}
         >
           <Tabs.Screen name="index" />
           <Tabs.Screen name="movimientos" />

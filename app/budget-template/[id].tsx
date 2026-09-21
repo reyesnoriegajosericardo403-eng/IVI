@@ -35,6 +35,7 @@ import {
   selectActiveTransactions,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
+import { surfaceBlur, surfaceShadow } from '@/theme/surfaceStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 import { computeMonthlyAmount, WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
 import { parsePeriodKey, periodKeyLabel } from '@/utils/budgetPeriods';
@@ -86,7 +87,7 @@ interface PendingSave {
 //    hay periodo del cual propagar.
 export default function BudgetTemplateEdit() {
   const { id, periodKey } = useLocalSearchParams<{ id: string; periodKey?: string }>();
-  const { colors, typography, spacing, radius } = useTheme();
+  const { colors, typography, spacing, radius, surface } = useTheme();
   const profile = useAppStore((s) => s.profile);
   const rawTransactions = useAppStore((s) => s.transactions);
   const rawAccounts = useAppStore((s) => s.accounts);
@@ -393,7 +394,12 @@ export default function BudgetTemplateEdit() {
               <Pressable
                 accessibilityLabel={`Mostrar/Ocultar ${BUDGET_GROUP_LABELS[group]}`}
                 onPress={() => setOpenGroupId(isOpen ? null : group)}
-                style={[styles.groupCard, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid }]}
+                style={[
+                  styles.groupCard,
+                  { borderColor: colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid },
+                  surfaceShadow(surface),
+                  surfaceBlur(surface),
+                ]}
               >
                 <View style={[styles.groupIconBadge, { backgroundColor: colors.accentSoft, borderRadius: radius.md }]}>
                   <Ionicons name={GROUP_ICON[group]} size={18} color={colors[GROUP_COLOR_KEY[group]]} />
@@ -471,6 +477,6 @@ export default function BudgetTemplateEdit() {
 }
 
 const styles = StyleSheet.create({
-  groupCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, padding: 14 },
+  groupCard: { flexDirection: 'row', alignItems: 'center', padding: 14 },
   groupIconBadge: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

@@ -8,6 +8,8 @@ import { AssignBudgetFlow } from '@/components/AssignBudgetFlow';
 import { BudgetCalendar, BudgetTemplateLegend } from '@/components/BudgetCalendar';
 import { BudgetTemplateList } from '@/components/BudgetTemplateList';
 import { BudgetTemplateSheet } from '@/components/BudgetTemplateSheet';
+import { GlassCard } from '@/components/GlassCard';
+import { MonthBudgetBreakdown } from '@/components/MonthBudgetBreakdown';
 import type { BudgetTemplate, BudgetTemplateKind } from '@/data/types';
 import {
   selectActiveBudgetAssignments,
@@ -16,6 +18,7 @@ import {
   selectActiveTemplateBudgetLines,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
+import { surfaceShadow } from '@/theme/surfaceStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 import { isEndingSoon, makePeriodKey, parsePeriodKey, periodKeyLabel, shiftPeriodKey } from '@/utils/budgetPeriods';
 import { buildMonthGrid, parseISODate, toISODate } from '@/utils/date';
@@ -29,7 +32,7 @@ type Scope = 'month' | 'week';
 // encabezado de su nombre"). La edición de montos vive en
 // app/budget-template/[id].tsx.
 export default function Presupuesto() {
-  const { colors, typography, spacing, radius } = useTheme();
+  const { colors, typography, spacing, radius, surface } = useTheme();
   const profile = useAppStore((s) => s.profile);
   const rawBudgets = useAppStore((s) => s.budgets);
   const rawTemplates = useAppStore((s) => s.budgetTemplates);
@@ -59,6 +62,7 @@ export default function Presupuesto() {
   const [calendarMonthIso, setCalendarMonthIso] = useState(() => new Date().toISOString().slice(0, 10));
   const [templateSheetOpen, setTemplateSheetOpen] = useState(false);
   const [assignFlowOpen, setAssignFlowOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [introOpen, setIntroOpen] = useState(!profile.seenBudgetTemplatesIntro);
 
   // Arrastrar una ficha de "Mis presupuestos" hasta el calendario (spec:
@@ -183,7 +187,7 @@ export default function Presupuesto() {
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
         {/* ---------- Calendario (incluye nav de periodo) ---------- */}
-        <View style={[styles.card, { borderColor: colors.surfaceBorder, borderRadius: radius.lg, backgroundColor: colors.surfaceSolid, gap: spacing.sm }]}>
+        <GlassCard style={{ gap: spacing.sm }}>
           <View style={styles.rowCenter}>
             <Pressable accessibilityLabel="Periodo anterior" onPress={() => setViewingPeriodKey((k) => shiftPeriodKey(k, -1))} style={styles.navBtn}>
               <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
@@ -196,6 +200,9 @@ export default function Presupuesto() {
                 </Pressable>
               )}
             </View>
+            <Pressable accessibilityLabel="Ver resumen del mes" onPress={() => setSummaryOpen(true)} style={styles.navBtn}>
+              <Ionicons name="bar-chart-outline" size={18} color={colors.accentFrom} />
+            </Pressable>
             <Pressable accessibilityLabel="Periodo siguiente" onPress={() => setViewingPeriodKey((k) => shiftPeriodKey(k, 1))} style={styles.navBtn}>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </Pressable>
@@ -258,7 +265,7 @@ export default function Presupuesto() {
             <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
             <Text style={{ color: '#FFFFFF', fontWeight: '700', marginLeft: 6 }}>Asignar presupuesto a una fecha</Text>
           </Pressable>
-        </View>
+        </GlassCard>
 
         {/* ---------- 3. Mis presupuestos ---------- */}
         <View style={{ gap: spacing.sm }}>
@@ -327,15 +334,9 @@ export default function Presupuesto() {
 
       {assignFlowOpen && (
         <AssignBudgetFlow
-          initialScope={scope}
           templates={templates}
           onAssign={(templateId, key) => {
             assignTemplateToPeriod(templateId, key);
-            setViewingPeriodKey(key);
-          }}
-          onCreate={(name, color, kind, key) => {
-            const id = addBudgetTemplate({ name, color, kind });
-            assignTemplateToPeriod(id, key);
             setViewingPeriodKey(key);
           }}
           onDelete={(templateId) => deleteBudgetTemplate(templateId)}
@@ -343,9 +344,26 @@ export default function Presupuesto() {
         />
       )}
 
+      {summaryOpen && (
+        <MonthBudgetBreakdown
+          monthIso={calendarMonthIso}
+          templates={templates}
+          assignments={assignments}
+          templateLines={templateLines}
+          currency={profile.primaryCurrency}
+          onClose={() => setSummaryOpen(false)}
+        />
+      )}
+
       {introOpen && (
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: colors.surfaceSolid, borderRadius: radius.lg }]}>
+          <View
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surfaceSolid, borderColor: colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.lg },
+              surfaceShadow(surface),
+            ]}
+          >
             <Ionicons name="calendar-number-outline" size={30} color={colors.accentFrom} />
             <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.sm }]}>Nuevo: presupuestos con nombre</Text>
             <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.sm }]}>
@@ -377,7 +395,6 @@ const styles = StyleSheet.create({
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
   scopeToggle: { flexDirection: 'row', borderWidth: 1, padding: 3, alignSelf: 'flex-start' },
   scopeBtn: { paddingHorizontal: 18, paddingVertical: 8 },
-  card: { borderWidth: 1, padding: 14 },
   navBtn: { padding: 6 },
   secondaryBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
   assignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginTop: 4 },

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 
 import { ACCOUNT_COLOR_SWATCHES } from '@/data/accountColors';
 import type { BudgetTemplate, BudgetTemplateKind } from '@/data/types';
+import { surfaceBlur, surfaceShadow } from '@/theme/surfaceStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { PeriodScope } from '@/utils/budgetPeriods';
 
@@ -39,7 +40,7 @@ export function BudgetTemplateSheet({
   onDelete: (templateId: string) => void;
   onClose: () => void;
 }) {
-  const { colors, typography, spacing, radius } = useTheme();
+  const { colors, typography, spacing, radius, surface } = useTheme();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState(ACCOUNT_COLOR_SWATCHES[0]);
@@ -54,9 +55,23 @@ export function BudgetTemplateSheet({
     setCreating(false);
   };
 
+  // Cuando ya hay una plantilla puesta para este periodo, esta misma fila
+  // es la forma de QUITARLA (spec: "necesito que esté la opción de poder
+  // quitar el presupuesto que ya asignaste") — se etiqueta como tal en vez
+  // de dejar que se lea solo como "elegir la opción de siempre".
+  const unassignLabel = currentTemplateId ? 'Quitar presupuesto asignado' : 'Mi presupuesto de siempre';
+  const unassignHint = currentTemplateId ? 'Regresa a tu presupuesto de siempre' : 'El que usas cuando no eliges otro';
+
   return (
     <View style={styles.backdrop}>
-      <View style={[styles.card, { backgroundColor: colors.surfaceSolid, borderRadius: radius.lg }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.surfaceSolid, borderColor: colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.lg },
+          surfaceShadow(surface),
+          surfaceBlur(surface),
+        ]}
+      >
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={[typography.headline, { color: colors.textPrimary }]}>Presupuesto de este periodo</Text>
@@ -69,13 +84,17 @@ export function BudgetTemplateSheet({
 
         <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ gap: spacing.sm, paddingVertical: spacing.sm }}>
           <Pressable
-            accessibilityLabel="Usar el presupuesto de siempre"
+            accessibilityLabel={unassignLabel}
             onPress={onUnassign}
-            style={[styles.row, { borderColor: !currentTemplateId ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.md }]}
+            style={[
+              styles.row,
+              { borderColor: !currentTemplateId ? colors.accentFrom : colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.md },
+            ]}
           >
+            {currentTemplateId && <Ionicons name="close-circle-outline" size={18} color={colors.textSecondary} style={{ marginRight: spacing.sm }} />}
             <View style={{ flex: 1 }}>
-              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>Mi presupuesto de siempre</Text>
-              <Text style={[typography.micro, { color: colors.textTertiary }]}>El que usas cuando no eliges otro</Text>
+              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>{unassignLabel}</Text>
+              <Text style={[typography.micro, { color: colors.textTertiary }]}>{unassignHint}</Text>
             </View>
             {!currentTemplateId && <Ionicons name="checkmark-circle" size={20} color={colors.accentFrom} />}
           </Pressable>
@@ -85,7 +104,10 @@ export function BudgetTemplateSheet({
               key={t.id}
               accessibilityLabel={`Usar ${t.name}`}
               onPress={() => onAssign(t.id)}
-              style={[styles.row, { borderColor: currentTemplateId === t.id ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.md }]}
+              style={[
+                styles.row,
+                { borderColor: currentTemplateId === t.id ? colors.accentFrom : colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.md },
+              ]}
             >
               <View style={[styles.colorDot, { backgroundColor: t.color }]} />
               <Text style={[typography.body, { color: colors.textPrimary, flex: 1, marginLeft: spacing.sm }]}>{t.name}</Text>
@@ -97,7 +119,7 @@ export function BudgetTemplateSheet({
           ))}
 
           {creating ? (
-            <View style={[styles.createBox, { borderColor: colors.surfaceBorder, borderRadius: radius.md, gap: spacing.sm }]}>
+            <View style={[styles.createBox, { borderColor: colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.md, gap: spacing.sm }]}>
               <TextInput
                 autoFocus
                 value={name}
@@ -134,7 +156,7 @@ export function BudgetTemplateSheet({
             <Pressable
               accessibilityLabel="Crear un presupuesto nuevo"
               onPress={() => setCreating(true)}
-              style={[styles.row, { borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+              style={[styles.row, { borderColor: colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.md }]}
             >
               <Ionicons name="add-circle-outline" size={20} color={colors.accentFrom} />
               <Text style={[typography.body, { color: colors.accentFrom, fontWeight: '700', marginLeft: spacing.sm }]}>
@@ -162,9 +184,9 @@ const styles = StyleSheet.create({
   },
   card: { width: '100%', maxWidth: 380, padding: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  row: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 },
   colorDot: { width: 14, height: 14, borderRadius: 7 },
-  createBox: { borderWidth: 1, padding: 12 },
+  createBox: { padding: 12 },
   input: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   swatch: { width: 26, height: 26, borderRadius: 13, borderWidth: 2 },
