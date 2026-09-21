@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { router } from 'expo-router';
 
+import { AccountCardStack, type AccountStackItem } from '@/components/AccountCardStack';
 import { AccountForm } from '@/components/AccountForm';
 import { DualLineChart } from '@/components/DualLineChart';
 import { DateField } from '@/components/DateField';
@@ -51,6 +52,19 @@ export default function Patrimonio() {
   const deleteLiability = useAppStore((s) => s.deleteLiability);
 
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
+  const accountStackItems = useMemo<AccountStackItem[]>(
+    () =>
+      accounts.map((a) => ({
+        id: a.id,
+        name: a.name,
+        typeLabel: ACCOUNT_TYPE_LABELS[a.type],
+        balance: a.balance,
+        currency: a.currency,
+        color: a.type === 'cash' ? CASH_ACCOUNT_COLOR : a.color ?? colors.accentFrom,
+        iconName: ACCOUNT_TYPE_ICONS[a.type],
+      })),
+    [accounts, colors.accentFrom]
+  );
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
   const liabilities = useMemo(() => selectActiveLiabilities(rawLiabilities), [rawLiabilities]);
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
@@ -243,42 +257,32 @@ export default function Patrimonio() {
           <Text style={[typography.caption, { color: colors.textTertiary }]}>Aún no tienes cuentas registradas.</Text>
         )}
 
-        {accounts.map((a) =>
-          editingAccountId === a.id ? (
-            <AccountForm
-              key={a.id}
-              initial={a}
-              onCancel={() => setEditingAccountId(null)}
-              onSave={(patch) => {
-                updateAccount(a.id, patch);
-                setEditingAccountId(null);
-              }}
-              defaultCurrency={profile.primaryCurrency}
-            />
-          ) : (
-            <GlassCard key={a.id} style={styles.listRow}>
-              <View style={[styles.accountColorDot, { backgroundColor: a.type === 'cash' ? CASH_ACCOUNT_COLOR : a.color ?? colors.accentFrom }]} />
-              <Ionicons name={ACCOUNT_TYPE_ICONS[a.type] as any} size={18} color={colors.accentFrom} />
-              <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={[typography.headline, { color: colors.textPrimary }]}>{a.name}</Text>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>{ACCOUNT_TYPE_LABELS[a.type]}</Text>
-              </View>
-              <Text style={[typography.headline, { color: a.isLiability ? colors.danger : colors.textPrimary, marginRight: spacing.sm }]}>
-                {formatCurrency(a.balance, a.currency)}
-              </Text>
-              <Pressable
-                accessibilityLabel={`Editar ${a.name}`}
-                onPress={() => setEditingAccountId(a.id)}
-                style={{ marginRight: spacing.sm }}
-              >
-                <Ionicons name="pencil-outline" size={18} color={colors.textTertiary} />
-              </Pressable>
-              <Pressable accessibilityLabel={`Eliminar ${a.name}`} onPress={() => deleteAccount(a.id)}>
-                <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
-              </Pressable>
-            </GlassCard>
-          )
-        )}
+        {/* Pila de tarjetas superpuestas (spec: "las quiero ver y mover
+            como tarjetas... que se sobrepongan la una sobre otra"). Tocar
+            la de enfrente la abre para editar; tocar una de atrás la trae
+            al frente; arrastrarla la manda hasta atrás. */}
+        <AccountCardStack
+          items={accountStackItems}
+          onFrontPress={(id) => setEditingAccountId(id)}
+          onDelete={(id) => deleteAccount(id)}
+        />
+
+        {editingAccountId &&
+          (() => {
+            const editing = accounts.find((a) => a.id === editingAccountId);
+            if (!editing) return null;
+            return (
+              <AccountForm
+                initial={editing}
+                onCancel={() => setEditingAccountId(null)}
+                onSave={(patch) => {
+                  updateAccount(editing.id, patch);
+                  setEditingAccountId(null);
+                }}
+                defaultCurrency={profile.primaryCurrency}
+              />
+            );
+          })()}
 
         <SectionHeader
           title="Deudas"
