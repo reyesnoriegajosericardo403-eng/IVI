@@ -1,24 +1,32 @@
 import React from 'react';
-import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
+import { View, type ViewProps } from 'react-native';
 
+import { surfaceBlur, surfaceShadow } from '@/theme/surfaceStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 
 interface GlassCardProps extends ViewProps {
   padded?: boolean;
 }
 
+// La tarjeta base de la app. No decide cómo se ve: lee los tokens del estilo
+// visual activo, así la misma tarjeta sale translúcida con desenfoque
+// (vidrio), sólida y sin borde (degradado suave) o con borde grueso y sombra
+// dura (brutalista) — sin tocar ninguna pantalla.
 export function GlassCard({ style, padded = true, children, ...rest }: GlassCardProps) {
-  const { colors, radius, spacing } = useTheme();
+  const { colors, radius, spacing, surface } = useTheme();
+
   return (
     <View
       style={[
-        styles.base,
         {
           backgroundColor: colors.surface,
           borderColor: colors.surfaceBorder,
+          borderWidth: surface.borderWidth,
           borderRadius: radius.lg,
           padding: padded ? spacing.lg : 0,
         },
+        surfaceShadow(surface),
+        surfaceBlur(surface),
         style,
       ]}
       {...rest}
@@ -27,19 +35,3 @@ export function GlassCard({ style, padded = true, children, ...rest }: GlassCard
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderWidth: 1,
-    ...Platform.select({
-      web: { boxShadow: '0 8px 24px rgba(15,23,42,0.08)' } as any,
-      default: {
-        shadowColor: '#0B1220',
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 3,
-      },
-    }),
-  },
-});

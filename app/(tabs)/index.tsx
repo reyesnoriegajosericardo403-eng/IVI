@@ -4,12 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AccountCardStack, type AccountStackItem } from '@/components/AccountCardStack';
 import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
 import { Sparkline } from '@/components/Sparkline';
-import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
-import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS } from '@/data/accountMeta';
 import { budgetConceptsByGroup, findIncomeConcept } from '@/data/budgetConcepts';
 import { useContentMaxWidth } from '@/hooks/useBreakpoint';
 import {
@@ -57,19 +54,6 @@ export default function Dashboard() {
   const ackBudgetPeriod = useAppStore((s) => s.ackBudgetPeriod);
 
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
-  const accountStackItems = useMemo<AccountStackItem[]>(
-    () =>
-      accounts.map((a) => ({
-        id: a.id,
-        name: a.name,
-        typeLabel: ACCOUNT_TYPE_LABELS[a.type],
-        balance: a.balance,
-        currency: a.currency,
-        color: a.type === 'cash' ? CASH_ACCOUNT_COLOR : a.color ?? colors.accentFrom,
-        iconName: ACCOUNT_TYPE_ICONS[a.type],
-      })),
-    [accounts, colors.accentFrom]
-  );
   const investments = useMemo(() => selectActiveInvestments(rawInvestments), [rawInvestments]);
   const liabilities = useMemo(() => selectActiveLiabilities(rawLiabilities), [rawLiabilities]);
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
@@ -248,27 +232,6 @@ export default function Dashboard() {
             </Pressable>
           </View>
         </View>
-
-        {/* ---------- Tus cuentas: pila de tarjetas superpuestas, igual
-            que en Patrimonio (spec: "esto tiene que estar tanto en el
-            inicio como en la parte de cuentas de patrimonio"). Aquí solo
-            se puede ver y navegar al detalle — editar/borrar vive en
-            Patrimonio. ---------- */}
-        {accountStackItems.length > 0 && (
-          <View style={{ gap: spacing.sm }}>
-            <View style={styles.spaceBetween}>
-              <Text style={[typography.headline, { color: colors.textPrimary }]}>Tus cuentas</Text>
-              <Pressable accessibilityLabel="Ver todas tus cuentas" onPress={() => router.push('/(tabs)/patrimonio')}>
-                <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>Ver todas →</Text>
-              </Pressable>
-            </View>
-            <AccountCardStack
-              items={accountStackItems}
-              onFrontPress={() => router.push('/(tabs)/patrimonio')}
-              frontLabelPrefix="Ver"
-            />
-          </View>
-        )}
 
         {/* ---------- ¿Seguimos con el mismo sobrante disponible? ---------- */}
         {pendingRollovers.map((p) => (

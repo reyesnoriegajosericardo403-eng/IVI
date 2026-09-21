@@ -1,11 +1,13 @@
 import * as SplashScreen from 'expo-splash-screen';
-import { Stack } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AppBackground } from '@/components/AppBackground';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import { useRemoteVisualStyles } from '@/services/themes/remoteThemes';
 import { registerConfiguredLLMProvider } from '@/providers/llm/registerConfiguredProvider';
 import { registerMarketDataProvider } from '@/providers/market/registerMarketDataProvider';
 import { useAuthSession } from '@/services/auth/useAuthSession';
@@ -18,12 +20,21 @@ import { computeNetWorth } from '@/utils/finance';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// El contenedor de navegación pinta un fondo propio (blanco) que taparía el
+// fondo del estilo visual. Se le deja transparente para que mande
+// <AppBackground>, que es quien conoce el degradado o el color del estilo.
+const TRANSPARENT_NAVIGATION_THEME = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: 'transparent' },
+};
+
 function RootStack() {
   const { colors, scheme } = useTheme();
   const { userId } = useAuthSession();
   useSyncEngine();
   usePushProfileOnChange(userId);
   useMarketDataRefresh();
+  useRemoteVisualStyles(userId);
   const hasHydrated = useAppStore((s) => s.hasHydrated);
   const rawAccounts = useAppStore((s) => s.accounts);
   const rawInvestments = useAppStore((s) => s.investments);
@@ -68,12 +79,17 @@ function RootStack() {
   if (!hasHydrated) return null;
 
   return (
-    <>
+    <AppBackground>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <NavigationThemeProvider value={TRANSPARENT_NAVIGATION_THEME}>
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
+          // Transparente a propósito: quien pinta el fondo es <AppBackground>,
+          // que está detrás. Si aquí se dejara un color, taparía el degradado
+          // del estilo visual (y el contenedor de navegación pinta blanco por
+          // su cuenta si no se le dice otra cosa).
+          contentStyle: { backgroundColor: 'transparent' },
         }}
       >
         <Stack.Screen name="index" />
@@ -88,7 +104,8 @@ function RootStack() {
           }}
         />
       </Stack>
-    </>
+      </NavigationThemeProvider>
+    </AppBackground>
   );
 }
 

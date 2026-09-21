@@ -22,6 +22,7 @@ import type {
   UserProfile,
 } from '@/data/types';
 import type { SyncQueueEntry, SyncTable } from '@/services/sync/types';
+import type { VisualStyleDefinition } from '@/theme/visualStyles';
 import type { CetesRates, MarketQuote } from '@/providers/types';
 import { nextAssignmentsOfTemplate } from '@/utils/finance';
 import { generateId } from '@/utils/id';
@@ -132,6 +133,14 @@ interface AppState {
   // "ahora mismo" que nunca se acumula como historial.
   cetesRates: CetesRates | null;
   setCetesRates: (rates: CetesRates | null) => void;
+
+  // Estilos visuales publicados desde Supabase — se guardan para que la
+  // app conserve el estilo elegido aunque abra sin conexión.
+  remoteVisualStyles: VisualStyleDefinition[];
+  setRemoteVisualStyles: (styles: VisualStyleDefinition[]) => void;
+  // `isPermanent` decide si además se recuerda como "a este regreso si el
+  // temporal caduca".
+  setVisualStyle: (id: string, isPermanent: boolean) => void;
 
   setHasHydrated: (v: boolean) => void;
   completeOnboarding: (profile: Partial<UserProfile>) => void;
@@ -279,6 +288,7 @@ export const useAppStore = create<AppState>()(
         pendingSync: [],
         lastSyncedAt: null,
         hasHydrated: false,
+        remoteVisualStyles: [],
         liveQuotes: {},
         lastQuotesFetchedAt: null,
         cetesRates: null,
@@ -342,6 +352,20 @@ export const useAppStore = create<AppState>()(
 
         setThemePreference: (pref) =>
           set((s) => ({ profile: { ...s.profile, themePreference: pref } })),
+
+        setRemoteVisualStyles: (styles) => set({ remoteVisualStyles: styles }),
+
+        setVisualStyle: (id, isPermanent) =>
+          set((s) => ({
+            profile: {
+              ...s.profile,
+              visualStyle: id,
+              // Solo los permanentes se recuerdan como destino de regreso:
+              // si el usuario elige uno temporal y este caduca, vuelve al
+              // permanente anterior y no se queda sin estilo.
+              lastPermanentVisualStyle: isPermanent ? id : s.profile.lastPermanentVisualStyle,
+            },
+          })),
 
         addTransaction: (draft) => {
           const tx = withNewMeta(draft);

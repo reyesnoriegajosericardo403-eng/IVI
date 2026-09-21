@@ -268,6 +268,13 @@ export interface UserProfile {
   // se vuelve a mostrar (spec: "debe anunciarse la primera vez... ya
   // después de la primera vez ya no debe volver a aparecer").
   seenBudgetTemplatesIntro?: boolean;
+  // Estilo visual elegido (vidrio, degradado suave, brutalista o uno
+  // publicado después). Es independiente de claro/oscuro: cada estilo
+  // trae sus dos versiones.
+  visualStyle?: string;
+  // Último estilo PERMANENTE que tuvo puesto: a ese regresa solo si el
+  // que eligió era temporal y ya caducó.
+  lastPermanentVisualStyle?: string;
 }
 
 export interface NetWorthSnapshot extends SyncMeta {

@@ -15,11 +15,27 @@ export const spacing = {
   xxl: 32,
 };
 
-export const typography = {
-  display: { fontSize: 34, fontWeight: '700' as const, letterSpacing: -0.5 },
-  title: { fontSize: 22, fontWeight: '700' as const, letterSpacing: -0.3 },
-  headline: { fontSize: 17, fontWeight: '600' as const },
-  body: { fontSize: 15, fontWeight: '400' as const },
-  caption: { fontSize: 13, fontWeight: '500' as const },
-  micro: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.3 },
+// Los pesos se declaran como unión (y no como literal fijo por token) para
+// que un estilo visual pueda reforzarlos — el brutalista sube toda la
+// escala un paso.
+export type TextWeight = '400' | '500' | '600' | '700' | '800';
+
+export interface TypographyToken {
+  fontSize: number;
+  fontWeight: TextWeight;
+  letterSpacing?: number;
+}
+
+export type TypographyScale = Record<
+  'display' | 'title' | 'headline' | 'body' | 'caption' | 'micro',
+  TypographyToken
+>;
+
+export const typography: TypographyScale = {
+  display: { fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
+  title: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3 },
+  headline: { fontSize: 17, fontWeight: '600' },
+  body: { fontSize: 15, fontWeight: '400' },
+  caption: { fontSize: 13, fontWeight: '500' },
+  micro: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
 };

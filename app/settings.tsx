@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassCard } from '@/components/GlassCard';
+import { StylePicker } from '@/components/StylePicker';
 import type { Currency, UserProfile } from '@/data/types';
 import { getLLMProviderConfig } from '@/providers/llm/secureConfig';
 import { LLM_PROVIDER_LABELS, type LLMProviderId } from '@/providers/llm/types';
@@ -212,7 +213,7 @@ export default function Settings() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>TEMA</Text>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>APARIENCIA</Text>
           <GlassCard style={{ gap: spacing.xs }} padded={false}>
             {THEME_OPTIONS.map((opt, idx) => (
               <Pressable
@@ -231,6 +232,13 @@ export default function Settings() {
               </Pressable>
             ))}
           </GlassCard>
+        </View>
+
+        {/* El estilo visual es independiente de claro/oscuro: cada estilo
+            trae sus dos versiones y se aplica al instante. */}
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>ESTILO VISUAL</Text>
+          <StylePicker />
         </View>
 
         <View style={{ gap: spacing.sm }}>

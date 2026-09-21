@@ -19,6 +19,8 @@ export async function fetchRemoteProfile(userId: string): Promise<UserProfile | 
       warning: data.budget_threshold_warning,
       exceeded: data.budget_threshold_exceeded,
     },
+    visualStyle: data.visual_style ?? undefined,
+    lastPermanentVisualStyle: data.last_permanent_visual_style ?? undefined,
   };
 }
 
@@ -34,6 +36,8 @@ export async function pushRemoteProfile(userId: string, profile: UserProfile): P
       budget_threshold_attention: profile.budgetThresholds.attention,
       budget_threshold_warning: profile.budgetThresholds.warning,
       budget_threshold_exceeded: profile.budgetThresholds.exceeded,
+      visual_style: profile.visualStyle ?? null,
+      last_permanent_visual_style: profile.lastPermanentVisualStyle ?? null,
     })
     .eq('user_id', userId);
 }
