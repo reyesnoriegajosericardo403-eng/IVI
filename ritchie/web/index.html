@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfaf8" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0906" />
+<title>RITCHIE</title>
+<meta name="description" content="Estimación probabilística de escenarios para activos financieros." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23ff7a1a'/%3E%3Cpath d='M9 21l4.5-7 4 4L23 11' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  /* Aplica el tema guardado ANTES de pintar, para que no haya un parpadeo
+     del tema equivocado al cargar. Todo lo demás del tema vive en app.js. */
+  try {
+    var t = localStorage.getItem('ritchie-tema');
+    if (t !== 'claro' && t !== 'oscuro') t = 'oscuro';
+    document.documentElement.dataset.theme = t === 'claro' ? 'light' : 'dark';
+  } catch (_) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="top-start">
+      <button class="sidebar-toggle" id="alternar-barra" type="button" aria-label="Mostrar u ocultar la lista de activos" aria-expanded="true" aria-controls="barra-lateral">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9.5 4.5v15"/>
+        </svg>
+      </button>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">RITCHIE</span>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="theme-toggle" id="selector-tema" role="radiogroup" aria-label="Tema de la interfaz">
+        <div class="theme-toggle-thumb" id="tema-indicador" aria-hidden="true"></div>
+        <button type="button" data-tema="sistema" role="radio" aria-label="Automático (según tu sistema)" title="Automático">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>
+          </svg>
+        </button>
+        <button type="button" data-tema="claro" role="radio" aria-label="Tema claro" title="Claro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/>
+          </svg>
+        </button>
+        <button type="button" data-tema="oscuro" role="radio" aria-label="Tema oscuro" title="Oscuro">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20.4 14.7A8.5 8.5 0 1 1 9.3 3.6a7 7 0 0 0 11.1 11.1z"/>
+          </svg>
+        </button>
+      </div>
+      <button class="ghost" id="acerca-de" type="button">Cómo funciona</button>
+    </div>
+  </div>
+</header>
+
+<div class="shell" id="shell">
+  <!-- ------------------------------------------------------- barra lateral -->
+  <aside class="sidebar" id="barra-lateral" aria-label="Explorar por tipo de activo">
+    <div class="sidebar-inner">
+      <div class="sidebar-search">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
+        </svg>
+        <input type="text" id="barra-buscar" placeholder="Buscar un activo o pregunta…" autocomplete="off" spellcheck="false" aria-label="Buscar en la lista de activos" />
+      </div>
+
+      <div class="sidebar-section" id="seccion-historial" hidden>
+        <div class="sidebar-section-head">
+          <p class="sidebar-title">Preguntado recientemente</p>
+          <button type="button" class="sidebar-clear" id="limpiar-historial">Limpiar</button>
+        </div>
+        <ul class="sidebar-history" id="barra-historial"></ul>
+      </div>
+
+      <p class="sidebar-title">Explorar por tipo de activo</p>
+      <nav class="sidebar-cats" id="barra-categorias"></nav>
+      <p class="sidebar-empty" id="barra-sin-resultados" hidden>No hay nada que coincida con tu búsqueda.</p>
+      <div class="sidebar-foot">
+        <button class="sidebar-upload-btn" id="abrir-carga" type="button">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+          </svg>
+          <span>Cargar tus datos</span>
+        </button>
+        <p class="sidebar-memoria" id="estado-memoria"></p>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-scrim" id="barra-scrim"></div>
+
+  <main id="contenido">
+  <!-- ---------------------------------------------------------- pregunta -->
+  <section class="hero wrap" id="hero">
+    <h1 class="hero-title">¿Qué quieres saber?</h1>
+    <p class="hero-sub">
+      Pregunta por un activo en español. RITCHIE revisa su historia, compite varios
+      modelos y te dice la probabilidad — o te dice que no hay evidencia suficiente.
+    </p>
+
+    <form class="ask" id="formulario" autocomplete="off">
+      <span class="ask-prompt" aria-hidden="true">›</span>
+      <input
+        class="ask-input"
+        id="pregunta"
+        type="text"
+        placeholder="¿Qué probabilidad hay de que MARA suba 4% mañana?"
+        aria-label="Tu pregunta"
+        spellcheck="false" />
+      <button class="ask-go" id="enviar" type="submit" aria-label="Analizar">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M5 12h13M12 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </form>
+
+    <div class="chips" id="ejemplos"></div>
+    <p class="interpretacion" id="interpretacion" hidden></p>
+
+    <div class="terminal" id="terminal" hidden>
+      <div class="terminal-panel">
+        <div class="terminal-head">
+          <span class="terminal-title">Terminal · actividad reciente</span>
+          <span class="terminal-status" id="terminal-estado"><span class="dot"></span><span class="terminal-status-text">—</span></span>
+        </div>
+        <div class="terminal-rows" id="terminal-filas"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- trabajo -->
+  <section class="wrap working" id="trabajando" hidden>
+    <div class="working-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="working-body">
+        <p class="working-stage" id="etapa">Preparando</p>
+        <div class="bar"><div class="bar-fill" id="barra"></div></div>
+        <p class="working-note">
+          La primera vez tarda: se validan miles de predicciones contra el pasado, día por día.
+          La siguiente pregunta sobre el mismo activo es instantánea.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- error -->
+  <section class="wrap" id="error-box" hidden>
+    <div class="card error">
+      <h2 id="error-titulo">No se pudo responder</h2>
+      <p id="error-texto"></p>
+      <ul id="error-detalles" class="plain-list"></ul>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- resultado -->
+  <section id="resultado" hidden>
+
+    <div class="wrap" id="aviso-simulado" hidden>
+      <div class="banner">
+        <strong>Datos simulados.</strong>
+        <span id="aviso-simulado-texto"></span>
+      </div>
+    </div>
+
+    <!-- Nivel 1: la conclusión en segundos -->
+    <div class="wrap asset-line">
+      <div>
+        <h2 class="asset-symbol" id="simbolo"></h2>
+        <p class="asset-name" id="nombre"></p>
+      </div>
+      <div class="asset-price">
+        <p class="price" id="precio"></p>
+        <p class="price-date" id="fecha"></p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <p class="restated" id="restated"></p>
+    </div>
+
+    <div class="wrap headline-block">
+      <h3 class="headline" id="titular"></h3>
+      <div class="verdict">
+        <div class="donut-holder" id="donut-holder">
+          <svg class="donut" viewBox="0 0 120 120" id="donut" aria-hidden="true">
+            <circle class="donut-track" cx="60" cy="60" r="52" />
+            <circle class="donut-value" cx="60" cy="60" r="52" id="donut-arc" />
+          </svg>
+          <div class="donut-label">
+            <span class="donut-number" id="probabilidad">—</span>
+            <span class="donut-caption" id="probabilidad-pie">probabilidad</span>
+          </div>
+        </div>
+        <div class="verdict-text">
+          <p class="lede" id="explicacion"></p>
+          <div class="confidence" id="confianza-chip"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap grid-3" id="tarjetas-resumen"></div>
+
+    <div class="wrap card soft" id="abuelita-card">
+      <p class="card-kicker">En palabras de todos los días</p>
+      <p class="abuelita" id="abuelita"></p>
+    </div>
+
+    <!-- gráficas -->
+    <div class="wrap charts">
+      <div class="card chart-card">
+        <p class="card-kicker">Cómo se ha movido</p>
+        <h4 class="card-title" id="titulo-precio">Precio reciente</h4>
+        <div class="chart" id="grafica-precio"></div>
+      </div>
+      <div class="card chart-card">
+        <p class="card-kicker">Qué puede pasar</p>
+        <h4 class="card-title" id="titulo-escenarios">Escenarios simulados</h4>
+        <div class="chart" id="grafica-escenarios"></div>
+        <div class="legend" id="leyenda-escenarios"></div>
+      </div>
+    </div>
+
+    <div class="wrap card" id="rango-card">
+      <p class="card-kicker">Rango más probable</p>
+      <h4 class="card-title" id="titulo-rango"></h4>
+      <div class="chart range" id="grafica-rango"></div>
+      <p class="fineprint" id="rango-pie"></p>
+    </div>
+
+    <!-- Nivel 2 -->
+    <div class="wrap card" id="factores-card">
+      <p class="card-kicker">Por qué</p>
+      <h4 class="card-title">Lo que está pesando hoy</h4>
+      <ul class="factors" id="factores"></ul>
+      <p class="fineprint">
+        Cada punto sale de medir cuánto cambia la estimación si esa condición no
+        estuviera. No son interpretaciones escritas después del resultado.
+      </p>
+    </div>
+
+    <div class="wrap card" id="sin-senal-card" hidden>
+      <p class="card-kicker">Transparencia</p>
+      <h4 class="card-title">Por qué no hay señal</h4>
+      <ul class="blockers" id="bloqueos"></ul>
+    </div>
+
+    <!-- Niveles 3 a 5: divulgación progresiva -->
+    <div class="wrap levels" id="niveles"></div>
+
+    <div class="wrap footer-note">
+      <p id="disclaimer"></p>
+      <p class="fineprint" id="procedencia"></p>
+    </div>
+  </section>
+  </main>
+</div>
+
+<!-- ----------------------------------------------------------- acerca de -->
+<dialog id="dialogo" aria-labelledby="dialogo-titulo">
+  <div class="sheet" id="hoja">
+    <div class="sheet-handle" id="hoja-manija" aria-hidden="true"></div>
+    <div class="dialog-inner">
+      <h3 id="dialogo-titulo">Cómo funciona RITCHIE</h3>
+      <ol class="steps">
+        <li><strong>Datos verificables.</strong> Cada serie viene con su fuente y la hora en que se descargó. Si falta un dato, falta: nunca se rellena con una invención.</li>
+        <li><strong>Variables sin trampa.</strong> Todo lo que el modelo ve el día <em>t</em> estaba disponible al cierre de ese día. Una auditoría lo verifica recalculando con la serie recortada.</li>
+        <li><strong>Validación hacia adelante.</strong> Se entrena con el pasado y se predice el futuro, avanzando en el tiempo. Nunca se mezclan fechas al azar.</li>
+        <li><strong>Competencia de modelos.</strong> Once métodos (estadísticos, de machine learning y combinaciones) compiten. Gana el que produce probabilidades honestas y estables, no el que más "acierta".</li>
+        <li><strong>Prueba de realidad.</strong> Comparar muchos modelos hace que alguno se vea bien por azar. Una prueba estadística mide justo eso antes de aceptar cualquier ventaja.</li>
+        <li><strong>Tramo final intacto.</strong> Un pedazo del historial no participa en ninguna decisión y se usa una sola vez, al final, para ver si lo elegido se sostiene.</li>
+        <li><strong>Derecho a callar.</strong> Si nada de lo anterior aguanta, RITCHIE dice que no hay evidencia suficiente en vez de fabricar un número.</li>
+      </ol>
+      <h5 class="sub">Qué activos puede analizar</h5>
+      <p class="fineprint">
+        Acciones, ETFs, índices, criptomonedas, materias primas, divisas y futuros:
+        todos con el mismo método, sobre su serie de precio histórica. Los bonos
+        gubernamentales se analizan a través del rendimiento del Tesoro de EE. UU.
+        (símbolos como el bono a 10 años) o de ETFs de renta fija — es la misma
+        estadística que para una acción, no un modelo especializado de tasas de
+        interés. RITCHIE <strong>no</strong> calcula precios de opciones, primas ni
+        otros derivados que dependen de una fórmula distinta a la de su activo
+        subyacente.
+      </p>
+      <p class="fineprint">
+        RITCHIE estima probabilidades a partir de precio, volumen y contexto de mercado.
+        No lee noticias ni reportes, no conoce tu situación y no es asesoría de inversión.
+      </p>
+      <button class="primary" id="cerrar-dialogo" type="button">Entendido</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ------------------------------------------------------ cargar datos -->
+<dialog id="dialogo-carga" aria-labelledby="carga-titulo">
+  <div class="sheet" id="hoja-carga">
+    <div class="dialog-inner">
+      <h3 id="carga-titulo">Cargar tus datos</h3>
+      <p class="fineprint" style="margin-top:0">
+        Para cuando ninguna fuente automática responda, o quieras analizar algo
+        que RITCHIE no cubre (un bróker local, un mercado propio). Cuatro pasos:
+      </p>
+
+      <ol class="carga-pasos">
+        <li>
+          <strong>Ten tu archivo con al menos dos columnas:</strong> una fecha y un
+          precio de cierre. Si tienes apertura, máximo, mínimo y volumen, mejor —
+          pero no son obligatorias. El orden de las columnas, el de las filas, los
+          acentos y si usas coma o punto para los decimales no importan: RITCHIE
+          los reconoce solos.
+          <div class="carga-ejemplo">
+            <table>
+              <tr><th>fecha</th><th>cierre</th><th>volumen</th></tr>
+              <tr><td>2024-01-02</td><td>17.60</td><td>1,000,000</td></tr>
+              <tr><td>2024-01-03</td><td>17.80</td><td>1,200,000</td></tr>
+            </table>
+          </div>
+        </li>
+        <li><strong>Guárdalo como CSV.</strong> En Excel, Numbers o Google Sheets:
+          Archivo → Exportar (o Descargar) → formato <strong>CSV</strong>.</li>
+        <li><strong>Escribe el símbolo</strong> del activo abajo (por ejemplo
+          <code>MARA</code>, <code>AAPL</code> o <code>BTC-USD</code>) — el mismo
+          que usarías para preguntarle a RITCHIE.</li>
+        <li><strong>Elige el archivo y toca "Guardar".</strong> Te avisa si algo
+          salió mal y por qué — nunca se queda a medias en silencio.</li>
+      </ol>
+
+      <p class="fineprint" id="carga-memoria-nota"></p>
+
+      <form id="form-carga" class="carga-form">
+        <label class="carga-campo">
+          <span>Símbolo</span>
+          <input type="text" id="carga-simbolo" placeholder="Por ejemplo MARA, AAPL o BTC-USD" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="carga-campo">
+          <span>Archivo CSV</span>
+          <input type="file" id="carga-archivo" accept=".csv,text/csv" />
+        </label>
+        <button class="primary" id="carga-enviar" type="submit">Guardar en la memoria</button>
+      </form>
+      <div class="carga-resultado" id="carga-resultado" hidden></div>
+
+      <button class="ghost" id="cerrar-dialogo-carga" type="button" style="margin-top:14px">Cerrar</button>
+    </div>
+  </div>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

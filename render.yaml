@@ -1,0 +1,24 @@
+# Configuración de despliegue para Render (render.com).
+#
+# Esto NO hace nada por sí solo: es un plano que Render lee cuando alguien
+# crea manualmente un "Blueprint" apuntando a este repositorio. No afecta
+# a ningún otro proyecto de este monorepo (VALU, diagnóstico organizacional)
+# ni se ejecuta automáticamente.
+#
+# Sirve para desplegar RITCHIE como un servicio web real y gratuito, con
+# una URL pública (https://ritchie-xxxx.onrender.com) que funciona desde
+# cualquier navegador — incluido Safari en iPad — sin instalar nada.
+#
+# Ver ritchie/README.md, sección "Desplegar en la nube (gratis)".
+
+services:
+  - type: web
+    name: ritchie
+    env: python
+    plan: free
+    rootDir: ritchie
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m ritchie servidor --host 0.0.0.0 --puerto $PORT --sin-navegador --perfil rapido
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
