@@ -35,7 +35,7 @@ export const LLM_PROVIDER_LABELS: Record<LLMProviderId, string> = {
 // Se favorece el modelo más pequeño/económico de cada familia, ya que el
 // copiloto financiero y el intérprete de captura son tareas simples.
 export const LLM_PROVIDER_DEFAULT_MODEL: Record<LLMProviderId, string> = {
-  claude: 'claude-haiku-4-5-20251001',
+  claude: 'claude-haiku-4-5',
   openai: 'gpt-4o-mini',
   gemini: 'gemini-2.0-flash',
   grok: 'grok-4-fast',

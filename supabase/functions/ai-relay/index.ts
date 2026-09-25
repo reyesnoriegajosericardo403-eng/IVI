@@ -14,11 +14,47 @@ const ALLOWED_HOSTS = new Set([
   'api.x.ai',
 ]);
 
+// Solo estos encabezados se reenvían al proveedor — el cliente arma su
+// propia forma de request (algunos usan "authorization", otros
+// "x-api-key"), pero nada del resto de lo que un cliente podría mandar
+// tiene motivo de llegar al proveedor de IA.
+const FORWARDABLE_HEADERS = new Set(['authorization', 'x-api-key', 'x-goog-api-key', 'anthropic-version', 'content-type']);
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type, apikey',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// Límite de tamaño del cuerpo — un mensaje de chat legítimo (incluso con
+// bastante contexto financiero) no se acerca a esto; solo frena un intento
+// de mandar payloads gigantes para agotar memoria/ancho de banda.
+const MAX_BODY_BYTES = 256 * 1024;
+
+// Ventana deslizante en memoria, por IP — best-effort: una función Edge
+// puede arrancar en frío y perder este estado, pero mientras la instancia
+// esté caliente (el caso común bajo un intento de abuso real, que manda
+// ráfagas seguidas) sí frena. Sin este límite, la clave pública anon de
+// Supabase (visible en el bundle web) es toda la "autenticación" que pide
+// esta función — cualquiera podría usarla como relevo abierto hacia los 4
+// proveedores permitidos, aunque solo con SU PROPIA clave de IA.
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 30;
+const requestLog = new Map<string, number[]>();
+
+function isRateLimited(clientId: string): boolean {
+  const now = Date.now();
+  const timestamps = (requestLog.get(clientId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  timestamps.push(now);
+  requestLog.set(clientId, timestamps);
+  // Limpieza oportunista para no acumular IPs viejas indefinidamente en memoria.
+  if (requestLog.size > 5000) {
+    for (const [key, times] of requestLog) {
+      if (times.every((t) => now - t >= RATE_LIMIT_WINDOW_MS)) requestLog.delete(key);
+    }
+  }
+  return timestamps.length > RATE_LIMIT_MAX_REQUESTS;
+}
 
 interface RelayRequest {
   url: string;
@@ -34,6 +70,22 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Método no permitido' }), {
       status: 405,
+      headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
+    });
+  }
+
+  const clientId = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+  if (isRateLimited(clientId)) {
+    return new Response(JSON.stringify({ error: 'Demasiadas solicitudes. Espera un momento antes de volver a intentar.' }), {
+      status: 429,
+      headers: { ...CORS_HEADERS, 'content-type': 'application/json', 'Retry-After': '60' },
+    });
+  }
+
+  const contentLength = Number(req.headers.get('content-length') ?? '0');
+  if (contentLength > MAX_BODY_BYTES) {
+    return new Response(JSON.stringify({ error: 'Solicitud demasiado grande' }), {
+      status: 413,
       headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
     });
   }
@@ -65,10 +117,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const forwardHeaders: Record<string, string> = {};
+  for (const [key, value] of Object.entries(payload.headers ?? {})) {
+    if (FORWARDABLE_HEADERS.has(key.toLowerCase())) forwardHeaders[key] = value;
+  }
+
   try {
     const upstream = await fetch(targetUrl.toString(), {
       method: 'POST',
-      headers: { ...payload.headers, 'content-type': 'application/json' },
+      headers: { ...forwardHeaders, 'content-type': 'application/json' },
       body: JSON.stringify(payload.body),
     });
 

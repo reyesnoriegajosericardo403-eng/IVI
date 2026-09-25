@@ -17,35 +17,19 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
+// Un mensaje de chat legítimo no necesita más que esto — el límite frena
+// que alguien use la caja de texto para mandar payloads absurdamente
+// largos hacia el proveedor de IA (costo/latencia) o hacia el copiloto
+// local (que igual solo lo compara contra expresiones regulares cortas).
+const MAX_MESSAGE_LENGTH = 500;
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   text: string;
 }
 
-// TODO: cuando el problema de conexión de la IA en la versión web
-// (relevo ai-relay) quede resuelto por completo, borrar este aviso y la
-// bandera de abajo para que el copiloto vuelva a mostrarse normal.
-const AI_TEMPORARILY_DISABLED = true;
-
-function ProximamenteBanner() {
-  const { colors, typography, spacing } = useTheme();
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
-      <View style={{ alignItems: 'center', paddingHorizontal: spacing.xl }}>
-        <Text style={[typography.display, { color: colors.danger, fontWeight: '800', textAlign: 'center' }]}>
-          PRÓXIMAMENTE
-        </Text>
-        <Text style={[typography.headline, { color: colors.danger, textAlign: 'center', marginTop: spacing.sm }]}>
-          solo en IVI
-        </Text>
-      </View>
-    </SafeAreaView>
-  );
-}
-
 export default function Ia() {
-  if (AI_TEMPORARILY_DISABLED) return <ProximamenteBanner />;
   return <IaChat />;
 }
 
@@ -74,23 +58,38 @@ function IaChat() {
     },
   ]);
   const [input, setInput] = useState('');
+  // Evita que el usuario (o un script) mande ráfagas de mensajes mientras
+  // el proveedor de IA todavía está respondiendo — no es rate limiting
+  // real (eso vive en ai-relay), es simplemente no permitir dos solicitudes
+  // en vuelo a la vez desde esta pantalla.
+  const [sending, setSending] = useState(false);
 
   const send = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || sending) return;
     const userMsg: Message = { id: `u_${Date.now()}`, role: 'user', text };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
-    const answer = await providers.copilot.answerQuestion(text, {
-      profile,
-      transactions,
-      accounts,
-      investments,
-      liabilities,
-      budgets,
-      goals,
-    });
-    const botMsg: Message = { id: `a_${Date.now()}`, role: 'assistant', text: answer };
-    setMessages((prev) => [...prev, botMsg]);
+    setSending(true);
+    try {
+      const answer = await providers.copilot.answerQuestion(text, {
+        profile,
+        transactions,
+        accounts,
+        investments,
+        liabilities,
+        budgets,
+        goals,
+      });
+      const botMsg: Message = { id: `a_${Date.now()}`, role: 'assistant', text: answer };
+      setMessages((prev) => [...prev, botMsg]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: `a_${Date.now()}`, role: 'assistant', text: 'No pude conectarme a la IA en este momento. Intenta de nuevo en un momento.' },
+      ]);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -147,6 +146,8 @@ function IaChat() {
             placeholder="Escribe tu pregunta..."
             placeholderTextColor={colors.textTertiary}
             onSubmitEditing={() => send(input)}
+            maxLength={MAX_MESSAGE_LENGTH}
+            editable={!sending}
             style={[
               styles.input,
               { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.pill, backgroundColor: colors.surfaceSolid },
@@ -154,7 +155,8 @@ function IaChat() {
           />
           <Pressable
             onPress={() => send(input)}
-            style={[styles.sendBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill }]}
+            disabled={sending || !input.trim()}
+            style={[styles.sendBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, opacity: sending || !input.trim() ? 0.5 : 1 }]}
           >
             <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
           </Pressable>
