@@ -42,7 +42,6 @@ function StackedCard({
   onDragCycle,
   onDelete,
   accessibilityLabel,
-  variant,
   compact,
 }: {
   item: AccountStackItem;
@@ -53,7 +52,6 @@ function StackedCard({
   onDragCycle: () => void;
   onDelete?: () => void;
   accessibilityLabel: string;
-  variant: 'solid' | 'glass';
   compact: boolean;
 }) {
   const { radius } = useTheme();
@@ -109,7 +107,11 @@ function StackedCard({
   ).current;
 
   return (
-    <View accessibilityLabel={accessibilityLabel} style={[styles.clip, { borderRadius: radius.lg }]} {...panResponder.panHandlers}>
+    <View
+      accessibilityLabel={accessibilityLabel}
+      style={[styles.clip, { borderRadius: compact ? radius.md : radius.lg }]}
+      {...panResponder.panHandlers}
+    >
       <AccountCardVisual
         name={item.name}
         typeLabel={item.typeLabel}
@@ -118,7 +120,6 @@ function StackedCard({
         color={item.color}
         iconName={item.iconName}
         onDelete={isFront ? onDelete : undefined}
-        variant={variant}
         compact={compact}
       />
     </View>
@@ -138,21 +139,20 @@ export function AccountCardStack({
   onFrontPress,
   onDelete,
   frontLabelPrefix = 'Editar',
-  variant = 'solid',
   compact = false,
 }: {
   items: AccountStackItem[];
   onFrontPress?: (id: string) => void;
   onDelete?: (id: string) => void;
   frontLabelPrefix?: string;
-  // 'glass' + compact=true: la versión de solo lectura que vive en Inicio
-  // (spec: "solo seran para poder ver no para editar... ya deben tener el
-  // efecto de vidrio también... deben ser mas pequeñas a los lados").
-  variant?: 'solid' | 'glass';
+  // La de Inicio es de solo lectura y más chica (spec: "deben ser mas
+  // pequeñas a los lados"); Patrimonio usa el tamaño normal.
   compact?: boolean;
 }) {
+  const { radius } = useTheme();
   const cardHeight = compact ? CARD_HEIGHT_COMPACT : CARD_HEIGHT;
   const peek = compact ? PEEK_COMPACT : PEEK;
+  const cardRadius = compact ? radius.md : radius.lg;
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
   const positions = useRef<Map<string, Animated.Value>>(new Map());
   const dragX = useRef(new Animated.Value(0)).current;
@@ -212,7 +212,10 @@ export function AccountCardStack({
         return (
           <Animated.View
             key={id}
-            style={[styles.slotShadow, { transform: [{ translateY }, { translateX }], zIndex: order.indexOf(id) }]}
+            style={[
+              styles.slotShadow,
+              { borderRadius: cardRadius, transform: [{ translateY }, { translateX }], zIndex: order.indexOf(id) },
+            ]}
           >
             <StackedCard
               item={item}
@@ -223,7 +226,6 @@ export function AccountCardStack({
               onTap={() => (isFront ? onFrontPress?.(id) : bringToFront(id))}
               onDragCycle={() => sendToBack(id)}
               onDelete={onDelete ? () => onDelete(id) : undefined}
-              variant={variant}
               compact={compact}
             />
           </Animated.View>

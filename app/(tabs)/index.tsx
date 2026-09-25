@@ -14,7 +14,7 @@ import { NetWorthTrendChart } from '@/components/NetWorthTrendChart';
 import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS } from '@/data/accountMeta';
 import { budgetConceptsByGroup, findBudgetConcept, findIncomeConcept, parseSubBudgetId, type BudgetGroupId } from '@/data/budgetConcepts';
-import { useContentMaxWidth } from '@/hooks/useBreakpoint';
+import { useBreakpoint, useContentMaxWidth } from '@/hooks/useBreakpoint';
 import {
   selectActiveAccounts,
   selectActiveBudgetAssignments,
@@ -123,7 +123,7 @@ export default function Dashboard() {
   // real de hoy, con sus ajustes) — así lo que se edita en "Mis
   // presupuestos" se refleja aquí de inmediato, en vez de depender del
   // arreglo `budgets` heredado que solo el onboarding llega a escribir.
-  const monthlyBudgetLines = resolveBudgetForPeriod({
+  const monthlyBudgetResolved = resolveBudgetForPeriod({
     periodKey: makePeriodKey('month', new Date()),
     templates,
     templateLines,
@@ -131,7 +131,8 @@ export default function Dashboard() {
     overrides,
     transactions,
     thresholds: profile.budgetThresholds,
-  }).lines;
+  });
+  const monthlyBudgetLines = monthlyBudgetResolved.lines;
   // Solo presupuesto de GASTO — el presupuesto de ingresos no tiene nada
   // que ver con "cuánto te queda disponible de tu presupuesto de gastos"
   // (mismo principio que "Tu resumen": nunca mezclar ingreso presupuestado
@@ -185,6 +186,38 @@ export default function Dashboard() {
       .map((g) => ({ id: g, label: GROUP_LABELS[g], budgeted: totals[g].budgeted, actual: totals[g].actual }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthlyBudgetLines, hasBudget, transactions]);
+
+  // ---- Misma gráfica, pero a detalle por categoría (hasta 7, spec: "en
+  // pantalla grandes... puede mostrar hasta 7 diferentes subcategorías")
+  // — solo se usa en tablet/laptop/escritorio; en móvil se queda la
+  // versión por grupo de arriba (spec: "en los dispositivos móviles...
+  // requiero que solo se vean las 3 categorías"). ----
+  const detailedBudgetProgressItems = useMemo<BudgetProgressItem[]>(() => {
+    if (!hasBudget) return [];
+    const budgetedItems = monthlyBudgetLines
+      .filter((l) => !findIncomeConcept(l.categoryId) && l.budgeted > 0)
+      .map((l) => ({ id: l.budgetId, label: l.categoryName, budgeted: l.budgeted, actual: l.actual }));
+    const covered = new Set<string>();
+    monthlyBudgetLines.forEach((l) => {
+      if (findIncomeConcept(l.categoryId)) return;
+      const sub = parseSubBudgetId(l.categoryId);
+      covered.add(sub ? sub.conceptId : l.categoryId);
+    });
+    const unbudgetedItems: BudgetProgressItem[] = Object.entries(monthlyBudgetResolved.conceptSpend)
+      .filter(([conceptId, actual]) => actual > 0 && !covered.has(conceptId) && !findIncomeConcept(conceptId))
+      .map(([conceptId, actual]) => ({
+        id: `sin-plan:${conceptId}`,
+        label: findBudgetConcept(conceptId)?.name ?? conceptId,
+        budgeted: 0,
+        actual,
+      }));
+    return [...budgetedItems, ...unbudgetedItems];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthlyBudgetLines, monthlyBudgetResolved, hasBudget]);
+
+  const { isTablet } = useBreakpoint();
+  const homeBudgetItems = isTablet ? detailedBudgetProgressItems : budgetProgressItems;
+  const homeBudgetMaxBars = isTablet ? 7 : 3;
 
   // ---- Insights financieros (nudging empático) — mismo lugar que el
   // banner de presupuesto, pero un aviso de comportamiento real le gana
@@ -478,12 +511,12 @@ export default function Dashboard() {
               incluyendo lo gastado fuera de presupuesto si es
               representativo (spec: "ver de manera jerárquica cómo están
               sus gastos respecto a sus presupuestos"). */}
-          {budgetProgressItems.length > 0 && (
+          {homeBudgetItems.length > 0 && (
             <View style={{ marginTop: spacing.lg }}>
               <Text style={[typography.caption, { color: 'rgba(255,255,255,0.85)', marginBottom: spacing.sm }]}>
                 Cómo van tus gastos — presupuestado contra lo que ya llevas gastado este mes.
               </Text>
-              <BudgetProgressChart items={budgetProgressItems} currency={profile.primaryCurrency} />
+              <BudgetProgressChart items={homeBudgetItems} currency={profile.primaryCurrency} maxBars={homeBudgetMaxBars} />
             </View>
           )}
         </View>
@@ -547,7 +580,7 @@ export default function Dashboard() {
         <View style={styles.halfRow}>
           <View style={{ flex: 1 }}>
             {accountStackItems.length > 0 ? (
-              <AccountCardStack items={accountStackItems} variant="glass" compact frontLabelPrefix="Ver" />
+              <AccountCardStack items={accountStackItems} compact frontLabelPrefix="Ver" />
             ) : (
               <GlassCard style={{ height: 110, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={[typography.micro, { color: colors.textTertiary, textAlign: 'center' }]}>Aún no tienes cuentas</Text>

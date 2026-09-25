@@ -17,12 +17,6 @@ interface AccountCardVisualProps {
   color: string;
   iconName: string;
   onDelete?: () => void;
-  // 'solid' (default): el color propio de la cuenta a toda opacidad, como
-  // siempre — así se distingue una cuenta de otra de un vistazo. 'glass':
-  // el mismo color pero translúcido + desenfoque + brillo, para las
-  // tarjetas de solo lectura de Inicio (spec: "ya deben tener el efecto
-  // de vidrio también").
-  variant?: 'solid' | 'glass';
   // Versión más chica para cuando la tarjeta comparte la mitad del ancho
   // con otra ficha (spec: "deben ser más pequeñas a los lados").
   compact?: boolean;
@@ -35,33 +29,37 @@ interface AccountCardVisualProps {
 // competiría por el toque con el PanResponder de la pila y el arrastre
 // nunca llegaría a dispararse — React Native le da el toque al responder
 // MÁS PROFUNDO que exista justo en ese punto.
-export function AccountCardVisual({
-  name,
-  typeLabel,
-  balance,
-  currency,
-  color,
-  iconName,
-  onDelete,
-  variant = 'solid',
-  compact = false,
-}: AccountCardVisualProps) {
-  const { typography, surface, radius } = useTheme();
-  const isGlass = variant === 'glass';
+//
+// El "vidrio" ya NO es una opción que elige quien la usa — sale del
+// estilo visual activo, igual que GlassCard (spec: "en la parte de
+// patrimonio igual requiero que a las tarjetas... les apliques el estilo
+// de vidrio o los diferentes estilos, deacuerdo al que el usuario
+// escoja"). Con blur (Vidrio): color translúcido + desenfoque + brillo.
+// Sin blur (Degradado suave, Neo brutalista): el color a toda opacidad —
+// nunca transparente sin desenfoque real detrás, porque entonces se ve
+// la tarjeta de atrás en la pila (spec: "se transparentan y dejan ver las
+// tarjetas detrás lo cual confunde").
+export function AccountCardVisual({ name, typeLabel, balance, currency, color, iconName, onDelete, compact = false }: AccountCardVisualProps) {
+  const { typography, surface, radius, scheme } = useTheme();
+  const isGlass = surface.blur > 0;
+  // Más alfa en claro que en oscuro — el mismo 0.55 de antes se veía
+  // sombrío sobre un fondo claro (spec: "les des mas vivacidad al
+  // color"); en oscuro ya se leía bien.
+  const glassAlpha = scheme === 'light' ? 0.72 : 0.55;
 
   return (
     <View
       style={[
         compact ? styles.cardInnerCompact : styles.cardInner,
         {
-          backgroundColor: isGlass ? withAlpha(color, 0.55) : color,
-          borderRadius: compact ? radius.md : 0,
+          backgroundColor: isGlass ? withAlpha(color, glassAlpha) : color,
+          borderRadius: compact ? radius.md : radius.lg,
         },
         isGlass && surfaceBlur(surface),
         isGlass && { borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
       ]}
     >
-      {isGlass && <GlassSheen radius={compact ? radius.md : 0} intensity={0.7} />}
+      {isGlass && <GlassSheen radius={compact ? radius.md : radius.lg} intensity={0.7} />}
       <View style={styles.topRow}>
         <View style={[styles.iconBadge, compact && styles.iconBadgeCompact]}>
           <Ionicons name={iconName as any} size={compact ? 15 : 20} color="#FFFFFF" />

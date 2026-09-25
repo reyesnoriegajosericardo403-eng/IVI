@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { signOut } from '@/services/auth/actions';
 import { useAuthSession } from '@/services/auth/useAuthSession';
@@ -29,7 +29,18 @@ export function AccountDropdown() {
   const profile = useAppStore((s) => s.profile);
   const setThemePreference = useAppStore((s) => s.setThemePreference);
   const { userId, email } = useAuthSession();
+  const { width: windowWidth } = useWindowDimensions();
   const [open, setOpen] = useState(false);
+  // Dónde cae el menú, medido en la ventana (no relativo a un ancestro) —
+  // se calcula al abrir y se pinta dentro de un `Modal`, que en web se
+  // porta fuera de cualquier contenedor (spec: "cuando lo seleccionas en
+  // otra parte que no es el inicio, este queda por detrás de las fichas
+  // de abajo"). Algunas pantallas (ej. Movimientos) usan FlatList, que
+  // arma su propio contexto de apilamiento por dentro — ningún zIndex de
+  // un ancestro le gana a eso de forma confiable, así que en vez de subir
+  // números el menú se saca por completo de ese árbol.
+  const [anchorRect, setAnchorRect] = useState<{ top: number; right: number } | null>(null);
+  const anchorRef = useRef<View>(null);
   const anim = useRef(new Animated.Value(0)).current;
 
   const initial = (profile.name?.trim()?.[0] ?? email?.trim()?.[0] ?? '?').toUpperCase();
@@ -37,10 +48,15 @@ export function AccountDropdown() {
   const avatarColor = profile.avatarColor ?? colors.accentFrom;
 
   const openMenu = () => {
-    setOpen(true);
-    anim.setValue(0);
-    Animated.timing(anim, { toValue: 1, duration: 140, useNativeDriver: false }).start();
+    anchorRef.current?.measureInWindow((x, y, width, height) => {
+      setAnchorRect({ top: y + height + 6, right: Math.max(spacing.md, windowWidth - (x + width)) });
+      setOpen(true);
+      anim.setValue(0);
+      Animated.timing(anim, { toValue: 1, duration: 140, useNativeDriver: false }).start();
+    });
   };
+
+  const closeMenu = () => setOpen(false);
 
   const go = (path: Parameters<typeof router.push>[0]) => {
     setOpen(false);
@@ -65,7 +81,7 @@ export function AccountDropdown() {
   ];
 
   return (
-    <View style={styles.anchor}>
+    <View ref={anchorRef} style={styles.anchor}>
       <Pressable
         accessibilityLabel="Cuenta"
         accessibilityRole="button"
@@ -75,13 +91,15 @@ export function AccountDropdown() {
         <Text style={styles.avatarInitial}>{initial}</Text>
       </Pressable>
 
-      {open && (
-        <>
-          <Pressable accessibilityLabel="Cerrar menú de cuenta" onPress={() => setOpen(false)} style={styles.backdrop} />
+      <Modal visible={open} transparent animationType="none" onRequestClose={closeMenu}>
+        <Pressable accessibilityLabel="Cerrar menú de cuenta" onPress={closeMenu} style={StyleSheet.absoluteFill} />
+        {anchorRect && (
           <Animated.View
             style={[
               styles.panel,
               {
+                top: anchorRect.top,
+                right: anchorRect.right,
                 opacity: anim,
                 transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
                 backgroundColor: colors.surfaceSolid,
@@ -153,8 +171,8 @@ export function AccountDropdown() {
               </Pressable>
             ) : null}
           </Animated.View>
-        </>
-      )}
+        )}
+      </Modal>
     </View>
   );
 }
@@ -172,23 +190,14 @@ function MiniSwitch({ value }: { value: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  anchor: { position: 'relative', zIndex: 20 },
+  anchor: { position: 'relative' },
   avatarBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   avatarBig: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { color: '#FFFFFF', fontWeight: '800', fontSize: 16 },
-  // Trampa "fuera de aquí cierra" a propósito enorme: este dropdown vive
-  // dentro de un ScrollView, así que un absoluteFill normal solo cubriría
-  // el pequeño renglón del encabezado, no la pantalla completa — un
-  // rectángulo invisible bien grande sí alcanza a cubrir cualquier tamaño
-  // de pantalla real.
-  backdrop: { position: 'absolute', top: -800, left: -800, width: 1800, height: 1800, zIndex: 40 },
   panel: {
     position: 'absolute',
-    top: 48,
-    right: 0,
     width: 260,
     overflow: 'hidden',
-    zIndex: 50,
   },
   header: { flexDirection: 'row', alignItems: 'center' },
   divider: { height: StyleSheet.hairlineWidth },

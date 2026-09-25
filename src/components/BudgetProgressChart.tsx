@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { formatCurrency } from '@/utils/format';
+import { compactAmount, formatCurrency } from '@/utils/format';
 import type { Currency } from '@/data/types';
 
 export interface BudgetProgressItem {
@@ -98,18 +98,18 @@ function ThermometerBar({ item, maxBudgeted }: { item: BudgetProgressItem; maxBu
   );
 }
 
-// Como máximo 4 barras a la vista (spec: "que no se sobrecargue demasiado
-// el gráfico") — las 3 de mayor peso (presupuestado o gastado, lo que sea
-// más grande) y una última "Otros" con la suma del resto, ordenadas de
-// mayor a menor.
-const MAX_BARS = 4;
-
-function capItems(items: BudgetProgressItem[]): BudgetProgressItem[] {
-  if (items.length <= MAX_BARS) return items;
+// Recorta a como máximo `maxBars` barras a la vista (spec: "que no se
+// sobrecargue demasiado el gráfico") — las de mayor peso (presupuestado o
+// gastado, lo que sea más grande) y una última "Otros" con la suma del
+// resto, ordenadas de mayor a menor. El tope varía según el tamaño de
+// pantalla (spec: "en pantallas grandes puede mostrar hasta 7... en
+// móviles solo 3").
+function capItems(items: BudgetProgressItem[], maxBars: number): BudgetProgressItem[] {
+  if (items.length <= maxBars) return items;
   const weight = (i: BudgetProgressItem) => Math.max(i.budgeted, i.actual);
   const sorted = [...items].sort((a, b) => weight(b) - weight(a));
-  const top = sorted.slice(0, MAX_BARS - 1);
-  const rest = sorted.slice(MAX_BARS - 1);
+  const top = sorted.slice(0, maxBars - 1);
+  const rest = sorted.slice(maxBars - 1);
   const otros: BudgetProgressItem = {
     id: 'otros',
     label: 'Otros',
@@ -119,12 +119,41 @@ function capItems(items: BudgetProgressItem[]): BudgetProgressItem[] {
   return [...top, otros];
 }
 
+// Regla del eje Y: 3 líneas guía con su valor, en trazos suaves — mismo
+// lenguaje que ya usan Sparkline/BarTrend (spec: "líneas de los ejes x y
+// y... igual en trazos suaves"). El eje X ya lo cubre la etiqueta de cada
+// barra (nombre de categoría), así que aquí solo falta la escala.
+function YAxisRuler({ maxBudgeted }: { maxBudgeted: number }) {
+  const { colors, typography } = useTheme();
+  const ticks = [maxBudgeted, maxBudgeted / 2, 0];
+  return (
+    <View style={[styles.yAxis, { height: CHART_HEIGHT }]}>
+      {ticks.map((v, i) => (
+        <View key={i} style={styles.yAxisTick}>
+          <Text style={[typography.micro, { color: colors.textTertiary }]} numberOfLines={1}>
+            {compactAmount(v)}
+          </Text>
+          <View style={[styles.yAxisLine, { backgroundColor: colors.divider }]} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 // Versión compacta (Inicio, por grupo) o detallada (Presupuesto, por
 // categoría) de la misma gráfica — con scroll horizontal para cuando hay
 // más barras de las que caben.
-export function BudgetProgressChart({ items, currency }: { items: BudgetProgressItem[]; currency: Currency }) {
+export function BudgetProgressChart({
+  items,
+  currency,
+  maxBars = 4,
+}: {
+  items: BudgetProgressItem[];
+  currency: Currency;
+  maxBars?: number;
+}) {
   const { colors, typography, spacing } = useTheme();
-  const displayItems = capItems(items);
+  const displayItems = capItems(items, maxBars);
   const maxBudgeted = Math.max(1, ...displayItems.map((i) => Math.max(i.budgeted, i.actual)));
   // La leyenda de totales siempre refleja TODO (sin recortar) — solo las
   // barras individuales se agrupan en "Otros".
@@ -147,11 +176,14 @@ export function BudgetProgressChart({ items, currency }: { items: BudgetProgress
           <Text style={[typography.micro, { color: colors.textTertiary }]}>Gastado {formatCurrency(totalActual, currency)}</Text>
         </View>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.barsRow}>
-        {displayItems.map((item) => (
-          <ThermometerBar key={item.id} item={item} maxBudgeted={maxBudgeted} />
-        ))}
-      </ScrollView>
+      <View style={styles.chartRow}>
+        <YAxisRuler maxBudgeted={maxBudgeted} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.barsRow}>
+          {displayItems.map((item) => (
+            <ThermometerBar key={item.id} item={item} maxBudgeted={maxBudgeted} />
+          ))}
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -160,6 +192,10 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', gap: 14 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
+  chartRow: { flexDirection: 'row' },
+  yAxis: { width: 34, justifyContent: 'space-between', marginRight: 4, paddingBottom: 20 },
+  yAxisTick: { flexDirection: 'row', alignItems: 'center' },
+  yAxisLine: { flex: 1, height: StyleSheet.hairlineWidth, marginLeft: 3, opacity: 0.6 },
   barsRow: { flexDirection: 'row', gap: GAP, paddingVertical: 2 },
   barSlot: { width: BAR_WIDTH + 24, alignItems: 'center' },
 });
