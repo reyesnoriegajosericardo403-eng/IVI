@@ -21,11 +21,15 @@ export function ChartOptionsDropdown({
   onChangeChartType,
   period,
   onChangePeriod,
+  compact = false,
 }: {
   chartType: ChartKind;
   onChangeChartType: (kind: ChartKind) => void;
   period: ChartPeriod;
   onChangePeriod: (period: ChartPeriod) => void;
+  // Ficha miniatura (ej. la de patrimonio en Inicio, 128px de ancho): solo
+  // el ícono, sin el texto del periodo, para que quepa sin apretarse.
+  compact?: boolean;
 }) {
   const { colors, typography, radius, surface } = useTheme();
   const [open, setOpen] = useState(false);
@@ -42,9 +46,11 @@ export function ChartOptionsDropdown({
         ]}
       >
         <Ionicons name={chartType === 'line' ? 'trending-up-outline' : 'bar-chart-outline'} size={13} color={colors.textSecondary} />
-        <Text style={[typography.micro, { color: colors.textSecondary, marginLeft: 4, fontWeight: '600' }]}>
-          {PERIOD_LABELS[period]}
-        </Text>
+        {!compact && (
+          <Text style={[typography.micro, { color: colors.textSecondary, marginLeft: 4, fontWeight: '600' }]}>
+            {PERIOD_LABELS[period]}
+          </Text>
+        )}
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} style={{ marginLeft: 2 }} />
       </Pressable>
 
@@ -118,7 +124,12 @@ export function ChartOptionsDropdown({
 }
 
 const styles = StyleSheet.create({
-  anchor: { position: 'relative' },
+  // zIndex explícito: este control vive dentro de tarjetas de vidrio que
+  // a su vez tienen hermanas MÁS ABAJO en el mismo ScrollView con su
+  // propio blur (su propio contexto de apilamiento) — sin esto, el menú
+  // desplegado puede acabar detrás de esas fichas (mismo bug ya resuelto
+  // antes en AccountDropdown).
+  anchor: { position: 'relative', zIndex: 20 },
   trigger: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5 },
   backdrop: { position: 'absolute', top: -800, left: -800, width: 1800, height: 1800, zIndex: 40 },
   panel: { position: 'absolute', top: 32, right: 0, width: 200, padding: 12, overflow: 'hidden', zIndex: 50 },

@@ -9,52 +9,58 @@ import { BarTrend } from './BarTrend';
 import { ChartOptionsDropdown, type ChartKind, type ChartPeriod } from './ChartOptionsDropdown';
 import { Sparkline } from './Sparkline';
 
-// Gráfica de patrimonio neto con su propio selector de tipo (línea/barras)
-// y temporalidad (día/semana/mes) — spec: "poder cambiar de gráfica de
-// línea a una gráfica de barras... por semana, del día o del mes". Se usa
-// tanto en la ficha chica de Inicio como en la de Patrimonio.
-export function NetWorthTrendChart({
+// Activos vs. pasivos en el tiempo, con el mismo selector de tipo/periodo
+// que el resto de las gráficas de tendencia — spec: "no aplicaste la
+// opción de cambiar de tipo de gráfica en todas las gráficas de la app".
+// Sustituye a DualLineChart (línea recta, sin ejes ni forma de cambiar
+// periodo).
+export function AssetsLiabilitiesTrendChart({
   history,
-  color,
-  width = 280,
-  height = 64,
-  compact = false,
+  colorAssets,
+  colorLiabilities,
+  width = 300,
+  height = 100,
 }: {
   history: NetWorthSnapshot[];
-  color: string;
+  colorAssets: string;
+  colorLiabilities: string;
   width?: number;
   height?: number;
-  compact?: boolean;
 }) {
   const { colors, typography } = useTheme();
   const [chartType, setChartType] = useState<ChartKind>('line');
   const [period, setPeriod] = useState<ChartPeriod>('day');
 
-  const maxPoints = period === 'day' ? (compact ? 10 : 14) : period === 'week' ? 8 : 6;
+  const maxPoints = period === 'day' ? 14 : period === 'week' ? 8 : 6;
   const bucketed = useMemo(() => bucketNetWorthHistory(history, period, maxPoints), [history, period, maxPoints]);
-  const data = bucketed.map((b) => b.snapshot.netWorth);
+  const assets = bucketed.map((b) => b.snapshot.assets);
+  const liabilities = bucketed.map((b) => b.snapshot.liabilities);
   const labels = bucketed.map((b) => b.label);
 
-  // El selector de tipo/periodo se queda SIEMPRE visible, incluso sin
-  // suficientes datos para dibujar — antes, elegir "mes" con poco
-  // historial escondía la gráfica Y el propio selector, dejando a quien
-  // lo eligió sin forma de regresar (spec: "cuando aplico la temporalidad
-  // a mes desaparece el gráfico y también la posibilidad de cambiar").
   return (
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <ChartOptionsDropdown chartType={chartType} onChangeChartType={setChartType} period={period} onChangePeriod={setPeriod} compact={compact} />
+        <ChartOptionsDropdown chartType={chartType} onChangeChartType={setChartType} period={period} onChangePeriod={setPeriod} />
       </View>
-      {data.length < 2 ? (
+      {assets.length < 2 ? (
         <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={[typography.micro, { color: colors.textTertiary, textAlign: 'center' }]}>
             Aún no hay suficientes datos para ver esto por {period === 'week' ? 'semana' : period === 'month' ? 'mes' : 'día'}.
           </Text>
         </View>
       ) : chartType === 'line' ? (
-        <Sparkline data={data} labels={labels} color={color} width={width} height={height} showAxes={!compact} />
+        <Sparkline
+          data={assets}
+          seriesB={liabilities}
+          colorB={colorLiabilities}
+          labels={labels}
+          color={colorAssets}
+          width={width}
+          height={height}
+          filled={false}
+        />
       ) : (
-        <BarTrend data={data} labels={labels} color={color} width={width} height={height} showAxes={!compact} />
+        <BarTrend data={assets} seriesB={liabilities} colorB={colorLiabilities} labels={labels} color={colorAssets} width={width} height={height} />
       )}
     </View>
   );

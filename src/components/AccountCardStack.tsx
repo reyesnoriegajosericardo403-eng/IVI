@@ -36,6 +36,7 @@ export interface AccountStackItem {
 function StackedCard({
   item,
   isFront,
+  dragX,
   dragY,
   onTap,
   onDragCycle,
@@ -46,6 +47,7 @@ function StackedCard({
 }: {
   item: AccountStackItem;
   isFront: boolean;
+  dragX: Animated.Value;
   dragY: Animated.Value;
   onTap: () => void;
   onDragCycle: () => void;
@@ -57,29 +59,51 @@ function StackedCard({
   const { radius } = useTheme();
   const latest = useRef({ isFront, onTap, onDragCycle });
   latest.current = { isFront, onTap, onDragCycle };
+  // Qué tan "horizontal" se siente el arrastre en curso — se usa para
+  // decidir si esta tarjeta se defiende de que alguien más (ej. el
+  // deslizamiento entre TABs) le quite el gesto a medio camino (spec: "hay
+  // fichas las cuales tengo que deslizar de izquierda a derecha y la app
+  // lo confunde como si me quisiera desplazar dentro de la app").
+  const gestureAxis = useRef<'none' | 'horizontal' | 'vertical'>('none');
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > TAP_THRESHOLD || Math.abs(gesture.dx) > TAP_THRESHOLD,
       onPanResponderMove: (_, gesture) => {
-        if (latest.current.isFront) dragY.setValue(gesture.dy);
+        if (!latest.current.isFront) return;
+        gestureAxis.current = Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.2 ? 'horizontal' : 'vertical';
+        dragX.setValue(gesture.dx);
+        dragY.setValue(gesture.dy);
       },
+      // Mientras el arrastre en curso sea claramente horizontal, esta
+      // tarjeta NUNCA cede el gesto — así un deslizamiento entre TABs que
+      // pase por encima no se lo puede robar a medias. Un arrastre
+      // vertical (o sin definir aún) sí puede cederse, para no romper el
+      // scroll normal de la pantalla.
+      onPanResponderTerminationRequest: () => gestureAxis.current !== 'horizontal',
       onPanResponderRelease: (_, gesture) => {
         if (latest.current.isFront) {
+          Animated.spring(dragX, { toValue: 0, useNativeDriver: false, friction: 9 }).start();
           Animated.spring(dragY, { toValue: 0, useNativeDriver: false, friction: 9 }).start();
         }
         const dragged = Math.abs(gesture.dy) > TAP_THRESHOLD || Math.abs(gesture.dx) > TAP_THRESHOLD;
-        if (latest.current.isFront && dragged && Math.abs(gesture.dy) > DRAG_CYCLE_THRESHOLD) {
+        const cyclePassed = Math.abs(gesture.dy) > DRAG_CYCLE_THRESHOLD || Math.abs(gesture.dx) > DRAG_CYCLE_THRESHOLD;
+        if (latest.current.isFront && dragged && cyclePassed) {
           latest.current.onDragCycle();
         } else if (!dragged) {
           latest.current.onTap();
         }
         // Un arrastre que no llegó al umbral simplemente se queda —
-        // dragY ya regresó a 0 arriba.
+        // dragX/dragY ya regresaron a 0 arriba.
+        gestureAxis.current = 'none';
       },
       onPanResponderTerminate: () => {
-        if (latest.current.isFront) Animated.spring(dragY, { toValue: 0, useNativeDriver: false }).start();
+        if (latest.current.isFront) {
+          Animated.spring(dragX, { toValue: 0, useNativeDriver: false }).start();
+          Animated.spring(dragY, { toValue: 0, useNativeDriver: false }).start();
+        }
+        gestureAxis.current = 'none';
       },
     })
   ).current;
@@ -105,9 +129,10 @@ function StackedCard({
 // fichas planas de lista (spec: "las quiero ver y mover como tarjetas...
 // que estas se sobrepongan la una sobre otra para que yo solo las
 // deslice y pueda agarrar la que quiera"). Dos formas de "agarrar"
-// cualquiera: tocar una que asoma atrás la trae al frente; arrastrar
-// verticalmente la de enfrente la manda hasta atrás, revelando la
-// siguiente.
+// cualquiera: tocar una que asoma atrás la trae al frente; arrastrar la
+// de enfrente (vertical U horizontal, lo que se sienta más natural) la
+// manda hasta atrás, revelando la siguiente — spec: "hay fichas las
+// cuales tengo que deslizar de izquierda a derecha".
 export function AccountCardStack({
   items,
   onFrontPress,
@@ -130,6 +155,7 @@ export function AccountCardStack({
   const peek = compact ? PEEK_COMPACT : PEEK;
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
   const positions = useRef<Map<string, Animated.Value>>(new Map());
+  const dragX = useRef(new Animated.Value(0)).current;
   const dragY = useRef(new Animated.Value(0)).current;
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const idsKey = items.map((i) => i.id).join(',');
@@ -181,12 +207,17 @@ export function AccountCardStack({
         if (!item || !anim) return null;
         const isFront = id === frontId;
         const translateY = Animated.add(Animated.multiply(anim, peek), isFront ? dragY : 0);
+        const translateX = isFront ? dragX : 0;
 
         return (
-          <Animated.View key={id} style={[styles.slotShadow, { transform: [{ translateY }], zIndex: order.indexOf(id) }]}>
+          <Animated.View
+            key={id}
+            style={[styles.slotShadow, { transform: [{ translateY }, { translateX }], zIndex: order.indexOf(id) }]}
+          >
             <StackedCard
               item={item}
               isFront={isFront}
+              dragX={dragX}
               dragY={dragY}
               accessibilityLabel={isFront ? `${frontLabelPrefix} ${item.name}` : `Traer ${item.name} al frente`}
               onTap={() => (isFront ? onFrontPress?.(id) : bringToFront(id))}

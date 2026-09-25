@@ -52,6 +52,12 @@ type Scope = 'month' | 'week';
 
 const GROUP_LABELS: Record<BudgetGroupId, string> = { necesidades: 'Necesidades', deseos: 'Deseos', ahorro: 'Ahorro' };
 
+// Azul oscuro fijo para la ficha de "Tu presupuesto" — spec: "cámbiale el
+// tono de azul a uno más obscuro". Deliberadamente NO usa colors.accentFrom
+// (que es morado): esta ficha debe reconocerse por su propio color, igual
+// en claro y oscuro.
+const BUDGET_CARD_COLOR = '#1D4ED8';
+
 export default function Dashboard() {
   const { colors, typography, spacing, radius, surface } = useTheme();
   const maxWidth = useContentMaxWidth();
@@ -155,19 +161,30 @@ export default function Dashboard() {
       deseos: { budgeted: 0, actual: 0 },
       ahorro: { budgeted: 0, actual: 0 },
     };
+    const covered = new Set<string>();
     monthlyBudgetLines.forEach((line) => {
       if (findIncomeConcept(line.categoryId)) return;
       const parsed = parseSubBudgetId(line.categoryId);
       const conceptId = parsed ? parsed.conceptId : line.categoryId;
+      covered.add(conceptId);
       const group = findBudgetConcept(conceptId)?.group ?? 'necesidades';
       totals[group].budgeted += line.budgeted;
       totals[group].actual += line.actual;
     });
+    // Gastos reales en categorías sin presupuesto también suman al
+    // "gastado" de su grupo — spec: "los gastos que no se presupuestaron
+    // pero también se incurrieron en el periodo también aparezcan".
+    Object.entries(spendByConcept(transactions, new Date(), 'month')).forEach(([conceptId, actual]) => {
+      if (!actual || covered.has(conceptId) || findIncomeConcept(conceptId)) return;
+      const group = findBudgetConcept(conceptId)?.group;
+      if (!group) return;
+      totals[group].actual += actual;
+    });
     return (['necesidades', 'deseos', 'ahorro'] as BudgetGroupId[])
-      .filter((g) => totals[g].budgeted > 0)
+      .filter((g) => totals[g].budgeted > 0 || totals[g].actual > 0)
       .map((g) => ({ id: g, label: GROUP_LABELS[g], budgeted: totals[g].budgeted, actual: totals[g].actual }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthlyBudgetLines, hasBudget]);
+  }, [monthlyBudgetLines, hasBudget, transactions]);
 
   // ---- Insights financieros (nudging empático) — mismo lugar que el
   // banner de presupuesto, pero un aviso de comportamiento real le gana
@@ -338,10 +355,11 @@ export default function Dashboard() {
           </View>
         ))}
 
-        {/* ---------- Ficha de anuncios: insight financiero si aplica, si no
-            el recordatorio de presupuesto — spec: "el anuncio... lo pongas
-            arriba de la ficha de '¿En qué gastaste tu dinero hoy?'". ---------- */}
-        {topInsight ? (
+        {/* ---------- Ficha de anuncios: SOLO notificaciones/avisos reales
+            (spec: "solo quería que salieran las notificaciones o
+            anuncios"). El presupuesto ya no vive aquí — tiene su propia
+            ficha más abajo. ---------- */}
+        {topInsight && (
           <Pressable
             accessibilityLabel={topInsight.title}
             onPress={() => router.push('/presupuesto')}
@@ -361,54 +379,6 @@ export default function Dashboard() {
               </Text>
             </View>
           </Pressable>
-        ) : (
-          <View
-            style={[
-              styles.budgetInviteBanner,
-              { backgroundColor: withAlpha(colors.accentFrom, 0.86), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
-              surfaceShadow(surface),
-              surfaceBlur(surface),
-            ]}
-          >
-            {surface.blur > 0 && <GlassSheen radius={radius.lg} />}
-            {/* Eyebrow: "PRESUPUESTO" debe ser lo primero y más reconocible
-                que se lea — antes quedaba enterrado dentro de la oración
-                (spec: "la palabra presupuesto se debe poder ver y
-                reconocer"). */}
-            <View style={styles.budgetBannerEyebrowRow}>
-              <View style={[styles.budgetBannerIconBadge, { borderRadius: 14 }]}>
-                <Ionicons name="clipboard-outline" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.budgetBannerEyebrowText}>PRESUPUESTO</Text>
-            </View>
-            <Text style={[typography.body, { color: '#FFFFFF', fontWeight: '600', marginTop: spacing.sm }]}>
-              {budgetBanner.title}
-            </Text>
-            {/* El CTA se ve como un botón real (píldora blanca sólida), no
-                solo texto con flecha — spec: "aún más visible". Se queda
-                ARRIBA de la gráfica nueva para que nunca se pierda de
-                vista (spec: "debe quedar por arriba y mantenerse
-                visible"). */}
-            <Pressable
-              accessibilityLabel={budgetBanner.cta}
-              onPress={() => router.push('/presupuesto')}
-              style={[styles.budgetBannerCta, { borderRadius: radius.pill, marginTop: spacing.md }]}
-            >
-              <Text style={{ color: colors.accentFrom, fontWeight: '700' }}>{budgetBanner.cta}</Text>
-              <Ionicons name="arrow-forward" size={14} color={colors.accentFrom} style={{ marginLeft: 6 }} />
-            </Pressable>
-
-            {/* Distribución del presupuesto por grupo — presupuestado en
-                azul, gastado real relleno de abajo hacia arriba en rojo
-                (spec: "ver de manera jerárquica cómo están sus gastos
-                respecto a sus presupuestos"). Solo si ya hay presupuesto
-                que mostrar. */}
-            {budgetProgressItems.length > 0 && (
-              <View style={{ marginTop: spacing.lg }}>
-                <BudgetProgressChart items={budgetProgressItems} currency={profile.primaryCurrency} />
-              </View>
-            )}
-          </View>
         )}
 
         <View style={[styles.tipCard, { backgroundColor: colors.accentSoft, borderRadius: radius.md }]}>
@@ -466,6 +436,57 @@ export default function Dashboard() {
             <Text style={[typography.caption, { color: colors.textTertiary }]}>Aún no registras gastos este mes.</Text>
           )}
         </GlassCard>
+
+        {/* ---------- Tu presupuesto: el nombre NUNCA desaparece (spec) —
+            debajo de "¿En qué gastaste tu dinero hoy?" y arriba de "Tu
+            resumen", con la gráfica "Cómo van tus gastos" adentro. Ya no
+            comparte espacio con los anuncios de arriba. ---------- */}
+        <View
+          style={[
+            styles.budgetInviteBanner,
+            { backgroundColor: withAlpha(BUDGET_CARD_COLOR, 0.86), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+            surfaceShadow(surface),
+            surfaceBlur(surface),
+          ]}
+        >
+          {surface.blur > 0 && <GlassSheen radius={radius.lg} />}
+          <View style={styles.budgetBannerEyebrowRow}>
+            <View style={[styles.budgetBannerIconBadge, { borderRadius: 14 }]}>
+              <Ionicons name="clipboard-outline" size={18} color="#FFFFFF" />
+            </View>
+            <Text style={styles.budgetBannerEyebrowText}>TU PRESUPUESTO</Text>
+          </View>
+          <Text style={[typography.body, { color: '#FFFFFF', fontWeight: '600', marginTop: spacing.sm }]}>
+            {hasBudget ? 'Así vas este mes, por grupo.' : budgetBanner.title}
+          </Text>
+          {/* El CTA se queda ARRIBA de la gráfica, siempre visible (spec:
+              "debe quedar por arriba y debe mantenerse visible para que
+              no se pierda"). */}
+          <Pressable
+            accessibilityLabel={hasBudget ? 'Modificar presupuesto' : budgetBanner.cta}
+            onPress={() => router.push('/presupuesto')}
+            style={[styles.budgetBannerCta, { borderRadius: radius.pill, marginTop: spacing.md }]}
+          >
+            <Text style={{ color: BUDGET_CARD_COLOR, fontWeight: '700' }}>
+              {hasBudget ? 'Modificar presupuesto' : budgetBanner.cta}
+            </Text>
+            <Ionicons name="arrow-forward" size={14} color={BUDGET_CARD_COLOR} style={{ marginLeft: 6 }} />
+          </Pressable>
+
+          {/* Distribución del presupuesto por grupo — presupuestado en
+              azul, gastado real relleno de abajo hacia arriba en rojo,
+              incluyendo lo gastado fuera de presupuesto si es
+              representativo (spec: "ver de manera jerárquica cómo están
+              sus gastos respecto a sus presupuestos"). */}
+          {budgetProgressItems.length > 0 && (
+            <View style={{ marginTop: spacing.lg }}>
+              <Text style={[typography.caption, { color: 'rgba(255,255,255,0.85)', marginBottom: spacing.sm }]}>
+                Cómo van tus gastos — presupuestado contra lo que ya llevas gastado este mes.
+              </Text>
+              <BudgetProgressChart items={budgetProgressItems} currency={profile.primaryCurrency} />
+            </View>
+          )}
+        </View>
 
         {/* ---------- Tu resumen ---------- */}
         <View style={{ gap: spacing.sm }}>
@@ -643,7 +664,10 @@ const styles = StyleSheet.create({
   tipCard: { flexDirection: 'row', alignItems: 'flex-start', padding: 12, marginTop: -8 },
   summaryRow: { flexDirection: 'row', gap: 10 },
   segmentedBar: { flexDirection: 'row', height: 10, overflow: 'hidden' },
-  halfRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  // zIndex explícito: el dropdown de la gráfica de patrimonio vive aquí y
+  // se despliega hacia abajo, sobre las fichas que le siguen en el
+  // ScrollView (mismo bug ya resuelto en AccountDropdown).
+  halfRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', position: 'relative', zIndex: 20 },
   netWorthMiniCard: { padding: 14, gap: 2 },
   compareCard: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   reminderRow: { flexDirection: 'row', alignItems: 'center' },

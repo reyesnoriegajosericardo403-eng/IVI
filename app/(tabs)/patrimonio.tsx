@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 
 import { AccountCardStack, type AccountStackItem } from '@/components/AccountCardStack';
 import { AccountForm } from '@/components/AccountForm';
-import { DualLineChart } from '@/components/DualLineChart';
+import { AssetsLiabilitiesTrendChart } from '@/components/AssetsLiabilitiesTrendChart';
 import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { HealthGradientBar } from '@/components/HealthGradientBar';
@@ -79,8 +79,6 @@ export default function Patrimonio() {
   const updateLiability = useAppStore((s) => s.updateLiability);
 
   const netWorth = computeNetWorth(accounts, investments, liabilities, profile.primaryCurrency, liveQuotes);
-  const assetsHistory = netWorthHistory.map((h) => h.assets);
-  const liabilitiesHistory = netWorthHistory.map((h) => h.liabilities);
 
   const trends = [
     { label: '1 día', value: getNetWorthTrend(netWorthHistory, 1) },
@@ -117,7 +115,7 @@ export default function Patrimonio() {
       >
         <ScreenHeader title="Patrimonio" subtitle="Tu panorama financiero" />
 
-        <GlassCard style={{ gap: spacing.sm }}>
+        <GlassCard style={{ gap: spacing.sm, zIndex: 20 }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>Resumen de hoy</Text>
           <View style={styles.netWorthHeaderRow}>
             <View style={{ flex: 1 }}>
@@ -138,7 +136,7 @@ export default function Patrimonio() {
             )}
           </View>
           <View style={{ marginTop: spacing.xs }}>
-            <NetWorthTrendChart history={netWorthHistory} color={colors.accentFrom} width={maxWidth ? 380 : 300} height={70} />
+            <NetWorthTrendChart history={netWorthHistory} color={colors.accentFrom} width={maxWidth ? 380 : 300} height={90} />
           </View>
         </GlassCard>
 
@@ -198,8 +196,8 @@ export default function Patrimonio() {
           </View>
         </GlassCard>
 
-        {assetsHistory.length >= 2 && (
-          <GlassCard style={{ gap: spacing.sm }}>
+        {netWorthHistory.length >= 2 && (
+          <GlassCard style={{ gap: spacing.sm, zIndex: 20 }}>
             <View style={styles.rowBetween}>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>Activos y pasivos en el tiempo</Text>
               <View style={styles.rowGap}>
@@ -213,13 +211,12 @@ export default function Patrimonio() {
                 </View>
               </View>
             </View>
-            <DualLineChart
-              seriesA={assetsHistory}
-              seriesB={liabilitiesHistory}
-              colorA={colors.success}
-              colorB={colors.danger}
-              width={300}
-              height={100}
+            <AssetsLiabilitiesTrendChart
+              history={netWorthHistory}
+              colorAssets={colors.success}
+              colorLiabilities={colors.danger}
+              width={maxWidth ? 380 : 300}
+              height={110}
             />
           </GlassCard>
         )}

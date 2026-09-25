@@ -34,6 +34,7 @@ export function AccountDropdown() {
 
   const initial = (profile.name?.trim()?.[0] ?? email?.trim()?.[0] ?? '?').toUpperCase();
   const isDark = profile.themePreference === 'dark' || (profile.themePreference === 'system' && scheme === 'dark');
+  const avatarColor = profile.avatarColor ?? colors.accentFrom;
 
   const openMenu = () => {
     setOpen(true);
@@ -53,6 +54,7 @@ export function AccountDropdown() {
   };
 
   const items: MenuItem[] = [
+    { key: 'profile', label: 'Perfil', icon: 'person-outline', onPress: () => go('/perfil') },
     { key: 'settings', label: 'Ajustes', icon: 'settings-outline', onPress: () => go('/settings') },
     // Mismo nombre que ya usa el menú "+" del TAB para esta misma pantalla
     // (el chat) — "Copiloto IA" queda para la sección de Ajustes que
@@ -68,7 +70,7 @@ export function AccountDropdown() {
         accessibilityLabel="Cuenta"
         accessibilityRole="button"
         onPress={openMenu}
-        style={[styles.avatarBtn, { backgroundColor: colors.accentFrom, borderRadius: 21 }]}
+        style={[styles.avatarBtn, { backgroundColor: avatarColor, borderRadius: 21 }]}
       >
         <Text style={styles.avatarInitial}>{initial}</Text>
       </Pressable>
@@ -94,7 +96,7 @@ export function AccountDropdown() {
             {surface.blur > 0 && <GlassSheen radius={radius.lg} />}
 
             <View style={[styles.header, { padding: spacing.md }]}>
-              <View style={[styles.avatarBig, { backgroundColor: colors.accentFrom, borderRadius: 22 }]}>
+              <View style={[styles.avatarBig, { backgroundColor: avatarColor, borderRadius: 22 }]}>
                 <Text style={styles.avatarInitial}>{initial}</Text>
               </View>
               <View style={{ flex: 1, marginLeft: spacing.sm }}>

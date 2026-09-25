@@ -21,6 +21,16 @@ export function formatCurrency(amount: number, currency: Currency = 'MXN', maxim
   return `${base} ${currency}`;
 }
 
+// Números cortos para etiquetas de eje en gráficas (ej. "$1.2k", "-$3.4M")
+// — un monto completo con formatCurrency no cabe junto a una línea guía.
+export function compactAmount(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(abs >= 10_000 ? 0 : 1)}k`;
+  return `${sign}$${Math.round(abs)}`;
+}
+
 export function formatPercent(value: number, digits = 1): string {
   const sign = value > 0 ? '+' : '';
   return `${sign}${value.toFixed(digits)}%`;

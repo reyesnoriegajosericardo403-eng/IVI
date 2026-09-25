@@ -104,8 +104,15 @@ export default function Onboarding() {
 
   const handleProfileNext = () => {
     // Se guarda ya (sin marcar onboardingComplete todavía) para que la
-    // moneda elegida se refleje de una vez en los pasos que siguen.
-    updateProfileDraft({ name: name.trim() || 'Tú', primaryCurrency: currency });
+    // moneda elegida se refleje de una vez en los pasos que siguen. Edad
+    // y sexo también quedan en el perfil (no solo en la respuesta de la
+    // encuesta) para poder editarlos después desde Perfil.
+    updateProfileDraft({
+      name: name.trim() || 'Tú',
+      primaryCurrency: currency,
+      age: age ?? undefined,
+      sex: sex || undefined,
+    });
     setSurveyAnswers({ age: age !== null ? String(age) : '', sex });
     setStep('survey');
   };

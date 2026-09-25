@@ -11,7 +11,7 @@ import { BudgetTemplateList } from '@/components/BudgetTemplateList';
 import { BudgetTemplateSheet } from '@/components/BudgetTemplateSheet';
 import { GlassCard } from '@/components/GlassCard';
 import { MonthBudgetBreakdown } from '@/components/MonthBudgetBreakdown';
-import { findIncomeConcept } from '@/data/budgetConcepts';
+import { findBudgetConcept, findIncomeConcept, parseSubBudgetId } from '@/data/budgetConcepts';
 import type { BudgetTemplate, BudgetTemplateKind } from '@/data/types';
 import {
   selectActiveBudgetAssignments,
@@ -110,9 +110,32 @@ export default function Presupuesto() {
       transactions,
       thresholds: profile.budgetThresholds,
     });
-    return resolved.lines
+    const budgetedItems = resolved.lines
       .filter((l) => !findIncomeConcept(l.categoryId) && l.budgeted > 0)
       .map((l) => ({ id: l.budgetId, label: l.categoryName, budgeted: l.budgeted, actual: l.actual }));
+
+    // Conceptos que SÍ tuvieron gasto real pero que no tienen ninguna
+    // ficha de presupuesto (ni de concepto ni de subcategoría) — spec:
+    // "los gastos que no se presupuestaron pero también se incurrieron en
+    // el periodo también aparezcan en el gráfico, eso sí son muy
+    // representativos". BudgetProgressChart se encarga de recortar a las
+    // más representativas (tope de 4 + "Otros").
+    const covered = new Set<string>();
+    resolved.lines.forEach((l) => {
+      if (findIncomeConcept(l.categoryId)) return;
+      const sub = parseSubBudgetId(l.categoryId);
+      covered.add(sub ? sub.conceptId : l.categoryId);
+    });
+    const unbudgetedItems: BudgetProgressItem[] = Object.entries(resolved.conceptSpend)
+      .filter(([conceptId, actual]) => actual > 0 && !covered.has(conceptId) && !findIncomeConcept(conceptId))
+      .map(([conceptId, actual]) => ({
+        id: `sin-plan:${conceptId}`,
+        label: findBudgetConcept(conceptId)?.name ?? conceptId,
+        budgeted: 0,
+        actual,
+      }));
+
+    return [...budgetedItems, ...unbudgetedItems];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewingPeriodKey, templates, templateLines, assignments, overrides, transactions]);
 

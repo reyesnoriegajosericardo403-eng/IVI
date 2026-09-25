@@ -275,6 +275,14 @@ export interface UserProfile {
   // Último estilo PERMANENTE que tuvo puesto: a ese regresa solo si el
   // que eligió era temporal y ya caducó.
   lastPermanentVisualStyle?: string;
+  // Datos personales editables desde Perfil — el onboarding ya los pide
+  // (sexo/edad, para el tono de la encuesta) pero antes solo se
+  // guardaban sueltos en la respuesta de la encuesta, sin forma de
+  // editarlos después.
+  age?: number;
+  sex?: 'hombre' | 'mujer' | 'prefiero_no_decirlo';
+  // Color del círculo de iniciales del avatar (Account Dropdown/Perfil).
+  avatarColor?: string;
 }
 
 export interface NetWorthSnapshot extends SyncMeta {

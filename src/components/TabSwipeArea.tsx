@@ -4,13 +4,20 @@ import { PanResponder, StyleSheet, View } from 'react-native';
 
 import { SWIPE_ORDER } from './AppTabBar';
 
-// Qué tan pronto se nota que el dedo va horizontal — mismo criterio de
-// "intención" que ya usa CalendarPicker antes de reclamar un gesto propio.
-const CLAIM_THRESHOLD = 12;
+// Qué tan pronto se nota que el dedo va horizontal — más alto que el
+// umbral de una tarjeta propia (AccountCardStack usa 10px) a propósito:
+// así cualquier gesto que empiece SOBRE una tarjeta deslizable lo reclama
+// ella primero, no este contenedor (spec: "un mínimo movimiento cambia la
+// pantalla... ya no puedo elegir mis fichas").
+const CLAIM_THRESHOLD = 24;
 // Qué tan lejos tiene que llegar el dedo para que YA cuente como "cambiar
-// de sección" (además de solo notarse horizontal).
-const MIN_DISTANCE = 60;
-const HORIZONTAL_DOMINANCE = 1.5;
+// de sección" (además de solo notarse horizontal) — más alto que antes
+// para que un roce accidental nunca dispare un cambio de pantalla.
+const MIN_DISTANCE = 90;
+// Más exigente que antes: el gesto tiene que ser CLARAMENTE horizontal
+// (casi el doble de dx que de dy), no solo "un poco más" — reduce falsos
+// positivos al desplazarse en diagonal.
+const HORIZONTAL_DOMINANCE = 2;
 
 // Deslizar de lado para moverse entre secciones, sin quitar el TAB (spec:
 // "se van a conservar el Tab pero puedes preferir solo deslizar la
