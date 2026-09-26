@@ -178,7 +178,7 @@ function findWordNumberCandidates(tokens: string[]): AmountCandidate[] {
 // tanto al texto dictado como a cada palabra clave del catálogo antes de
 // buscar coincidencias (spec: "normalizar el string: lowercase, eliminar
 // acentos, puntos y comas").
-function normalize(text: string): string {
+export function normalize(text: string): string {
   return text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -281,7 +281,7 @@ const DIGIT_TOKEN_RE = /^\$?(\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)$/;
 // pesos" trae dos cantidades: la del kilo y la del precio), se prefiere el
 // que está pegado a una palabra de moneda — los demás son cantidades de
 // otra cosa (kilos, litros...), no dinero (catálogo v7, text-to-number).
-function extractAmount(text: string): number | null {
+export function extractAmount(text: string): number | null {
   const tokens = normalize(text).split(' ').filter(Boolean);
   const candidates: AmountCandidate[] = [];
 
@@ -430,7 +430,7 @@ export interface AccountAdjustment {
 // pretérito, sin acentos (ya normalizado). "cayo"/"cayeron" cubre el uso
 // coloquial "me cayeron 500 a mi Nu" (spec: catálogo v9, "verbos de
 // incremento positivo", ampliado con muchas más variantes reales).
-const ACCOUNT_INCREMENT_WORDS = new Set([
+export const ACCOUNT_INCREMENT_WORDS = new Set([
   'agregar', 'agrega', 'agregale', 'agrego', 'agregue',
   'sumar', 'suma', 'sumale', 'sumo', 'sume',
   'depositar', 'deposita', 'depositale', 'deposito', 'deposite',

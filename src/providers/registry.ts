@@ -1,9 +1,11 @@
+import { localActionAgentProvider } from './local/localActionAgent';
 import { localAIInterpreterProvider } from './local/localAIInterpreter';
 import { localCopilotProvider } from './local/localCopilotProvider';
 import { staticExchangeRateProvider } from './local/staticExchangeRateProvider';
 import { unavailableMarketDataProvider } from './local/unavailableMarketDataProvider';
 import { webSpeechProvider } from './local/webSpeechProvider';
 import type {
+  ActionAgentProvider,
   AIInterpreterProvider,
   CopilotProvider,
   ExchangeRateProvider,
@@ -18,6 +20,7 @@ import type {
 interface ProviderRegistry {
   ai: AIInterpreterProvider;
   copilot: CopilotProvider;
+  actionAgent: ActionAgentProvider;
   marketData: MarketDataProvider;
   exchangeRate: ExchangeRateProvider;
   speech: SpeechToTextProvider;
@@ -26,6 +29,7 @@ interface ProviderRegistry {
 export const providers: ProviderRegistry = {
   ai: localAIInterpreterProvider,
   copilot: localCopilotProvider,
+  actionAgent: localActionAgentProvider,
   marketData: unavailableMarketDataProvider,
   exchangeRate: staticExchangeRateProvider,
   speech: webSpeechProvider,
@@ -36,6 +40,9 @@ export function setAIInterpreterProvider(p: AIInterpreterProvider) {
 }
 export function setCopilotProvider(p: CopilotProvider) {
   providers.copilot = p;
+}
+export function setActionAgentProvider(p: ActionAgentProvider) {
+  providers.actionAgent = p;
 }
 export function setMarketDataProvider(p: MarketDataProvider) {
   providers.marketData = p;

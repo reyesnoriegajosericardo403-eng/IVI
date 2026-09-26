@@ -1,6 +1,7 @@
+import type { ResolvedAction } from '@/ai/chatTypes';
 import type { ParsedCapture } from '@/ai/localParser';
 import type { CopilotContext } from '@/ai/localCopilot';
-import type { Currency } from '@/data/types';
+import type { Currency, TemplateBudgetLine } from '@/data/types';
 
 // Contratos que cualquier proveedor externo debe cumplir. La UI y la
 // lógica de negocio SOLO conocen estas interfaces — nunca un SDK de un
@@ -16,6 +17,25 @@ export interface AIInterpreterProvider {
 export interface CopilotProvider {
   name: string;
   answerQuestion(question: string, ctx: CopilotContext): Promise<string>;
+}
+
+// Mismo contexto que el copiloto de lectura, más lo que hace falta para
+// resolver acciones sobre datos reales (src/ai/actionCatalog.ts) — la
+// plantilla de presupuesto por defecto, para poder resolver/mostrar sus
+// montos actuales.
+export interface ActionAgentContext extends CopilotContext {
+  templateBudgetLines: TemplateBudgetLine[];
+}
+
+// Chat con capacidad de proponer una acción sobre datos (spec: "modificar,
+// quitar o agregar datos... solo la parte externa y de datos, no se tiene
+// que modificar nada de código"). `action`/`summary` solo vienen cuando de
+// verdad se validó una acción contra datos reales — nunca se aplican
+// solos, quien los recibe siempre debe pedir confirmación explícita antes
+// (ver ChatActionCard.tsx).
+export interface ActionAgentProvider {
+  name: string;
+  interpretMessage(text: string, ctx: ActionAgentContext): Promise<{ reply: string; action?: ResolvedAction; summary?: string }>;
 }
 
 export interface MarketQuote {

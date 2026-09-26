@@ -2,6 +2,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import {
+  type AddAccountArgs,
+  type AddGoalArgs,
+  type AddLiabilityArgs,
+  type AddTransactionArgs,
+  type AIActionProposal,
+  type AIActionStatus,
+  type AIActionType,
+  type ChatConversation,
+  type ChatMessage,
+  type ContributeToGoalArgs,
+  type DeleteAccountArgs,
+  type DeleteBudgetLineArgs,
+  type DeleteGoalArgs,
+  type DeleteLiabilityArgs,
+  type DeleteTransactionArgs,
+  type SetBudgetLineArgs,
+  type UpdateGoalTargetArgs,
+  type UpdateLiabilityBalanceArgs,
+} from '@/ai/chatTypes';
 import { extractLearnableKeywords, type CustomCategoryMapping } from '@/ai/localParser';
 import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
 import type {
@@ -86,7 +106,7 @@ function mergeByUpdatedAt<T extends SyncMeta>(local: T[], remote: T[]): T[] {
   return Array.from(byId.values());
 }
 
-type Draft<T> = Omit<T, keyof SyncMeta>;
+export type Draft<T> = Omit<T, keyof SyncMeta>;
 
 interface AppState {
   profile: UserProfile;
@@ -218,6 +238,25 @@ interface AppState {
 
   recordNetWorthSnapshot: (draft: Draft<NetWorthSnapshot>) => void;
 
+  // ---- Chat de IA: conversaciones + acciones sobre datos ----
+  // Local-only a propósito (no `SyncMeta`, no `enqueue`) — ver Contexto en
+  // el plan de esta función: es historial de conversación, no un dato
+  // financiero que necesite sincronizarse entre dispositivos.
+  conversations: ChatConversation[];
+  chatMessages: ChatMessage[];
+  activeConversationId: string | null;
+  startConversation: () => string;
+  setActiveConversation: (id: string | null) => void;
+  addChatMessage: (msg: Omit<ChatMessage, 'id' | 'createdAt'>) => ChatMessage;
+  deleteConversation: (id: string) => void;
+  updateActionStatus: (messageId: string, status: AIActionStatus, patch?: { appliedAt?: string; error?: string }) => void;
+  // Único punto donde una acción propuesta por el chat de IA de verdad
+  // toca datos reales — re-valida que lo referenciado siga existiendo
+  // (la propuesta pudo haberse armado hace rato) y despacha a la acción
+  // hermana real correspondiente. Nunca crea lógica de negocio nueva: solo
+  // reenvía a addAccount/deleteGoal/etc., las mismas que ya usa toda la UI.
+  aiApplyAction: (action: AIActionProposal) => { ok: boolean; error?: string };
+
   clearSyncQueueEntries: (ids: string[]) => void;
   setLastSyncedAt: (iso: string) => void;
   mergeRemoteRecords: (table: SyncTable, records: unknown[]) => void;
@@ -294,6 +333,9 @@ export const useAppStore = create<AppState>()(
         cetesRates: null,
         budgetPeriods: DEFAULT_BUDGET_PERIODS,
         customCategoryMappings: {},
+        conversations: [],
+        chatMessages: [],
+        activeConversationId: null,
 
         ackBudgetPeriod: (scope, periodKey, carryOver) =>
           set((s) => ({
@@ -760,6 +802,159 @@ export const useAppStore = create<AppState>()(
             return { netWorthHistory: [...withoutToday, record].sort((a, b) => a.date.localeCompare(b.date)) };
           }),
 
+        startConversation: () => {
+          const id = generateId();
+          const now = new Date().toISOString();
+          const conversation: ChatConversation = { id, title: 'Nueva conversación', createdAt: now, updatedAt: now, lastPreview: '' };
+          set((s) => ({ conversations: [conversation, ...s.conversations], activeConversationId: id }));
+          return id;
+        },
+        setActiveConversation: (id) => set({ activeConversationId: id }),
+        addChatMessage: (msg) => {
+          const message: ChatMessage = { ...msg, id: generateId(), createdAt: new Date().toISOString() };
+          set((s) => ({
+            chatMessages: [...s.chatMessages, message],
+            conversations: s.conversations.map((c) =>
+              c.id === message.conversationId
+                ? {
+                    ...c,
+                    updatedAt: message.createdAt,
+                    lastPreview: message.text.slice(0, 80),
+                    // El título se fija con el primer mensaje del usuario —
+                    // los siguientes ya no lo cambian.
+                    title: c.title === 'Nueva conversación' && message.role === 'user' ? message.text.slice(0, 40) : c.title,
+                  }
+                : c
+            ),
+          }));
+          return message;
+        },
+        deleteConversation: (id) => {
+          set((s) => ({
+            conversations: s.conversations.filter((c) => c.id !== id),
+            chatMessages: s.chatMessages.filter((m) => m.conversationId !== id),
+            activeConversationId: s.activeConversationId === id ? null : s.activeConversationId,
+          }));
+        },
+        updateActionStatus: (messageId, status, patch) => {
+          set((s) => ({
+            chatMessages: s.chatMessages.map((m) =>
+              m.id === messageId && m.action ? { ...m, action: { ...m.action, status, ...patch } } : m
+            ),
+          }));
+        },
+        aiApplyAction: (action) => {
+          const state = get();
+          switch (action.type) {
+            case 'add_transaction': {
+              const args = action.args as unknown as AddTransactionArgs;
+              const account = state.accounts.find((a) => a.id === args.accountId && !a.deletedAt);
+              if (!account) return { ok: false, error: `La cuenta "${args.accountName}" ya no existe.` };
+              state.addTransaction({
+                type: args.transactionType,
+                amount: args.amount,
+                currency: args.currency,
+                categoryId: args.categoryId,
+                subcategoryId: args.subcategoryId,
+                accountId: args.accountId,
+                merchant: args.merchant,
+                date: new Date().toISOString(),
+                origin: 'manual',
+                notes: 'Agregado desde el chat de IA',
+              });
+              return { ok: true };
+            }
+            case 'add_account': {
+              const args = action.args as unknown as AddAccountArgs;
+              state.addAccount({ name: args.name, type: args.accountType, currency: args.currency, balance: args.balance });
+              return { ok: true };
+            }
+            case 'delete_account': {
+              const args = action.args as unknown as DeleteAccountArgs;
+              const account = state.accounts.find((a) => a.id === args.accountId && !a.deletedAt);
+              if (!account) return { ok: false, error: `La cuenta "${args.accountName}" ya no existe.` };
+              state.deleteAccount(args.accountId);
+              return { ok: true };
+            }
+            case 'add_goal': {
+              const args = action.args as unknown as AddGoalArgs;
+              state.addGoal({ name: args.name, targetAmount: args.targetAmount, currentAmount: 0, currency: args.currency });
+              return { ok: true };
+            }
+            case 'contribute_to_goal': {
+              const args = action.args as unknown as ContributeToGoalArgs;
+              const goal = state.goals.find((g) => g.id === args.goalId && !g.deletedAt);
+              if (!goal) return { ok: false, error: `La meta "${args.goalName}" ya no existe.` };
+              state.contributeToGoal(args.goalId, args.amount);
+              return { ok: true };
+            }
+            case 'update_goal_target': {
+              const args = action.args as unknown as UpdateGoalTargetArgs;
+              const goal = state.goals.find((g) => g.id === args.goalId && !g.deletedAt);
+              if (!goal) return { ok: false, error: `La meta "${args.goalName}" ya no existe.` };
+              state.updateGoal(args.goalId, { targetAmount: args.targetAmount });
+              return { ok: true };
+            }
+            case 'delete_goal': {
+              const args = action.args as unknown as DeleteGoalArgs;
+              const goal = state.goals.find((g) => g.id === args.goalId && !g.deletedAt);
+              if (!goal) return { ok: false, error: `La meta "${args.goalName}" ya no existe.` };
+              state.deleteGoal(args.goalId);
+              return { ok: true };
+            }
+            case 'add_liability': {
+              const args = action.args as unknown as AddLiabilityArgs;
+              state.addLiability({ institution: args.institution, type: args.liabilityType, balance: args.balance, currency: args.currency });
+              return { ok: true };
+            }
+            case 'update_liability_balance': {
+              const args = action.args as unknown as UpdateLiabilityBalanceArgs;
+              const liability = state.liabilities.find((l) => l.id === args.liabilityId && !l.deletedAt);
+              if (!liability) return { ok: false, error: `La deuda "${args.institution}" ya no existe.` };
+              state.updateLiability(args.liabilityId, { balance: args.balance });
+              return { ok: true };
+            }
+            case 'delete_liability': {
+              const args = action.args as unknown as DeleteLiabilityArgs;
+              const liability = state.liabilities.find((l) => l.id === args.liabilityId && !l.deletedAt);
+              if (!liability) return { ok: false, error: `La deuda "${args.institution}" ya no existe.` };
+              state.deleteLiability(args.liabilityId);
+              return { ok: true };
+            }
+            case 'set_budget_line': {
+              const args = action.args as unknown as SetBudgetLineArgs;
+              state.ensureDefaultBudgetTemplate();
+              const template = get().budgetTemplates.find((t) => t.isDefault && !t.deletedAt);
+              if (!template) return { ok: false, error: 'No se pudo preparar tu presupuesto por defecto.' };
+              state.setTemplateBudgetLine({
+                templateId: template.id,
+                categoryId: args.categoryId,
+                monthlyAmount: args.monthlyAmount,
+                currency: args.currency,
+              });
+              return { ok: true };
+            }
+            case 'delete_budget_line': {
+              const args = action.args as unknown as DeleteBudgetLineArgs;
+              const line = state.templateBudgetLines.find((l) => l.id === args.lineId && !l.deletedAt);
+              if (!line) return { ok: false, error: `El renglón de "${args.categoryName}" ya no existe.` };
+              state.deleteTemplateBudgetLine(args.lineId);
+              return { ok: true };
+            }
+            case 'delete_transaction': {
+              const args = action.args as unknown as DeleteTransactionArgs;
+              const tx = state.transactions.find((t) => t.id === args.transactionId && !t.deletedAt);
+              if (!tx) return { ok: false, error: 'Ese movimiento ya no existe.' };
+              state.deleteTransaction(args.transactionId);
+              return { ok: true };
+            }
+            default: {
+              const exhaustiveCheck: never = action.type;
+              return { ok: false, error: `Tipo de acción no reconocido: ${exhaustiveCheck}` };
+            }
+          }
+        },
+
         clearSyncQueueEntries: (ids) =>
           set((s) => ({ pendingSync: s.pendingSync.filter((e) => !ids.includes(e.id)) })),
 
@@ -808,6 +1003,9 @@ export const useAppStore = create<AppState>()(
             lastSyncedAt: null,
             budgetPeriods: DEFAULT_BUDGET_PERIODS,
             customCategoryMappings: {},
+            conversations: [],
+            chatMessages: [],
+            activeConversationId: null,
           }),
       };
     },
