@@ -3,9 +3,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AIActionProposal } from '@/ai/chatTypes';
-import { useTheme } from '@/theme/ThemeProvider';
+import type { ChatPalette } from '@/theme/chatPalette';
 
-import { GlassCard } from './GlassCard';
 import { HoldToConfirmButton } from './HoldToConfirmButton';
 
 // Tarjeta de una acción propuesta por el chat sobre datos reales — el
@@ -19,42 +18,40 @@ export function ChatActionCard({
   action,
   onConfirm,
   onCancel,
+  palette,
 }: {
   action: AIActionProposal;
   onConfirm: () => Promise<void> | void;
   onCancel: () => void;
+  palette: ChatPalette;
 }) {
-  const { colors, typography, spacing, radius } = useTheme();
-
   if (action.status !== 'proposed') {
     const isApplied = action.status === 'applied';
     const isFailed = action.status === 'failed';
     return (
-      <GlassCard style={[styles.card, { borderRadius: radius.lg }]}>
+      <View style={[styles.card, { backgroundColor: palette.surfaceSolid, borderColor: palette.surfaceBorder }]}>
         <View style={styles.row}>
           <Ionicons
             name={isApplied ? 'checkmark-circle' : isFailed ? 'alert-circle' : 'close-circle'}
             size={18}
-            color={isApplied ? colors.success : isFailed ? colors.danger : colors.textTertiary}
+            color={isApplied ? palette.success : isFailed ? palette.danger : palette.textTertiary}
           />
-          <Text style={[typography.body, { color: colors.textPrimary, marginLeft: spacing.sm, flex: 1 }]}>{action.summary}</Text>
+          <Text style={[styles.summary, { color: palette.textPrimary }]}>{action.summary}</Text>
         </View>
-        {isFailed && action.error && (
-          <Text style={[typography.caption, { color: colors.danger, marginTop: 4 }]}>{action.error}</Text>
-        )}
-        {isApplied && <Text style={[typography.caption, { color: colors.success, marginTop: 4 }]}>Hecho</Text>}
-        {action.status === 'dismissed' && <Text style={[typography.caption, { color: colors.textTertiary, marginTop: 4 }]}>Cancelado</Text>}
-      </GlassCard>
+        {isFailed && action.error && <Text style={[styles.caption, { color: palette.danger }]}>{action.error}</Text>}
+        {isApplied && <Text style={[styles.caption, { color: palette.success }]}>Hecho</Text>}
+        {action.status === 'dismissed' && <Text style={[styles.caption, { color: palette.textTertiary }]}>Cancelado</Text>}
+      </View>
     );
   }
 
   return (
-    <GlassCard style={[styles.card, { borderRadius: radius.lg }]}>
+    <View style={[styles.card, { backgroundColor: palette.surfaceSolid, borderColor: palette.surfaceBorder }]}>
       <View style={styles.row}>
-        <Ionicons name="sparkles-outline" size={18} color={colors.accentFrom} />
-        <Text style={[typography.body, { color: colors.textPrimary, marginLeft: spacing.sm, flex: 1, fontWeight: '600' }]}>{action.summary}</Text>
+        <Ionicons name="sparkles" size={18} color={palette.accent} />
+        <Text style={[styles.summary, { color: palette.textPrimary, fontWeight: '600' }]}>{action.summary}</Text>
       </View>
-      <View style={[styles.actionsRow, { marginTop: spacing.md }]}>
+      <View style={styles.actionsRow}>
         <HoldToConfirmButton
           onConfirm={onConfirm}
           icon="checkmark"
@@ -66,16 +63,18 @@ export function ChatActionCard({
           accessibilityLabel={`Confirmar: ${action.summary}`}
         />
         <Pressable accessibilityLabel="Cancelar acción" onPress={onCancel} style={styles.cancelBtn}>
-          <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancelar</Text>
+          <Text style={{ color: palette.textSecondary, fontWeight: '700' }}>Cancelar</Text>
         </Pressable>
       </View>
-    </GlassCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 14, maxWidth: 320 },
+  card: { padding: 16, maxWidth: 340, borderRadius: 18, borderWidth: 1 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summary: { fontSize: 15, marginLeft: 10, flex: 1 },
+  caption: { fontSize: 13, marginTop: 4 },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
   cancelBtn: { paddingHorizontal: 12, paddingVertical: 8 },
 });

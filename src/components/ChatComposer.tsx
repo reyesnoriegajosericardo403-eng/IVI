@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { usePressToTalk } from '@/hooks/usePressToTalk';
-import { useTheme } from '@/theme/ThemeProvider';
+import type { ChatPalette } from '@/theme/chatPalette';
 
 const MAX_MESSAGE_LENGTH = 500;
 
-// Compositor tipo píldora (referencia: barra de entrada de Framer AI) con
-// micrófono integrado — hablar y escribir mandan al mismo lugar
+// Compositor tipo píldora (referencia: barra de entrada de un asistente de
+// IA) con micrófono integrado — hablar y escribir mandan al mismo lugar
 // (`onSend`). El micrófono reutiliza usePressToTalk (mantener presionado
 // para hablar, soltar para transcribir y enviar de una vez, igual que la
 // captura de voz de siempre) en vez de pedir confirmación de texto aparte
@@ -17,20 +17,12 @@ const MAX_MESSAGE_LENGTH = 500;
 export function ChatComposer({
   onSend,
   disabled,
-  cardColor,
-  borderColor,
-  extraStyle,
+  palette,
 }: {
   onSend: (text: string) => void;
   disabled?: boolean;
-  cardColor: string;
-  borderColor: string;
-  // Desenfoque/sombra "líquidos" del vidrio de esta pantalla
-  // (theme/intensifyGlass.ts) — se pasan ya resueltos en vez de que este
-  // componente conozca la pantalla que lo usa.
-  extraStyle?: ViewStyle;
+  palette: ChatPalette;
 }) {
-  const { colors, radius } = useTheme();
   const [value, setValue] = useState('');
 
   const submit = (text: string) => {
@@ -44,15 +36,15 @@ export function ChatComposer({
   const isListening = micStatus === 'listening';
 
   return (
-    <View style={[styles.wrap, { backgroundColor: cardColor, borderColor, borderRadius: radius.pill }, extraStyle]}>
+    <View style={[styles.wrap, { backgroundColor: palette.surfaceSolid, borderColor: palette.surfaceBorder }]}>
       {isListening ? (
         <>
           <View style={styles.listeningDot} />
-          <Text style={[styles.listeningText, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
+          <Text style={[styles.listeningText, { color: palette.textSecondary, flex: 1 }]} numberOfLines={1}>
             Te escucho… suelta para enviar
           </Text>
           <Pressable accessibilityLabel="Cancelar grabación" onPress={cancel} style={styles.iconBtn}>
-            <Ionicons name="close" size={20} color={colors.textSecondary} />
+            <Ionicons name="close" size={22} color={palette.textSecondary} />
           </Pressable>
         </>
       ) : (
@@ -61,29 +53,29 @@ export function ChatComposer({
             value={value}
             onChangeText={setValue}
             onSubmitEditing={() => submit(value)}
-            placeholder="Pregunta algo o pide un cambio…"
-            placeholderTextColor={colors.textTertiary}
+            placeholder="Escríbele a VALU…"
+            placeholderTextColor={palette.textTertiary}
             maxLength={MAX_MESSAGE_LENGTH}
             editable={!disabled}
-            style={[styles.input, { color: colors.textPrimary }]}
+            style={[styles.input, { color: palette.textPrimary }]}
           />
           {micAvailable && (
             <Pressable
               accessibilityLabel="Mantén presionado para hablar"
               onPressIn={pressIn}
               disabled={disabled}
-              style={[styles.iconBtn, { opacity: disabled ? 0.5 : 1 }]}
+              style={[styles.micBtn, { backgroundColor: 'rgba(255,255,255,0.08)', opacity: disabled ? 0.5 : 1 }]}
             >
-              <Ionicons name="mic-outline" size={20} color={colors.textSecondary} />
+              <Ionicons name="mic" size={20} color={palette.textPrimary} />
             </Pressable>
           )}
           <Pressable
             accessibilityLabel="Enviar mensaje"
             onPress={() => submit(value)}
             disabled={disabled || !value.trim()}
-            style={[styles.sendBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, opacity: disabled || !value.trim() ? 0.5 : 1 }]}
+            style={[styles.sendBtn, { backgroundColor: palette.accent, opacity: disabled || !value.trim() ? 0.4 : 1 }]}
           >
-            <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+            <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
           </Pressable>
         </>
       )}
@@ -92,10 +84,11 @@ export function ChatComposer({
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingLeft: 18, paddingRight: 6, paddingVertical: 6, gap: 8 },
-  input: { flex: 1, fontSize: 15, paddingVertical: 8 },
-  iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  sendBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  wrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 28, paddingLeft: 22, paddingRight: 8, paddingVertical: 8, gap: 10 },
+  input: { flex: 1, fontSize: 16, paddingVertical: 10 },
+  iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  micBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   listeningDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
   listeningText: { fontSize: 14, fontWeight: '600', marginLeft: 8 },
 });

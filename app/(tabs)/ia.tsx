@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, Defs, FeGaussianBlur, Filter } from 'react-native-svg';
 
 import { topFrequentQuestions, type AIActionProposal, type ChatMessage } from '@/ai/chatTypes';
-import { SUGGESTED_QUESTIONS } from '@/ai/localCopilot';
+import { AiOrb } from '@/components/AiOrb';
 import { ChatActionCard } from '@/components/ChatActionCard';
 import { ChatComposer } from '@/components/ChatComposer';
 import { ChatSidebar } from '@/components/ChatSidebar';
-import { ValuMark } from '@/components/ValuMark';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { providers } from '@/providers/registry';
 import {
@@ -22,17 +22,31 @@ import {
   selectActiveTransactions,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
-import { intensifyGlass } from '@/theme/intensifyGlass';
-import { surfaceBlur, surfaceShadow } from '@/theme/surfaceStyle';
+import { CHAT_PALETTE } from '@/theme/chatPalette';
 import { useTheme } from '@/theme/ThemeProvider';
 import { generateId } from '@/utils/id';
 
-const ENGINE_LABELS: Record<string, string> = { 'local-rules': 'Reglas locales' };
+// VALU es tanto el nombre de la app como el de su asistente local — el
+// usuario pidió explícitamente que la interfaz nunca diga "Copiloto", así
+// que "VALU" es la única identidad que se muestra aquí.
+const ENGINE_LABELS: Record<string, string> = { 'local-rules': 'VALU' };
+
+const SUGGESTION_CARDS: Array<{ title: string; desc: string; icon: keyof typeof Ionicons.glyphMap; question: string }> = [
+  { title: 'Tu presupuesto', desc: 'Cómo vas este mes contra lo que planeaste', icon: 'pie-chart-outline', question: '¿Cómo voy este mes?' },
+  { title: 'Tus gastos', desc: 'En qué se te fue más el dinero', icon: 'trending-down-outline', question: '¿En qué gasté más este mes?' },
+  { title: 'Tu patrimonio', desc: 'Lo que tienes, menos lo que debes', icon: 'wallet-outline', question: '¿Cuál es mi patrimonio?' },
+];
+
+function timeGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días';
+  if (h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
 
 export default function Ia() {
-  const { colors, typography, spacing, radius, surface } = useTheme();
+  const { spacing } = useTheme();
   const { isTablet } = useBreakpoint();
-  const liquid = useMemo(() => intensifyGlass(colors, surface), [colors, surface]);
 
   const profile = useAppStore((s) => s.profile);
   const rawTransactions = useAppStore((s) => s.transactions);
@@ -139,189 +153,168 @@ export default function Ia() {
     setActiveConversation(id);
     setSidebarOpen(false);
   };
-  const handleDeleteConversation = (id: string) => {
-    deleteConversation(id);
-  };
 
   const engineName = ENGINE_LABELS[providers.actionAgent.name] ?? providers.actionAgent.name;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-        {isTablet && (
+    <SafeAreaView style={{ flex: 1, backgroundColor: CHAT_PALETTE.background }} edges={['top']}>
+      <ChatBackground>
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          {isTablet && (
+            <ChatSidebar
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              frequentPrompts={frequentPrompts}
+              onSelectConversation={handleSelectConversation}
+              onNewConversation={handleNewConversation}
+              onDeleteConversation={deleteConversation}
+              onSelectFrequent={send}
+              visible={false}
+              onClose={() => {}}
+              palette={CHAT_PALETTE}
+            />
+          )}
+
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: spacing.md }]}>
+              {!isTablet && (
+                <Pressable accessibilityLabel="Abrir conversaciones" onPress={() => setSidebarOpen(true)} style={styles.hamburgerBtn}>
+                  <Ionicons name="menu" size={24} color={CHAT_PALETTE.textPrimary} />
+                </Pressable>
+              )}
+              <Pressable accessibilityLabel="Ver conexión de IA" onPress={() => router.push('/ai-settings')} style={styles.engineChip}>
+                <Ionicons name="sparkles" size={14} color={CHAT_PALETTE.accent} />
+                <Text style={styles.engineChipText} numberOfLines={1}>
+                  {engineName}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={CHAT_PALETTE.textTertiary} />
+              </Pressable>
+            </View>
+
+            {messages.length === 0 ? (
+              <EmptyHero profileName={profile.name} onSend={send} sending={sending} />
+            ) : (
+              <FlatList
+                data={messages}
+                keyExtractor={(m) => m.id}
+                contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 24 }}
+                renderItem={({ item }) =>
+                  item.role === 'assistant' && item.action ? (
+                    <View style={{ alignSelf: 'flex-start', gap: spacing.sm, maxWidth: '90%' }}>
+                      {!!item.text && (
+                        <View style={[styles.bubble, styles.assistantBubble]}>
+                          <Text style={styles.bubbleText}>{item.text}</Text>
+                        </View>
+                      )}
+                      <ChatActionCard
+                        action={item.action}
+                        onConfirm={() => handleConfirmAction(item)}
+                        onCancel={() => updateActionStatus(item.id, 'dismissed')}
+                        palette={CHAT_PALETTE}
+                      />
+                    </View>
+                  ) : (
+                    <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.assistantBubble]}>
+                      <Text style={[styles.bubbleText, item.role === 'user' && { color: '#FFFFFF' }]}>{item.text}</Text>
+                    </View>
+                  )
+                }
+              />
+            )}
+
+            {messages.length > 0 && (
+              <View style={{ padding: spacing.md }}>
+                <ChatComposer onSend={send} disabled={sending} palette={CHAT_PALETTE} />
+              </View>
+            )}
+          </KeyboardAvoidingView>
+        </View>
+
+        {!isTablet && (
           <ChatSidebar
             conversations={conversations}
             activeConversationId={activeConversationId}
             frequentPrompts={frequentPrompts}
             onSelectConversation={handleSelectConversation}
             onNewConversation={handleNewConversation}
-            onDeleteConversation={handleDeleteConversation}
-            onSelectFrequent={send}
-            visible={false}
-            onClose={() => {}}
+            onDeleteConversation={deleteConversation}
+            onSelectFrequent={(text) => {
+              setSidebarOpen(false);
+              send(text);
+            }}
+            visible={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            palette={CHAT_PALETTE}
           />
         )}
-
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: spacing.md }]}>
-            {!isTablet && (
-              <Pressable accessibilityLabel="Abrir conversaciones" onPress={() => setSidebarOpen(true)} style={{ marginRight: spacing.sm }}>
-                <Ionicons name="menu-outline" size={24} color={colors.textSecondary} />
-              </Pressable>
-            )}
-            <ValuMark size={28} variant="ai" />
-            <Text style={[typography.title, { color: colors.textPrimary, marginLeft: spacing.sm, flex: 1 }]}>Copiloto VALU</Text>
-            <Pressable accessibilityLabel="Ver conexión de IA" onPress={() => router.push('/ai-settings')} style={[styles.engineChip, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}>
-              <Ionicons name="sparkles-outline" size={12} color={colors.accentFrom} />
-              <Text style={[typography.micro, { color: colors.textSecondary, marginLeft: 4 }]} numberOfLines={1}>
-                {engineName}
-              </Text>
-            </Pressable>
-          </View>
-
-          {messages.length === 0 ? (
-            <EmptyHero profileName={profile.name} onSend={send} sending={sending} liquid={liquid} />
-          ) : (
-            <FlatList
-              data={messages}
-              keyExtractor={(m) => m.id}
-              contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 24 }}
-              renderItem={({ item }) =>
-                item.role === 'assistant' && item.action ? (
-                  <View style={{ alignSelf: 'flex-start', gap: spacing.sm, maxWidth: '90%' }}>
-                    {!!item.text && (
-                      <View
-                        style={[
-                          styles.bubble,
-                          { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.lg, borderWidth: 1 },
-                        ]}
-                      >
-                        <Text style={[typography.body, { color: colors.textPrimary }]}>{item.text}</Text>
-                      </View>
-                    )}
-                    <ChatActionCard action={item.action} onConfirm={() => handleConfirmAction(item)} onCancel={() => updateActionStatus(item.id, 'dismissed')} />
-                  </View>
-                ) : (
-                  <View
-                    style={[
-                      styles.bubble,
-                      {
-                        alignSelf: item.role === 'user' ? 'flex-end' : 'flex-start',
-                        backgroundColor: item.role === 'user' ? colors.accentFrom : colors.surface,
-                        borderColor: colors.surfaceBorder,
-                        borderRadius: radius.lg,
-                        borderWidth: item.role === 'user' ? 0 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[typography.body, { color: item.role === 'user' ? '#FFFFFF' : colors.textPrimary }]}>{item.text}</Text>
-                  </View>
-                )
-              }
-            />
-          )}
-
-          {messages.length > 0 && (
-            <View style={{ padding: spacing.md }}>
-              <ChatComposer
-                onSend={send}
-                disabled={sending}
-                cardColor={liquid.cardColor}
-                borderColor={liquid.borderColor}
-                extraStyle={{ ...surfaceBlur(liquid.surface), ...surfaceShadow(liquid.surface) }}
-              />
-            </View>
-          )}
-        </KeyboardAvoidingView>
-      </View>
-
-      {!isTablet && (
-        <ChatSidebar
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          frequentPrompts={frequentPrompts}
-          onSelectConversation={handleSelectConversation}
-          onNewConversation={handleNewConversation}
-          onDeleteConversation={handleDeleteConversation}
-          onSelectFrequent={(text) => {
-            setSidebarOpen(false);
-            send(text);
-          }}
-          visible={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
+      </ChatBackground>
     </SafeAreaView>
   );
 }
 
-// Estado vacío inspirado en un asistente de voz: saludo + orbe con brillo
-// suave + compositor grande — se convierte en el hilo normal de mensajes
-// en cuanto llega el primer mensaje (misma condición que ya usaba esta
-// pantalla para mostrar las sugerencias).
-function EmptyHero({
-  profileName,
-  onSend,
-  sending,
-  liquid,
-}: {
-  profileName: string;
-  onSend: (text: string) => void;
-  sending: boolean;
-  liquid: ReturnType<typeof intensifyGlass>;
-}) {
-  const { colors, typography, spacing, radius } = useTheme();
-  const glowAnim = useRef(new Animated.Value(0)).current;
+// Fondo fijo y oscuro con manchas de luz de color desenfoques — igual
+// técnica que AppBackground.tsx (SVG, para que también se vea en web),
+// pero con la paleta fija de esta pantalla en vez del estilo visual activo
+// del usuario (ver theme/chatPalette.ts).
+function ChatBackground({ children }: { children: React.ReactNode }) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  return (
+    <View
+      style={{ flex: 1, backgroundColor: CHAT_PALETTE.background }}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+      }}
+    >
+      {size.width > 0 && (
+        <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Defs>
+            <Filter id="chatGlowBlur" x="-50%" y="-50%" width="200%" height="200%">
+              <FeGaussianBlur stdDeviation={Math.max(size.width, size.height) * 0.14} />
+            </Filter>
+          </Defs>
+          {CHAT_PALETTE.backgroundGlow.map((spot, i) => (
+            <Circle
+              key={i}
+              cx={spot.cx * size.width}
+              cy={spot.cy * size.height}
+              r={spot.radius * Math.max(size.width, size.height)}
+              fill={spot.color}
+              fillOpacity={0.3}
+              filter="url(#chatGlowBlur)"
+            />
+          ))}
+        </Svg>
+      )}
+      <View style={{ flex: 1 }}>{children}</View>
+    </View>
+  );
+}
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        Animated.timing(glowAnim, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [glowAnim]);
-
+// Estado vacío inspirado en la referencia del usuario: esfera de
+// degradado, saludo según la hora del día, compositor grande y tarjetas
+// de sugerencia con las funciones reales de VALU (nunca "crear una
+// imagen" ni nada que la app no sepa hacer).
+function EmptyHero({ profileName, onSend, sending }: { profileName: string; onSend: (text: string) => void; sending: boolean }) {
   return (
     <View style={styles.heroWrap}>
-      <Animated.View
-        style={[
-          styles.heroGlow,
-          {
-            borderColor: colors.accentTo,
-            shadowColor: colors.accentTo,
-            opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.9] }),
-            transform: [{ scale: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }],
-          },
-        ]}
-      >
-        <ValuMark size={56} variant="ai" />
-      </Animated.View>
-      <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.lg }]}>
-        {profileName ? `Hola, ${profileName}` : 'Hola'}
+      <AiOrb size={104} />
+      <Text style={styles.heroGreeting}>
+        {timeGreeting()}
+        {profileName ? `, ${profileName}` : ''}.
       </Text>
-      <Text style={[typography.display, { color: colors.textPrimary, textAlign: 'center', marginTop: 4 }]}>¿Cómo te ayudo hoy?</Text>
+      <Text style={styles.heroQuestion}>¿En qué te ayudo hoy?</Text>
 
-      <View style={{ width: '100%', maxWidth: 480, marginTop: spacing.xl }}>
-        <ChatComposer
-          onSend={onSend}
-          disabled={sending}
-          cardColor={liquid.cardColor}
-          borderColor={liquid.borderColor}
-          extraStyle={{ ...surfaceBlur(liquid.surface), ...surfaceShadow(liquid.surface) }}
-        />
+      <View style={{ width: '100%', maxWidth: 520, marginTop: 28 }}>
+        <ChatComposer onSend={onSend} disabled={sending} palette={CHAT_PALETTE} />
       </View>
 
-      <View style={[styles.suggestionsWrap, { marginTop: spacing.lg }]}>
-        {SUGGESTED_QUESTIONS.map((q) => (
-          <Pressable
-            key={q}
-            onPress={() => onSend(q)}
-            style={[styles.suggestionChip, { borderColor: colors.surfaceBorder, borderRadius: radius.pill, backgroundColor: colors.surfaceSolid }]}
-          >
-            <Text style={[typography.caption, { color: colors.textPrimary }]}>{q}</Text>
+      <View style={styles.cardsWrap}>
+        {SUGGESTION_CARDS.map((c) => (
+          <Pressable key={c.title} onPress={() => onSend(c.question)} style={styles.suggestionCard}>
+            <Ionicons name={c.icon} size={24} color={CHAT_PALETTE.accent} />
+            <Text style={styles.cardTitle}>{c.title}</Text>
+            <Text style={styles.cardDesc}>{c.desc}</Text>
           </Pressable>
         ))}
       </View>
@@ -330,22 +323,37 @@ function EmptyHero({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  engineChip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5, maxWidth: 130 },
-  bubble: { maxWidth: '85%', paddingHorizontal: 14, paddingVertical: 10 },
-  heroWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  heroGlow: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 2,
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
+  hamburgerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  engineChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowOpacity: 0.7,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: CHAT_PALETTE.surfaceBorder,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  suggestionsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
-  suggestionChip: { paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1 },
+  engineChipText: { color: CHAT_PALETTE.textPrimary, fontWeight: '600', fontSize: 14 },
+  bubble: { maxWidth: '85%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18 },
+  assistantBubble: { backgroundColor: CHAT_PALETTE.surfaceSolid, borderWidth: 1, borderColor: CHAT_PALETTE.surfaceBorder, alignSelf: 'flex-start' },
+  userBubble: { backgroundColor: CHAT_PALETTE.userBubble, alignSelf: 'flex-end' },
+  bubbleText: { color: CHAT_PALETTE.textPrimary, fontSize: 15, lineHeight: 21 },
+  heroWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  heroGreeting: { color: CHAT_PALETTE.textSecondary, fontSize: 17, fontWeight: '500', marginTop: 22, textAlign: 'center' },
+  heroQuestion: { color: CHAT_PALETTE.textPrimary, fontSize: 28, fontWeight: '700', marginTop: 4, textAlign: 'center' },
+  cardsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 28, maxWidth: 720 },
+  suggestionCard: {
+    minWidth: 170,
+    flexGrow: 1,
+    backgroundColor: CHAT_PALETTE.surfaceSolid,
+    borderWidth: 1,
+    borderColor: CHAT_PALETTE.surfaceBorder,
+    borderRadius: 18,
+    padding: 18,
+  },
+  cardTitle: { color: CHAT_PALETTE.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 12 },
+  cardDesc: { color: CHAT_PALETTE.textTertiary, fontSize: 13, marginTop: 4, lineHeight: 18 },
 });
