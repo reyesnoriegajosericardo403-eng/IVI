@@ -249,6 +249,9 @@ interface AppState {
   setActiveConversation: (id: string | null) => void;
   addChatMessage: (msg: Omit<ChatMessage, 'id' | 'createdAt'>) => ChatMessage;
   deleteConversation: (id: string) => void;
+  renameConversation: (id: string, title: string) => void;
+  toggleConversationPinned: (id: string) => void;
+  clearAllConversations: () => void;
   updateActionStatus: (messageId: string, status: AIActionStatus, patch?: { appliedAt?: string; error?: string }) => void;
   // Único punto donde una acción propuesta por el chat de IA de verdad
   // toca datos reales — re-valida que lo referenciado siga existiendo
@@ -835,6 +838,17 @@ export const useAppStore = create<AppState>()(
             chatMessages: s.chatMessages.filter((m) => m.conversationId !== id),
             activeConversationId: s.activeConversationId === id ? null : s.activeConversationId,
           }));
+        },
+        renameConversation: (id, title) => {
+          const trimmed = title.trim();
+          if (!trimmed) return;
+          set((s) => ({ conversations: s.conversations.map((c) => (c.id === id ? { ...c, title: trimmed } : c)) }));
+        },
+        toggleConversationPinned: (id) => {
+          set((s) => ({ conversations: s.conversations.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)) }));
+        },
+        clearAllConversations: () => {
+          set({ conversations: [], chatMessages: [], activeConversationId: null });
         },
         updateActionStatus: (messageId, status, patch) => {
           set((s) => ({

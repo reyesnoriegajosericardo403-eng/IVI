@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { usePressToTalk } from '@/hooks/usePressToTalk';
-import type { ChatPalette } from '@/theme/chatPalette';
+import { chatGlass, type ChatPalette } from '@/theme/chatPalette';
 
 const MAX_MESSAGE_LENGTH = 500;
 
@@ -28,6 +29,7 @@ export function ChatComposer({
   const submit = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || disabled) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onSend(trimmed);
     setValue('');
   };
@@ -36,7 +38,7 @@ export function ChatComposer({
   const isListening = micStatus === 'listening';
 
   return (
-    <View style={[styles.wrap, { backgroundColor: palette.surfaceSolid, borderColor: palette.surfaceBorder }]}>
+    <View style={[styles.wrap, chatGlass(true)]}>
       {isListening ? (
         <>
           <View style={styles.listeningDot} />

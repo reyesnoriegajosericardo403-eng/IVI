@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AIActionProposal } from '@/ai/chatTypes';
-import type { ChatPalette } from '@/theme/chatPalette';
+import { chatGlass, type ChatPalette } from '@/theme/chatPalette';
 
 import { HoldToConfirmButton } from './HoldToConfirmButton';
 
@@ -25,11 +26,40 @@ export function ChatActionCard({
   onCancel: () => void;
   palette: ChatPalette;
 }) {
+  // Pequeño "festejo" al confirmar de verdad — un rebote + destello verde
+  // que se apaga solo, nada de una librería de confeti nueva. Solo se
+  // dispara la primera vez que status pasa a 'applied'.
+  const pop = useRef(new Animated.Value(1)).current;
+  const glow = useRef(new Animated.Value(0)).current;
+  const celebratedRef = useRef(false);
+
+  useEffect(() => {
+    if (action.status === 'applied' && !celebratedRef.current) {
+      celebratedRef.current = true;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Animated.sequence([
+        Animated.spring(pop, { toValue: 1.05, friction: 4, useNativeDriver: false }),
+        Animated.spring(pop, { toValue: 1, friction: 5, useNativeDriver: false }),
+      ]).start();
+      Animated.timing(glow, { toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: false }).start(() => {
+        Animated.timing(glow, { toValue: 0, duration: 900, useNativeDriver: false }).start();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [action.status]);
+
+  const glowShadow = {
+    shadowColor: palette.success,
+    shadowOpacity: glow,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+  };
+
   if (action.status !== 'proposed') {
     const isApplied = action.status === 'applied';
     const isFailed = action.status === 'failed';
     return (
-      <View style={[styles.card, { backgroundColor: palette.surfaceSolid, borderColor: palette.surfaceBorder }]}>
+      <Animated.View style={[styles.card, chatGlass(), glowShadow, { transform: [{ scale: pop }] }]}>
         <View style={styles.row}>
           <Ionicons
             name={isApplied ? 'checkmark-circle' : isFailed ? 'alert-circle' : 'close-circle'}
@@ -41,12 +71,12 @@ export function ChatActionCard({
         {isFailed && action.error && <Text style={[styles.caption, { color: palette.danger }]}>{action.error}</Text>}
         {isApplied && <Text style={[styles.caption, { color: palette.success }]}>Hecho</Text>}
         {action.status === 'dismissed' && <Text style={[styles.caption, { color: palette.textTertiary }]}>Cancelado</Text>}
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: palette.surfaceSolid, borderColor: palette.surfaceBorder }]}>
+    <View style={[styles.card, chatGlass()]}>
       <View style={styles.row}>
         <Ionicons name="sparkles" size={18} color={palette.accent} />
         <Text style={[styles.summary, { color: palette.textPrimary, fontWeight: '600' }]}>{action.summary}</Text>
@@ -71,7 +101,7 @@ export function ChatActionCard({
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16, maxWidth: 340, borderRadius: 18, borderWidth: 1 },
+  card: { padding: 18, maxWidth: 340, borderRadius: 22 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   summary: { fontSize: 15, marginLeft: 10, flex: 1 },
   caption: { fontSize: 13, marginTop: 4 },

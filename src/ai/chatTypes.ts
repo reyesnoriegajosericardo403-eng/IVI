@@ -154,6 +154,7 @@ export interface ChatConversation {
   createdAt: string;
   updatedAt: string;
   lastPreview: string;
+  pinned?: boolean;
 }
 
 function normalizeForFrequency(text: string): string {

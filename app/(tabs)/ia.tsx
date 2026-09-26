@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, FlatList, KeyboardAvoidingView, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, FeGaussianBlur, Filter } from 'react-native-svg';
+import Svg, { Circle, Defs, FeGaussianBlur, Filter, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 
 import { topFrequentQuestions, type AIActionProposal, type ChatMessage } from '@/ai/chatTypes';
 import { AiOrb } from '@/components/AiOrb';
@@ -22,7 +24,7 @@ import {
   selectActiveTransactions,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
-import { CHAT_PALETTE } from '@/theme/chatPalette';
+import { CHAT_PALETTE, chatGlass, type ChatPalette } from '@/theme/chatPalette';
 import { useTheme } from '@/theme/ThemeProvider';
 import { generateId } from '@/utils/id';
 
@@ -64,6 +66,9 @@ export default function Ia() {
   const setActiveConversation = useAppStore((s) => s.setActiveConversation);
   const addChatMessage = useAppStore((s) => s.addChatMessage);
   const deleteConversation = useAppStore((s) => s.deleteConversation);
+  const renameConversation = useAppStore((s) => s.renameConversation);
+  const toggleConversationPinned = useAppStore((s) => s.toggleConversationPinned);
+  const clearAllConversations = useAppStore((s) => s.clearAllConversations);
   const updateActionStatus = useAppStore((s) => s.updateActionStatus);
   const aiApplyAction = useAppStore((s) => s.aiApplyAction);
 
@@ -77,6 +82,8 @@ export default function Ia() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const listRef = useRef<FlatList<ChatMessage>>(null);
 
   // Siempre hay una conversación activa al entrar — nunca se le pide al
   // usuario crear la primera a mano.
@@ -91,22 +98,37 @@ export default function Ia() {
   );
   const frequentPrompts = useMemo(() => topFrequentQuestions(chatMessages, 5), [chatMessages]);
 
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
+    return () => clearTimeout(id);
+  }, [messages.length, thinking]);
+
   const send = async (text: string) => {
     if (sending) return;
     const conversationId = activeConversationId ?? startConversation();
     addChatMessage({ conversationId, role: 'user', text });
     setSending(true);
+    setThinking(true);
     try {
-      const result = await providers.actionAgent.interpretMessage(text, {
-        profile,
-        transactions,
-        accounts,
-        investments,
-        liabilities,
-        budgets,
-        goals,
-        templateBudgetLines,
-      });
+      // El usuario pidió que "extrayendo datos" se vea al menos 2 segundos
+      // siempre, aunque el motor local responda casi instantáneo — evita
+      // que el indicador parpadee y le da a la respuesta la sensación de
+      // que de verdad se consultaron los datos.
+      const MIN_THINKING_MS = 2000;
+      const [result] = await Promise.all([
+        providers.actionAgent.interpretMessage(text, {
+          profile,
+          transactions,
+          accounts,
+          investments,
+          liabilities,
+          budgets,
+          goals,
+          templateBudgetLines,
+        }),
+        new Promise((resolve) => setTimeout(resolve, MIN_THINKING_MS)),
+      ]);
       let action: AIActionProposal | undefined;
       if (result.action && result.summary) {
         action = {
@@ -127,6 +149,7 @@ export default function Ia() {
       });
     } finally {
       setSending(false);
+      setThinking(false);
     }
   };
 
@@ -155,6 +178,7 @@ export default function Ia() {
   };
 
   const engineName = ENGINE_LABELS[providers.actionAgent.name] ?? providers.actionAgent.name;
+  const openSettings = () => router.push('/ai-settings');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: CHAT_PALETTE.background }} edges={['top']}>
@@ -168,6 +192,10 @@ export default function Ia() {
               onSelectConversation={handleSelectConversation}
               onNewConversation={handleNewConversation}
               onDeleteConversation={deleteConversation}
+              onRenameConversation={renameConversation}
+              onTogglePin={toggleConversationPinned}
+              onClearAll={clearAllConversations}
+              onOpenSettings={openSettings}
               onSelectFrequent={send}
               visible={false}
               onClose={() => {}}
@@ -195,30 +223,44 @@ export default function Ia() {
               <EmptyHero profileName={profile.name} onSend={send} sending={sending} />
             ) : (
               <FlatList
+                ref={listRef}
                 data={messages}
                 keyExtractor={(m) => m.id}
                 contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 24 }}
-                renderItem={({ item }) =>
-                  item.role === 'assistant' && item.action ? (
-                    <View style={{ alignSelf: 'flex-start', gap: spacing.sm, maxWidth: '90%' }}>
-                      {!!item.text && (
-                        <View style={[styles.bubble, styles.assistantBubble]}>
-                          <Text style={styles.bubbleText}>{item.text}</Text>
-                        </View>
-                      )}
-                      <ChatActionCard
-                        action={item.action}
-                        onConfirm={() => handleConfirmAction(item)}
-                        onCancel={() => updateActionStatus(item.id, 'dismissed')}
-                        palette={CHAT_PALETTE}
-                      />
-                    </View>
-                  ) : (
-                    <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.assistantBubble]}>
-                      <Text style={[styles.bubbleText, item.role === 'user' && { color: '#FFFFFF' }]}>{item.text}</Text>
-                    </View>
-                  )
-                }
+                onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+                renderItem={({ item }) => (
+                  <FadeInRow>
+                    {item.role === 'assistant' && item.action ? (
+                      <View style={{ alignSelf: 'flex-start', gap: spacing.sm, maxWidth: '90%' }}>
+                        {!!item.text && (
+                          <View style={[styles.bubble, styles.assistantBubble, chatGlass()]}>
+                            <MessageBody text={item.text} palette={CHAT_PALETTE} />
+                          </View>
+                        )}
+                        <ChatActionCard
+                          action={item.action}
+                          onConfirm={() => handleConfirmAction(item)}
+                          onCancel={() => updateActionStatus(item.id, 'dismissed')}
+                          palette={CHAT_PALETTE}
+                        />
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.bubble,
+                          item.role === 'user' ? styles.userBubble : [styles.assistantBubble, chatGlass()],
+                        ]}
+                      >
+                        {item.role === 'user' ? (
+                          <Text style={[styles.bubbleText, { color: '#FFFFFF' }]}>{item.text}</Text>
+                        ) : (
+                          <MessageBody text={item.text} palette={CHAT_PALETTE} />
+                        )}
+                      </View>
+                    )}
+                  </FadeInRow>
+                )}
+                ListFooterComponent={thinking ? <ThinkingIndicator /> : null}
               />
             )}
 
@@ -238,6 +280,10 @@ export default function Ia() {
             onSelectConversation={handleSelectConversation}
             onNewConversation={handleNewConversation}
             onDeleteConversation={deleteConversation}
+            onRenameConversation={renameConversation}
+            onTogglePin={toggleConversationPinned}
+            onClearAll={clearAllConversations}
+            onOpenSettings={openSettings}
             onSelectFrequent={(text) => {
               setSidebarOpen(false);
               send(text);
@@ -303,7 +349,7 @@ function EmptyHero({ profileName, onSend, sending }: { profileName: string; onSe
         {timeGreeting()}
         {profileName ? `, ${profileName}` : ''}.
       </Text>
-      <Text style={styles.heroQuestion}>¿En qué te ayudo hoy?</Text>
+      <Text style={styles.heroQuestion}>¿Qué quieres saber de tus finanzas{profileName ? `, ${profileName}` : ''}?</Text>
 
       <View style={{ width: '100%', maxWidth: 520, marginTop: 28 }}>
         <ChatComposer onSend={onSend} disabled={sending} palette={CHAT_PALETTE} />
@@ -311,12 +357,131 @@ function EmptyHero({ profileName, onSend, sending }: { profileName: string; onSe
 
       <View style={styles.cardsWrap}>
         {SUGGESTION_CARDS.map((c) => (
-          <Pressable key={c.title} onPress={() => onSend(c.question)} style={styles.suggestionCard}>
+          <Pressable key={c.title} onPress={() => onSend(c.question)} style={[styles.suggestionCard, chatGlass()]}>
             <Ionicons name={c.icon} size={24} color={CHAT_PALETTE.accent} />
             <Text style={styles.cardTitle}>{c.title}</Text>
             <Text style={styles.cardDesc}>{c.desc}</Text>
           </Pressable>
         ))}
+      </View>
+    </View>
+  );
+}
+
+// Entrada suave (deslizar + aparecer) para cada burbuja/tarjeta nueva del
+// hilo — un pequeño "toque de deleite" pedido explícitamente por el
+// usuario, nunca se anima al re-renderizar por otros cambios de estado
+// porque el Animated.Value nace y corre una sola vez por instancia de fila.
+function FadeInRow({ children }: { children: React.ReactNode }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(progress, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [progress]);
+  return (
+    <Animated.View
+      style={{
+        opacity: progress,
+        transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+// Indicador "extrayendo datos" — tres puntos + texto con un brillo de
+// gradiente blanco en movimiento (SVG, para que sea un degradado real y no
+// solo una opacidad). Pedido explícito del usuario: debe verse al menos 2
+// segundos siempre (ver MIN_THINKING_MS en send()) antes de revelar la
+// respuesta real.
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+const AnimatedDot = Animated.createAnimatedComponent(View);
+
+function ThinkingIndicator() {
+  const shimmer = useRef(new Animated.Value(0)).current;
+  const dots = [useRef(new Animated.Value(0.3)).current, useRef(new Animated.Value(0.3)).current, useRef(new Animated.Value(0.3)).current];
+
+  useEffect(() => {
+    const shimmerLoop = Animated.loop(
+      Animated.timing(shimmer, { toValue: 1, duration: 1300, easing: Easing.linear, useNativeDriver: false })
+    );
+    shimmerLoop.start();
+    const dotLoops = dots.map((val, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 160),
+          Animated.timing(val, { toValue: 1, duration: 360, useNativeDriver: true }),
+          Animated.timing(val, { toValue: 0.3, duration: 360, useNativeDriver: true }),
+          Animated.delay((2 - i) * 160),
+        ])
+      )
+    );
+    dotLoops.forEach((l) => l.start());
+    return () => {
+      shimmerLoop.stop();
+      dotLoops.forEach((l) => l.stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const gradX1 = shimmer.interpolate({ inputRange: [0, 1], outputRange: ['-40%', '160%'] });
+  const gradX2 = shimmer.interpolate({ inputRange: [0, 1], outputRange: ['0%', '200%'] });
+
+  return (
+    <View style={styles.thinkingRow}>
+      <View style={styles.thinkingDots}>
+        {dots.map((val, i) => (
+          <AnimatedDot key={i} style={[styles.thinkingDot, { opacity: val, backgroundColor: '#FFFFFF' }]} />
+        ))}
+      </View>
+      <Svg width={150} height={20}>
+        <Defs>
+          <AnimatedLinearGradient id="thinkingShimmer" x1={gradX1 as unknown as string} x2={gradX2 as unknown as string} y1="0%" y2="0%">
+            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.32} />
+            <Stop offset="50%" stopColor="#FFFFFF" stopOpacity={1} />
+            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.32} />
+          </AnimatedLinearGradient>
+        </Defs>
+        <SvgText x="0" y="15" fontSize="14" fontWeight="600" fill="url(#thinkingShimmer)">
+          Extrayendo datos…
+        </SvgText>
+      </Svg>
+    </View>
+  );
+}
+
+// Burbuja de respuesta con acciones — copiar (pedido explícito del
+// usuario, "debe poderse copiar y pegar") y compartir ("entre otras
+// funciones", con la API nativa de Share, sin dependencia nueva).
+function MessageBody({ text, palette }: { text: string; palette: ChatPalette }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(text);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const handleShare = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Share.share({ message: text }).catch(() => {});
+  };
+
+  return (
+    <View>
+      <Text style={styles.bubbleText}>{text}</Text>
+      <View style={styles.messageActionsRow}>
+        <Pressable accessibilityLabel="Copiar respuesta" onPress={handleCopy} style={styles.messageActionBtn} hitSlop={6}>
+          <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={14} color={copied ? palette.success : palette.textTertiary} />
+          <Text style={[styles.messageActionText, { color: copied ? palette.success : palette.textTertiary }]}>
+            {copied ? 'Copiado' : 'Copiar'}
+          </Text>
+        </Pressable>
+        <Pressable accessibilityLabel="Compartir respuesta" onPress={handleShare} style={styles.messageActionBtn} hitSlop={6}>
+          <Ionicons name="share-outline" size={14} color={palette.textTertiary} />
+          <Text style={[styles.messageActionText, { color: palette.textTertiary }]}>Compartir</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -337,9 +502,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   engineChipText: { color: CHAT_PALETTE.textPrimary, fontWeight: '600', fontSize: 14 },
-  bubble: { maxWidth: '85%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18 },
-  assistantBubble: { backgroundColor: CHAT_PALETTE.surfaceSolid, borderWidth: 1, borderColor: CHAT_PALETTE.surfaceBorder, alignSelf: 'flex-start' },
-  userBubble: { backgroundColor: CHAT_PALETTE.userBubble, alignSelf: 'flex-end' },
+  bubble: { maxWidth: '85%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
+  assistantBubble: { alignSelf: 'flex-start' },
+  userBubble: { backgroundColor: CHAT_PALETTE.userBubble, alignSelf: 'flex-end', borderRadius: 20 },
   bubbleText: { color: CHAT_PALETTE.textPrimary, fontSize: 15, lineHeight: 21 },
   heroWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   heroGreeting: { color: CHAT_PALETTE.textSecondary, fontSize: 17, fontWeight: '500', marginTop: 22, textAlign: 'center' },
@@ -348,12 +513,15 @@ const styles = StyleSheet.create({
   suggestionCard: {
     minWidth: 170,
     flexGrow: 1,
-    backgroundColor: CHAT_PALETTE.surfaceSolid,
-    borderWidth: 1,
-    borderColor: CHAT_PALETTE.surfaceBorder,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 18,
   },
   cardTitle: { color: CHAT_PALETTE.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 12 },
   cardDesc: { color: CHAT_PALETTE.textTertiary, fontSize: 13, marginTop: 4, lineHeight: 18 },
+  thinkingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 6, paddingVertical: 8 },
+  thinkingDots: { flexDirection: 'row', gap: 4 },
+  thinkingDot: { width: 6, height: 6, borderRadius: 3 },
+  messageActionsRow: { flexDirection: 'row', gap: 14, marginTop: 8 },
+  messageActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  messageActionText: { fontSize: 12, fontWeight: '600' },
 });
