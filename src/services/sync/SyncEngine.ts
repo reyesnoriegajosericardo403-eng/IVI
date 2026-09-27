@@ -1,5 +1,7 @@
+import { Platform } from 'react-native';
+
 import { isSupabaseConfigured, supabase } from '@/services/supabase/client';
-import { pushRemoteProfile } from '@/services/supabase/profileRepository';
+import { pushRemoteProfile, pushRemoteProfileKeepalive } from '@/services/supabase/profileRepository';
 import { repositoryByTable } from '@/services/supabase/repositories';
 import { useAppStore } from '@/store/useAppStore';
 import type { SyncTable } from './types';
@@ -28,8 +30,24 @@ const ALL_TABLES: SyncTable[] = [
 
 async function getUserId(): Promise<string | null> {
   if (!supabase) return null;
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
+  // getSession() lee la sesión ya en memoria/almacenamiento local en vez de
+  // revalidarla contra el servidor como hace getUser() — un viaje de red
+  // menos en CADA sincronización, no solo en el camino de emergencia de
+  // abajo (spec 2026-09-27: reducir cuanto sea posible el tiempo entre que
+  // se dispara una subida y que de verdad sale hacia el servidor).
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
+// Igual que getUserId() pero también trae el token — lo necesita el camino
+// de emergencia (pushProfileNow en web) para armar el fetch crudo con
+// keepalive, que no puede pasar por el cliente supabase-js.
+async function getSessionCreds(): Promise<{ userId: string; accessToken: string } | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if (!session) return null;
+  return { userId: session.user.id, accessToken: session.access_token };
 }
 
 export interface SyncResult {
@@ -102,6 +120,23 @@ async function pushProfileIfDirty(userId: string): Promise<void> {
 // paralelo es inofensivo (upsert), así que no hace falta el candado.
 export async function pushProfileNow(): Promise<void> {
   if (!isSupabaseConfigured) return;
+
+  // En web, el riesgo real es que el proceso muera A MITAD del envío —
+  // ahí ni siquiera el candado ni el reintento normal sirven, porque no hay
+  // JS vivo para ninguno de los dos. Por eso aquí NO se usa el cliente
+  // supabase-js (su fetch interno no sobrevive el cierre del proceso) sino
+  // un fetch crudo con keepalive:true — ver el comentario de
+  // pushRemoteProfileKeepalive para el porqué. getSession() es local
+  // (sin red) así que no le resta tiempo a la carrera contra el cierre.
+  if (Platform.OS === 'web') {
+    const { profile, profileDirty } = useAppStore.getState();
+    if (!profileDirty) return;
+    const creds = await getSessionCreds();
+    if (!creds) return;
+    pushRemoteProfileKeepalive(creds.userId, profile, creds.accessToken);
+    return;
+  }
+
   const userId = await getUserId();
   if (!userId) return;
   await pushProfileIfDirty(userId);

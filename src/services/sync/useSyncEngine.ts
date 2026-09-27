@@ -30,8 +30,19 @@ export function useSyncEngine() {
       const onVisibilityChange = () => {
         if (document.visibilityState === 'hidden') pushProfileNow();
       };
+      // 'pagehide' es redundante con 'visibilitychange' en la mayoría de
+      // navegadores, pero Safari/WebKit en iOS tiene historial de no
+      // disparar 'visibilitychange' de forma confiable cuando el PWA
+      // instalado se quita de "apps activas" (a diferencia de solo
+      // pasarlo a segundo plano) — con los dos, si uno falla el otro
+      // puede alcanzar a disparar el envío de emergencia a tiempo.
+      const onPageHide = () => pushProfileNow();
       document.addEventListener('visibilitychange', onVisibilityChange);
-      return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.addEventListener('pagehide', onPageHide);
+      return () => {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.removeEventListener('pagehide', onPageHide);
+      };
     }
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background' || state === 'inactive') pushProfileNow();

@@ -35,7 +35,7 @@ interface AccountCardVisualProps {
 // patrimonio igual requiero que a las tarjetas... les apliques el estilo
 // de vidrio o los diferentes estilos, deacuerdo al que el usuario
 // escoja"). Con blur (Vidrio): color translúcido + desenfoque + brillo.
-// Sin blur (Degradado suave, Neo brutalista): el color a toda opacidad —
+// Sin blur (Degradado suave): el color a toda opacidad —
 // nunca transparente sin desenfoque real detrás, porque entonces se ve
 // la tarjeta de atrás en la pila (spec: "se transparentan y dejan ver las
 // tarjetas detrás lo cual confunde").

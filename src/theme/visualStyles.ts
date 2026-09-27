@@ -203,72 +203,7 @@ const softGradient: VisualStyleDefinition = {
 };
 
 // ---------------------------------------------------------------------------
-// 3. Neo Brutalist — contundente: borde grueso, sombra dura sin difuminar,
-//    esquinas menos redondeadas y tipografía más pesada.
-// ---------------------------------------------------------------------------
-const neoBrutalist: VisualStyleDefinition = {
-  id: 'neo_brutalist',
-  name: 'Neo brutalista',
-  description: 'Contundente y geométrico: bordes marcados y sombra dura.',
-  status: 'permanent',
-  version: '1.0',
-  publishedAt: null,
-  expiresAt: null,
-  light: {
-    colors: {
-      ...lightColors,
-      background: '#F2F1EC',
-      backgroundAlt: '#E8E7E0',
-      surface: '#FFFFFF',
-      surfaceSolid: '#FFFFFF',
-      surfaceBorder: '#111111',
-      textPrimary: '#111111',
-      textSecondary: '#3B3B3B',
-      divider: 'rgba(17,17,17,0.15)',
-      tabBarBackground: '#FFFFFF',
-    },
-    surface: {
-      radiusScale: 0.5,
-      borderWidth: 2.5,
-      shadowColor: '#111111',
-      shadowOpacity: 1,
-      shadowRadius: 0,
-      shadowOffsetX: 4,
-      shadowOffsetY: 4,
-      blur: 0,
-      backgroundGradient: null,
-      boldText: true,
-    },
-  },
-  dark: {
-    colors: {
-      ...darkColors,
-      background: '#0A0A0A',
-      backgroundAlt: '#000000',
-      surface: '#161616',
-      surfaceSolid: '#161616',
-      surfaceBorder: '#FFFFFF',
-      textPrimary: '#FFFFFF',
-      divider: 'rgba(255,255,255,0.18)',
-      tabBarBackground: '#161616',
-    },
-    surface: {
-      radiusScale: 0.5,
-      borderWidth: 2.5,
-      shadowColor: palette.indigoLight,
-      shadowOpacity: 1,
-      shadowRadius: 0,
-      shadowOffsetX: 4,
-      shadowOffsetY: 4,
-      blur: 0,
-      backgroundGradient: null,
-      boldText: true,
-    },
-  },
-};
-
-// ---------------------------------------------------------------------------
-// 4. Vidrio líquido — material premium con fondo fijo cálido oscuro (o una
+// 3. Vidrio líquido — material premium con fondo fijo cálido oscuro (o una
 //    fotografía elegida) y vidrio grafito neutro encima. A diferencia de los
 //    otros tres, es UNA sola identidad (no cambia entre claro/oscuro: la
 //    dirección de diseño pide justo eso, "personalidad serena... premium sin
@@ -349,7 +284,8 @@ const liquidGlass: VisualStyleDefinition = {
 
 // Los estilos que viajan dentro de la app. Un tema remoto con el mismo id
 // tiene prioridad, para poder corregir uno de estos sin publicar una versión
-// nueva de la app.
-export const BUILT_IN_VISUAL_STYLES: VisualStyleDefinition[] = [glassmorphism, softGradient, neoBrutalist, liquidGlass];
+// nueva de la app. Vidrio líquido va como segunda opción (spec: promoverlo
+// dentro de la lista, es el estilo premium con foto de fondo).
+export const BUILT_IN_VISUAL_STYLES: VisualStyleDefinition[] = [glassmorphism, liquidGlass, softGradient];
 
 export const DEFAULT_VISUAL_STYLE_ID = glassmorphism.id;
