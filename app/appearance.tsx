@@ -9,6 +9,7 @@ import { AppearancePreview } from '@/components/AppearancePreview';
 import { GlassCard } from '@/components/GlassCard';
 import { BACKGROUND_CATEGORIES, approvedImagesIn, findBackgroundImage, type BackgroundCategoryId } from '@/data/backgroundCatalog';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { runSync } from '@/services/sync/SyncEngine';
 import { useAppStore } from '@/store/useAppStore';
 import { ACCENT_PALETTES, findAccentPalette } from '@/theme/accentPalettes';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -41,6 +42,7 @@ export default function Appearance() {
   const [openCategory, setOpenCategory] = useState<BackgroundCategoryId | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [applying, setApplying] = useState(false);
 
   const hasPhoto = mode !== 'none' && (!!catalogImageId || !!customUri);
   const catalogImage = findBackgroundImage(catalogImageId);
@@ -104,7 +106,7 @@ export default function Appearance() {
     }
   };
 
-  const handleApply = () => {
+  const handleApply = async () => {
     setVisualStyle(LIQUID_GLASS_STYLE_ID, true);
     updateProfileDraft({
       accentPaletteId: paletteId,
@@ -118,7 +120,19 @@ export default function Appearance() {
       backgroundDarkness: darkness,
       backgroundBlurAmount: blurAmount,
     });
-    router.back();
+    // Espera a que la foto/paleta de verdad salgan hacia la cuenta antes de
+    // salir de esta pantalla — spec: un PWA instalado puede terminar el
+    // proceso por completo al quitarlo de "apps activas", y si eso pasa
+    // ANTES de que esta subida termine, el cambio se pierde sin aviso. Con
+    // esta espera, para cuando la persona puede cerrar la app, la foto ya
+    // quedó confirmada en el servidor.
+    setApplying(true);
+    try {
+      await runSync();
+    } finally {
+      setApplying(false);
+      router.back();
+    }
   };
 
   const handleReset = () => {
@@ -263,11 +277,11 @@ export default function Appearance() {
       )}
 
       <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.divider }]}>
-        <Pressable onPress={() => router.back()} style={[styles.secondaryBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}>
+        <Pressable onPress={() => router.back()} disabled={applying} style={[styles.secondaryBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.pill, opacity: applying ? 0.5 : 1 }]}>
           <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancelar</Text>
         </Pressable>
-        <Pressable onPress={handleApply} style={[styles.primaryBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill }]}>
-          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Aplicar</Text>
+        <Pressable onPress={handleApply} disabled={applying} style={[styles.primaryBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, opacity: applying ? 0.7 : 1 }]}>
+          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{applying ? 'Guardando…' : 'Aplicar'}</Text>
         </Pressable>
       </View>
 

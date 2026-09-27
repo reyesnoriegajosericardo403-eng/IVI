@@ -89,6 +89,24 @@ async function pushProfileIfDirty(userId: string): Promise<void> {
   }
 }
 
+// Camino de emergencia SIN el candado `syncInFlight` de runSync() —
+// deliberado: un celular real puede terminar el proceso de un PWA por
+// completo al quitarlo de "apps activas" (no solo pasarlo a segundo
+// plano), y eso puede borrar hasta el almacenamiento local del propio
+// dispositivo (spec 2026-09-27, reporte del usuario: "cuando lo quito de
+// apps activas se borra todo"). Contra eso ningún reintento posterior
+// sirve — lo único que puede salvar el cambio es que la subida a Supabase
+// ya haya salido ANTES de que el proceso muera. Se dispara en cuanto la
+// pestaña se oculta (visibilitychange), no cada 60s ni tras esperar a que
+// termine un runSync() ya en curso — subir el mismo perfil dos veces en
+// paralelo es inofensivo (upsert), así que no hace falta el candado.
+export async function pushProfileNow(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const userId = await getUserId();
+  if (!userId) return;
+  await pushProfileIfDirty(userId);
+}
+
 // Trae los cambios del backend hechos desde otros dispositivos y los
 // fusiona localmente con "el más reciente gana" por updated_at.
 async function pullRemoteChanges(userId: string): Promise<number> {
@@ -114,7 +132,11 @@ let syncInFlight = false;
 // Punto de entrada único: empuja primero (para que las ediciones locales
 // no se pisen con una lectura vieja) y luego trae lo nuevo del servidor.
 // Si Supabase no está configurado o no hay sesión, no hace nada — la app
-// sigue funcionando en modo local (spec 20).
+// sigue funcionando en modo local (spec 20). El perfil sube ANTES que la
+// cola de entidades (cuentas/transacciones/etc.): es la parte más urgente
+// (spec 2026-09-27, foto/nombre perdidos) y suele ser un payload pequeño —
+// si el proceso muere a medio runSync(), que sea la cola grande la que se
+// quede sin subir, no el perfil.
 export async function runSync(): Promise<SyncResult> {
   if (syncInFlight) return { ranAsWorking: false, pushed: 0, pushFailed: 0, pulled: 0 };
   if (!isSupabaseConfigured) return { ranAsWorking: false, pushed: 0, pushFailed: 0, pulled: 0 };
@@ -124,8 +146,8 @@ export async function runSync(): Promise<SyncResult> {
     const userId = await getUserId();
     if (!userId) return { ranAsWorking: false, pushed: 0, pushFailed: 0, pulled: 0 };
 
-    const { pushed, failed } = await pushPendingChanges(userId);
     await pushProfileIfDirty(userId);
+    const { pushed, failed } = await pushPendingChanges(userId);
     const pulled = await pullRemoteChanges(userId);
 
     return { ranAsWorking: true, pushed, pushFailed: failed, pulled };
