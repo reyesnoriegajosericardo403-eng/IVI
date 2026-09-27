@@ -37,11 +37,89 @@ export interface BackgroundCategory {
 }
 
 export const BACKGROUND_CATEGORIES: BackgroundCategory[] = [
-  { id: 'soft', name: 'Soft y calma', direction: 'Rincones serenos, luz difusa, texturas suaves, tonos poco saturados.', images: [] },
-  { id: 'gym', name: 'Gym y movimiento', direction: 'Entrenamiento, ciclismo o gimnasios sobrios con espacios oscuros útiles para tarjetas.', images: [] },
-  { id: 'inspiracional', name: 'Inspiración', direction: 'Escenas evocadoras de progreso, amaneceres, horizontes; sin frases detrás de la interfaz.', images: [] },
-  { id: 'arquitectura', name: 'Arquitectura e interiores', direction: 'Salas cálidas, materiales nobles, geometría tranquila y espacios con márgenes libres.', images: [] },
-  { id: 'naturaleza', name: 'Naturaleza', direction: 'Paisajes, agua, hojas o cielos poco recargados y con puntos focales adaptables.', images: [] },
+  {
+    id: 'soft',
+    name: 'Soft y calma',
+    direction: 'Rincones serenos, luz difusa, texturas suaves, tonos poco saturados.',
+    images: [
+      {
+        id: 'soft-01',
+        title: 'Rincón de lectura con lámpara',
+        categoryId: 'soft',
+        order: 1,
+        focalMobile: { x: 0.55, y: 0.62 },
+        focalDesktop: { x: 0.5, y: 0.55 },
+        source: require('../../assets/backgrounds/soft/rincon-lectura-lampara.jpg'),
+        status: 'aprobada',
+      },
+      {
+        id: 'soft-02',
+        title: 'Sala cálida con planta',
+        categoryId: 'soft',
+        order: 2,
+        focalMobile: { x: 0.5, y: 0.58 },
+        focalDesktop: { x: 0.5, y: 0.5 },
+        source: require('../../assets/backgrounds/soft/sala-calida-planta.jpg'),
+        status: 'aprobada',
+      },
+    ],
+  },
+  {
+    id: 'gym',
+    name: 'Gym y movimiento',
+    direction: 'Entrenamiento, ciclismo o gimnasios sobrios con espacios oscuros útiles para tarjetas.',
+    images: [
+      {
+        id: 'gym-01',
+        title: 'Azotea al atardecer',
+        categoryId: 'gym',
+        order: 1,
+        focalMobile: { x: 0.5, y: 0.45 },
+        focalDesktop: { x: 0.5, y: 0.42 },
+        source: require('../../assets/backgrounds/gym/azotea-atardecer.jpg'),
+        status: 'aprobada',
+      },
+    ],
+  },
+  {
+    id: 'inspiracional',
+    name: 'Inspiración',
+    direction: 'Escenas evocadoras de progreso, amaneceres, horizontes; sin frases detrás de la interfaz.',
+    images: [],
+  },
+  {
+    id: 'arquitectura',
+    name: 'Arquitectura e interiores',
+    direction: 'Salas cálidas, materiales nobles, geometría tranquila y espacios con márgenes libres.',
+    images: [],
+  },
+  {
+    id: 'naturaleza',
+    name: 'Naturaleza',
+    direction: 'Paisajes, agua, hojas o cielos poco recargados y con puntos focales adaptables.',
+    images: [
+      {
+        id: 'naturaleza-01',
+        title: 'Marco con paisaje de colinas',
+        categoryId: 'naturaleza',
+        order: 1,
+        focalMobile: { x: 0.5, y: 0.5 },
+        focalDesktop: { x: 0.5, y: 0.5 },
+        source: require('../../assets/backgrounds/naturaleza/marco-paisaje-colinas.jpg'),
+        status: 'aprobada',
+      },
+      {
+        id: 'naturaleza-02',
+        title: 'Bicicleta en el callejón',
+        categoryId: 'naturaleza',
+        order: 2,
+        focalMobile: { x: 0.4, y: 0.6 },
+        focalDesktop: { x: 0.35, y: 0.55 },
+        source: require('../../assets/backgrounds/naturaleza/bicicleta-callejon.jpg'),
+        status: 'aprobada',
+      },
+    ],
+  },
 ];
 
 export function findBackgroundImage(id: string | undefined): BackgroundImage | undefined {
