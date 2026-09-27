@@ -4,15 +4,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AssignBudgetFlow } from '@/components/AssignBudgetFlow';
+import { BudgetActionPanel } from '@/components/BudgetActionPanel';
 import { BudgetCalendar, BudgetTemplateLegend } from '@/components/BudgetCalendar';
+import { BudgetChipRow } from '@/components/BudgetChipRow';
 import { BudgetProgressChart, type BudgetProgressItem } from '@/components/BudgetProgressChart';
 import { BudgetTemplateList } from '@/components/BudgetTemplateList';
-import { BudgetTemplateSheet } from '@/components/BudgetTemplateSheet';
+import { templateIcon } from '@/components/budgetTemplateMeta';
 import { GlassCard } from '@/components/GlassCard';
 import { MonthBudgetBreakdown } from '@/components/MonthBudgetBreakdown';
+import { TemplateMetaForm } from '@/components/TemplateMetaForm';
 import { findBudgetConcept, findIncomeConcept, parseSubBudgetId } from '@/data/budgetConcepts';
-import type { BudgetTemplate, BudgetTemplateKind } from '@/data/types';
+import type { BudgetAssignment, BudgetTemplate } from '@/data/types';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import {
   selectActiveBudgetAssignments,
   selectActiveBudgets,
@@ -22,88 +25,140 @@ import {
   selectActiveTransactions,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
-import { surfaceShadow } from '@/theme/surfaceStyle';
 import { useTheme } from '@/theme/ThemeProvider';
-import { isEndingSoon, makePeriodKey, parsePeriodKey, periodKeyLabel, shiftPeriodKey } from '@/utils/budgetPeriods';
-import { buildMonthGrid, parseISODate, toISODate } from '@/utils/date';
-import { resolveBudgetForPeriod, resolveTemplateForPeriod } from '@/utils/finance';
+import { isoDatesBetween, makePeriodKey, makeRangeKey, parsePeriodKey, periodKeyLabel, rangeLabel } from '@/utils/budgetPeriods';
+import { buildMonthGrid, daysInMonth, parseISODate, toISODate } from '@/utils/date';
+import { resolveBudgetForPeriod, findOverlappingAssignments, resolveTemplateBudgetInRange, upcomingAssignments } from '@/utils/finance';
 
-type Scope = 'month' | 'week';
+function monthStartIso(monthIso: string): string {
+  const d = parseISODate(monthIso);
+  return toISODate(new Date(d.getFullYear(), d.getMonth(), 1));
+}
+function monthEndIso(monthIso: string): string {
+  const d = parseISODate(monthIso);
+  return toISODate(new Date(d.getFullYear(), d.getMonth(), daysInMonth(d)));
+}
 
-// Pantalla de inicio de Presupuesto — reducida a 3 bloques (spec: "cuando
-// entre lo único que quiero ver es una simple gráfica... el calendario
-// bonito y minimalista... y una lista de mis presupuestos solo con el
-// encabezado de su nombre"). La edición de montos vive en
-// app/budget-template/[id].tsx.
+// Pantalla de Presupuesto — rediseño según especificación v2 "Plan de
+// gastos" + imagen de referencia: el calendario es el área principal, con
+// los presupuestos disponibles como chips justo encima, y un panel de
+// acción a la derecha (columna en tablet/escritorio, debajo en móvil) que
+// siempre muestra presupuesto elegido, planeado/gastado y el botón de
+// confirmar. Elegir fechas es tocar el día de inicio y el día de fin en el
+// calendario — el rango se previsualiza con borde discontinuo
+// ("pendiente de guardar") hasta que se confirma.
 export default function Presupuesto() {
-  const { colors, typography, spacing, radius, surface } = useTheme();
+  const { colors, typography, spacing, radius } = useTheme();
+  const { isTablet } = useBreakpoint();
   const profile = useAppStore((s) => s.profile);
-  const rawBudgets = useAppStore((s) => s.budgets);
   const rawTemplates = useAppStore((s) => s.budgetTemplates);
   const rawTemplateLines = useAppStore((s) => s.templateBudgetLines);
   const rawAssignments = useAppStore((s) => s.budgetAssignments);
   const rawOverrides = useAppStore((s) => s.periodBudgetOverrides);
+  const rawBudgets = useAppStore((s) => s.budgets);
   const rawTransactions = useAppStore((s) => s.transactions);
   const ensureDefaultBudgetTemplate = useAppStore((s) => s.ensureDefaultBudgetTemplate);
   const addBudgetTemplate = useAppStore((s) => s.addBudgetTemplate);
   const deleteBudgetTemplate = useAppStore((s) => s.deleteBudgetTemplate);
-  const assignTemplateToPeriod = useAppStore((s) => s.assignTemplateToPeriod);
-  const unassignPeriod = useAppStore((s) => s.unassignPeriod);
-  const updateProfileDraft = useAppStore((s) => s.updateProfileDraft);
+  const assignTemplateToRange = useAppStore((s) => s.assignTemplateToRange);
 
-  // Lo que ya existía antes de las plantillas se envuelve en "Mi
-  // presupuesto" la primera vez que se abre esta pantalla.
   useEffect(() => {
     ensureDefaultBudgetTemplate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
-  const templates = useMemo(() => selectActiveBudgetTemplates(rawTemplates), [rawTemplates]);
+  const allTemplates = useMemo(() => selectActiveBudgetTemplates(rawTemplates), [rawTemplates]);
+  const templates = useMemo(() => allTemplates.filter((t) => !t.isDefault), [allTemplates]);
   const templateLines = useMemo(() => selectActiveTemplateBudgetLines(rawTemplateLines), [rawTemplateLines]);
   const assignments = useMemo(() => selectActiveBudgetAssignments(rawAssignments), [rawAssignments]);
   const overrides = useMemo(() => selectActivePeriodOverrides(rawOverrides), [rawOverrides]);
+  const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
+  const oneTimeBudgets = useMemo(() => budgets.filter((b) => !!b.oneTimeDate), [budgets]);
 
-  const [scope, setScope] = useState<Scope>('month');
-  const [viewingPeriodKey, setViewingPeriodKey] = useState(() => makePeriodKey('month', new Date()));
-  const [calendarMonthIso, setCalendarMonthIso] = useState(() => new Date().toISOString().slice(0, 10));
-  const [templateSheetOpen, setTemplateSheetOpen] = useState(false);
-  const [assignFlowOpen, setAssignFlowOpen] = useState(false);
+  const [calendarMonthIso, setCalendarMonthIso] = useState(() => toISODate(new Date()));
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [pendingStart, setPendingStart] = useState<string | null>(null);
+  const [pendingEnd, setPendingEnd] = useState<string | null>(null);
+  const [newTemplateOpen, setNewTemplateOpen] = useState(false);
+  const [conflicts, setConflicts] = useState<{ assignment: BudgetAssignment; template: BudgetTemplate | undefined }[] | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
-  const [introOpen, setIntroOpen] = useState(!profile.seenBudgetTemplatesIntro);
+  const [announce, setAnnounce] = useState<string | null>(null);
 
-  // Arrastrar una ficha de "Mis presupuestos" hasta el calendario (spec:
-  // "el usuario arrastra una ficha... la suelta sobre un día"). El estado
-  // vive aquí, no en BudgetTemplateList ni en BudgetCalendar, porque la
-  // ficha flotante y la vista previa deben pintarse por encima de ambos.
-  const [gridLayout, setGridLayout] = useState<{ pageX: number; pageY: number; width: number; height: number; rows: number } | null>(
-    null
-  );
+  // Arrastrar una ficha desde "Mis presupuestos" sigue asignando su
+  // periodo natural completo (día/semana/mes) — el flujo nuevo de tocar
+  // inicio/fin convive con esto, no lo reemplaza.
+  const [gridLayout, setGridLayout] = useState<{ pageX: number; pageY: number; width: number; height: number; rows: number } | null>(null);
   const [dragTemplate, setDragTemplate] = useState<BudgetTemplate | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [previewDates, setPreviewDates] = useState<Set<string>>(new Set());
   const [dragTargetKey, setDragTargetKey] = useState<string | null>(null);
-  const [dragMessage, setDragMessage] = useState<string | null>(null);
 
-  const switchScope = (next: Scope) => {
-    setScope(next);
-    setViewingPeriodKey(makePeriodKey(next, new Date()));
-  };
+  useEffect(() => {
+    if (!selectedTemplateId && templates.length > 0) setSelectedTemplateId(templates[0].id);
+    if (selectedTemplateId && !templates.some((t) => t.id === selectedTemplateId)) {
+      setSelectedTemplateId(templates[0]?.id ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates.length]);
 
-  const activeAssignment = useMemo(
-    () => resolveTemplateForPeriod(viewingPeriodKey, templates, assignments).assignment,
-    [viewingPeriodKey, templates, assignments]
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
+  const pendingDates = useMemo(
+    () => (pendingStart && pendingEnd ? new Set(isoDatesBetween(pendingStart, pendingEnd)) : new Set<string>()),
+    [pendingStart, pendingEnd]
   );
 
-  // Presupuestado vs. gastado real, por categoría, del periodo que se
-  // está viendo — la versión "a detalle" de la misma gráfica que ya
-  // aparece resumida por grupo en Inicio (spec: "esta función debe estar
-  // también en la parte de presupuestos pero más a detalle").
+  const monthStart = monthStartIso(calendarMonthIso);
+  const monthEnd = monthEndIso(calendarMonthIso);
+
+  // Resumen del panel de acción: si hay un rango pendiente, previsualiza
+  // exactamente lo que aplicaría al confirmarlo; si no, muestra lo que la
+  // plantilla elegida ya tiene asignado en el mes que se está viendo.
+  const panelSummary = useMemo(() => {
+    if (!selectedTemplate) return { planned: 0, actual: 0, categoryBreakdown: [] as ReturnType<typeof resolveTemplateBudgetInRange>['categoryBreakdown'] };
+    const ownAssignments = assignments.filter((a) => a.templateId === selectedTemplate.id);
+    if (pendingStart && pendingEnd) {
+      const synthetic: BudgetAssignment = {
+        id: '__pending__',
+        templateId: selectedTemplate.id,
+        periodKey: makeRangeKey(pendingStart, pendingEnd),
+        startDate: pendingStart,
+        endDate: pendingEnd,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return resolveTemplateBudgetInRange({
+        template: selectedTemplate,
+        templateLines,
+        assignments: [...ownAssignments, synthetic],
+        startIso: pendingStart,
+        endIso: pendingEnd,
+        transactions,
+      });
+    }
+    return resolveTemplateBudgetInRange({
+      template: selectedTemplate,
+      templateLines,
+      assignments: ownAssignments,
+      startIso: monthStart,
+      endIso: monthEnd,
+      transactions,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplate, assignments, templateLines, transactions, pendingStart, pendingEnd, monthStart, monthEnd]);
+
+  const upcoming = useMemo(
+    () => upcomingAssignments(toISODate(new Date()), assignments, allTemplates, templateLines, 4),
+    [assignments, allTemplates, templateLines]
+  );
+
+  // "Cómo van tus gastos" — la gráfica general del mes que se está viendo,
+  // igual que antes (mezcla lo que gane cada día, cualquier plantilla).
+  const monthPeriodKey = makePeriodKey('month', parseISODate(calendarMonthIso));
   const budgetProgressItems = useMemo<BudgetProgressItem[]>(() => {
     const resolved = resolveBudgetForPeriod({
-      periodKey: viewingPeriodKey,
-      templates,
+      periodKey: monthPeriodKey,
+      templates: allTemplates,
       templateLines,
       assignments,
       overrides,
@@ -113,13 +168,6 @@ export default function Presupuesto() {
     const budgetedItems = resolved.lines
       .filter((l) => !findIncomeConcept(l.categoryId) && l.budgeted > 0)
       .map((l) => ({ id: l.budgetId, label: l.categoryName, budgeted: l.budgeted, actual: l.actual }));
-
-    // Conceptos que SÍ tuvieron gasto real pero que no tienen ninguna
-    // ficha de presupuesto (ni de concepto ni de subcategoría) — spec:
-    // "los gastos que no se presupuestaron pero también se incurrieron en
-    // el periodo también aparezcan en el gráfico, eso sí son muy
-    // representativos". BudgetProgressChart se encarga de recortar a las
-    // más representativas (tope de 4 + "Otros").
     const covered = new Set<string>();
     resolved.lines.forEach((l) => {
       if (findIncomeConcept(l.categoryId)) return;
@@ -128,40 +176,43 @@ export default function Presupuesto() {
     });
     const unbudgetedItems: BudgetProgressItem[] = Object.entries(resolved.conceptSpend)
       .filter(([conceptId, actual]) => actual > 0 && !covered.has(conceptId) && !findIncomeConcept(conceptId))
-      .map(([conceptId, actual]) => ({
-        id: `sin-plan:${conceptId}`,
-        label: findBudgetConcept(conceptId)?.name ?? conceptId,
-        budgeted: 0,
-        actual,
-      }));
-
+      .map(([conceptId, actual]) => ({ id: `sin-plan:${conceptId}`, label: findBudgetConcept(conceptId)?.name ?? conceptId, budgeted: 0, actual }));
     return [...budgetedItems, ...unbudgetedItems];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewingPeriodKey, templates, templateLines, assignments, overrides, transactions]);
+  }, [monthPeriodKey, allTemplates, templateLines, assignments, overrides, transactions]);
 
-  const oneTimeBudgets = useMemo(() => budgets.filter((b) => !!b.oneTimeDate), [budgets]);
-  const isCurrentPeriod = viewingPeriodKey === makePeriodKey(scope, new Date());
-
-  // "Repetir presupuesto anterior": solo cuando el periodo REAL de hoy
-  // está por terminar y el periodo pasado tenía un presupuesto con
-  // nombre que el siguiente todavía no tiene (spec: "cuando el
-  // presupuesto del mes esté acabando").
-  const realCurrentKey = makePeriodKey(scope, new Date());
-  const prevKey = shiftPeriodKey(realCurrentKey, -1);
-  const prevTemplate = resolveTemplateForPeriod(prevKey, templates, assignments).template;
-  const currentRealTemplate = resolveTemplateForPeriod(realCurrentKey, templates, assignments).template;
-  const showRepeatPrevious =
-    isEndingSoon(realCurrentKey) && !!prevTemplate && !prevTemplate.isDefault && currentRealTemplate?.id !== prevTemplate.id;
-
-  const handleRepeatPrevious = () => {
-    if (!prevTemplate) return;
-    assignTemplateToPeriod(prevTemplate.id, shiftPeriodKey(realCurrentKey, 1));
+  // ---- Selección de rango por toques (spec: "tocar dos fechas o los
+  // campos Desde y Hasta") ----
+  const handleDayPress = (iso: string) => {
+    if (!selectedTemplateId) return;
+    if (!pendingStart) {
+      setPendingStart(iso);
+      setPendingEnd(iso);
+    } else {
+      setPendingEnd(iso);
+    }
+  };
+  const cancelSelection = () => {
+    setPendingStart(null);
+    setPendingEnd(null);
   };
 
-  // Mientras se arrastra: de la posición del dedo/cursor + el tamaño de la
-  // cuadrícula del calendario, calcula sobre qué celda está y resalta TODAS
-  // las fechas que ocuparía la ficha soltada ahí — el mes completo, la
-  // semana de esa celda, o solo ese día, según el `kind` de la ficha.
+  const handleConfirm = () => {
+    if (!selectedTemplate || !pendingStart || !pendingEnd) return;
+    const [start, end] = pendingStart <= pendingEnd ? [pendingStart, pendingEnd] : [pendingEnd, pendingStart];
+    const overlaps = findOverlappingAssignments(start, end, assignments, allTemplates);
+    if (overlaps.length > 0 && !conflicts) {
+      setConflicts(overlaps);
+      return;
+    }
+    assignTemplateToRange(selectedTemplate.id, start, end);
+    setAnnounce(`"${selectedTemplate.name}" asignado del ${rangeLabel(start, end)}`);
+    setConflicts(null);
+    setPendingStart(null);
+    setPendingEnd(null);
+  };
+
+  // ---- Arrastrar ficha de "Mis presupuestos" (sin cambios de fondo) ----
   useEffect(() => {
     if (!dragTemplate || !dragPos || !gridLayout) {
       setPreviewDates(new Set());
@@ -192,28 +243,18 @@ export default function Presupuesto() {
       setDragTargetKey(null);
       return;
     }
-    const dates = new Set<string>();
-    for (let d = new Date(parsed.start); d.getTime() <= parsed.end.getTime(); d.setDate(d.getDate() + 1)) {
-      dates.add(toISODate(d));
-    }
-    setPreviewDates(dates);
+    setPreviewDates(new Set(isoDatesBetween(toISODate(parsed.start), toISODate(parsed.end))));
     setDragTargetKey(key);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragTemplate, dragPos, gridLayout, calendarMonthIso]);
 
-  const handleDragStart = (template: BudgetTemplate) => {
-    setDragTemplate(template);
-    setDragMessage(null);
-  };
-
-  const handleDragMove = (pageX: number, pageY: number) => {
-    setDragPos({ x: pageX, y: pageY });
-  };
-
   const handleDragEnd = () => {
-    if (dragTemplate && dragTargetKey) {
-      assignTemplateToPeriod(dragTemplate.id, dragTargetKey);
-      setDragMessage(`Presupuesto "${dragTemplate.name}" asignado a ${periodKeyLabel(dragTargetKey)}`);
+    if (dragTemplate && dragTargetKey && previewDates.size > 0) {
+      const sorted = Array.from(previewDates).sort();
+      const start = sorted[0];
+      const end = sorted[sorted.length - 1];
+      assignTemplateToRange(dragTemplate.id, start, end);
+      setAnnounce(`"${dragTemplate.name}" asignado del ${rangeLabel(start, end)}`);
     }
     setDragTemplate(null);
     setDragPos(null);
@@ -221,139 +262,133 @@ export default function Presupuesto() {
     setDragTargetKey(null);
   };
 
+  const handleDeleteTemplate = (id: string) => {
+    deleteBudgetTemplate(id);
+    if (selectedTemplateId === id) setSelectedTemplateId(null);
+  };
+
+  const rangePillLabel = pendingStart && pendingEnd ? rangeLabel(pendingStart, pendingEnd) : 'Toca un día para empezar';
+  const pendingDayCount = pendingStart && pendingEnd ? isoDatesBetween(pendingStart, pendingEnd).length : 0;
+
+  const calendarBlock = (
+    <GlassCard style={{ gap: spacing.sm }}>
+      <View style={styles.rangeRow}>
+        <Pressable
+          accessibilityLabel={pendingStart ? 'Cancelar selección de fechas' : 'Sin selección todavía'}
+          onPress={cancelSelection}
+          disabled={!pendingStart}
+          style={[styles.rangePill, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}
+        >
+          <Ionicons name="calendar-outline" size={15} color={colors.textSecondary} />
+          <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '600', marginLeft: 6 }]}>{rangePillLabel}</Text>
+          {pendingStart && <Ionicons name="close" size={14} color={colors.textTertiary} style={{ marginLeft: 6 }} />}
+        </Pressable>
+        <Pressable accessibilityLabel="Ver resumen del mes" onPress={() => setSummaryOpen(true)} style={styles.navBtn}>
+          <Ionicons name="bar-chart-outline" size={18} color={colors.accentFrom} />
+        </Pressable>
+      </View>
+
+      <BudgetTemplateLegend templates={templates} />
+
+      <BudgetCalendar
+        monthIso={calendarMonthIso}
+        onChangeMonth={setCalendarMonthIso}
+        templates={allTemplates}
+        assignments={assignments}
+        oneTimeBudgets={oneTimeBudgets}
+        pendingDates={pendingDates}
+        pendingIcon={selectedTemplate ? templateIcon(selectedTemplate) : undefined}
+        pendingColor={selectedTemplate?.color ?? colors.accentFrom}
+        onDayPress={handleDayPress}
+        previewDates={previewDates}
+        previewColor={dragTemplate?.color}
+        previewIcon={dragTemplate ? templateIcon(dragTemplate) : undefined}
+        onGridLayout={setGridLayout}
+      />
+    </GlassCard>
+  );
+
+  const panelBlock = (
+    <BudgetActionPanel
+      template={selectedTemplate}
+      planned={panelSummary.planned}
+      actual={panelSummary.actual}
+      currency={profile.primaryCurrency}
+      thresholds={profile.budgetThresholds}
+      upcoming={upcoming}
+      categoryBreakdown={panelSummary.categoryBreakdown}
+      pendingDays={pendingDayCount}
+      canConfirm={!!selectedTemplate && !!pendingStart && !!pendingEnd}
+      confirmLabel={selectedTemplate && pendingDayCount > 0 ? `Asignar ${selectedTemplate.name} · ${pendingDayCount} día${pendingDayCount === 1 ? '' : 's'}` : 'Elige un rango de fechas'}
+      onConfirm={handleConfirm}
+      onOpenTemplate={() => selectedTemplate && router.push(`/budget-template/${selectedTemplate.id}`)}
+      onDeleteTemplate={() => selectedTemplate && handleDeleteTemplate(selectedTemplate.id)}
+    />
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, flexDirection: 'row', alignItems: 'center' }}>
         <Pressable onPress={() => router.back()} style={{ marginRight: spacing.md }}>
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[typography.title, { color: colors.textPrimary }]}>Mi presupuesto</Text>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>Ingresos, gastos y hacia dónde va tu dinero</Text>
-        </View>
+        <Text style={[typography.title, { color: colors.textPrimary, flex: 1 }]}>Plan de gastos</Text>
         <Pressable accessibilityLabel="Ajustes" onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
         </Pressable>
       </View>
 
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+        <BudgetChipRow
+          templates={templates}
+          selectedId={selectedTemplateId}
+          onSelect={(id) => {
+            setSelectedTemplateId(id);
+            cancelSelection();
+          }}
+          onNew={() => setNewTemplateOpen(true)}
+          onDelete={handleDeleteTemplate}
+        />
+      </View>
+
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
-        {/* ---------- Calendario (incluye nav de periodo) ---------- */}
-        <GlassCard style={{ gap: spacing.sm }}>
-          <View style={styles.rowCenter}>
-            <Pressable accessibilityLabel="Periodo anterior" onPress={() => setViewingPeriodKey((k) => shiftPeriodKey(k, -1))} style={styles.navBtn}>
-              <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
-            </Pressable>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={[typography.headline, { color: colors.textPrimary }]}>{periodKeyLabel(viewingPeriodKey)}</Text>
-              {!isCurrentPeriod && (
-                <Pressable accessibilityLabel="Volver al periodo actual" onPress={() => setViewingPeriodKey(makePeriodKey(scope, new Date()))}>
-                  <Text style={{ color: colors.accentFrom, fontWeight: '700', fontSize: 13 }}>Volver a hoy</Text>
-                </Pressable>
-              )}
-            </View>
-            <Pressable accessibilityLabel="Ver resumen del mes" onPress={() => setSummaryOpen(true)} style={styles.navBtn}>
-              <Ionicons name="bar-chart-outline" size={18} color={colors.accentFrom} />
-            </Pressable>
-            <Pressable accessibilityLabel="Periodo siguiente" onPress={() => setViewingPeriodKey((k) => shiftPeriodKey(k, 1))} style={styles.navBtn}>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </Pressable>
+        {isTablet ? (
+          <View style={styles.twoColumn}>
+            <View style={{ flex: 1.6 }}>{calendarBlock}</View>
+            <View style={{ flex: 1, minWidth: 300 }}>{panelBlock}</View>
           </View>
-
-          <View style={[styles.scopeToggle, { borderColor: colors.surfaceBorder, borderRadius: radius.pill, alignSelf: 'flex-start' }]}>
-            {(['week', 'month'] as Scope[]).map((s) => (
-              <Pressable
-                key={s}
-                onPress={() => switchScope(s)}
-                style={[styles.scopeBtn, { borderRadius: radius.pill, backgroundColor: scope === s ? colors.accentFrom : 'transparent' }]}
-              >
-                <Text style={{ color: scope === s ? '#FFFFFF' : colors.textSecondary, fontWeight: '700', fontSize: 13 }}>
-                  {s === 'week' ? 'Semanal' : 'Mensual'}
-                </Text>
-              </Pressable>
-            ))}
+        ) : (
+          <View style={{ gap: spacing.lg }}>
+            {calendarBlock}
+            {panelBlock}
           </View>
-          <Text style={[typography.micro, { color: colors.textTertiary }]}>
-            Tocar un día asigna {scope === 'week' ? 'toda esa semana' : 'todo ese mes'} — o usa el botón de abajo para elegir con calma.
-          </Text>
+        )}
 
-          {showRepeatPrevious && prevTemplate && (
-            <Pressable
-              accessibilityLabel={`Repetir presupuesto de ${prevTemplate.name} para el próximo periodo`}
-              onPress={handleRepeatPrevious}
-              style={[styles.secondaryBtn, { borderColor: colors.accentFrom, borderRadius: radius.pill, alignSelf: 'flex-start' }]}
-            >
-              <Ionicons name="repeat-outline" size={15} color={colors.accentFrom} />
-              <Text style={{ color: colors.accentFrom, fontWeight: '700', marginLeft: 6, fontSize: 13 }}>
-                Repetir presupuesto de &quot;{prevTemplate.name}&quot; para el próximo periodo
-              </Text>
-            </Pressable>
-          )}
-
-          <BudgetTemplateLegend templates={templates} />
-
-          <BudgetCalendar
-            monthIso={calendarMonthIso}
-            onChangeMonth={setCalendarMonthIso}
-            mode={scope}
-            templates={templates}
-            assignments={assignments}
-            oneTimeBudgets={oneTimeBudgets}
-            selectedPeriodKey={viewingPeriodKey}
-            onSelectPeriod={(key) => {
-              setViewingPeriodKey(key);
-              setTemplateSheetOpen(true);
-            }}
-            previewDates={previewDates}
-            previewColor={dragTemplate?.color}
-            onGridLayout={setGridLayout}
-          />
-
-          <Pressable
-            accessibilityLabel="Asignar presupuesto a una fecha"
-            onPress={() => setAssignFlowOpen(true)}
-            style={[styles.assignBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill }]}
-          >
-            <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
-            <Text style={{ color: '#FFFFFF', fontWeight: '700', marginLeft: 6 }}>Asignar presupuesto a una fecha</Text>
-          </Pressable>
-        </GlassCard>
-
-        {/* ---------- Presupuestado vs. gastado real, por categoría ---------- */}
         {budgetProgressItems.length > 0 && (
           <GlassCard style={{ gap: spacing.sm }}>
             <Text style={[typography.headline, { color: colors.textPrimary }]}>Cómo van tus gastos</Text>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              {periodKeyLabel(viewingPeriodKey)} — presupuestado contra lo que ya gastaste, por categoría.
+              {periodKeyLabel(monthPeriodKey)} — presupuestado contra lo que ya gastaste, por categoría.
             </Text>
             <BudgetProgressChart items={budgetProgressItems} currency={profile.primaryCurrency} />
           </GlassCard>
         )}
 
-        {/* ---------- 3. Mis presupuestos ---------- */}
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.headline, { color: colors.textPrimary }]}>Mis presupuestos</Text>
           <BudgetTemplateList
-            templates={templates}
+            templates={allTemplates}
             templateLines={templateLines}
             currency={profile.primaryCurrency}
-            onDragStart={handleDragStart}
-            onDragMove={handleDragMove}
+            onDragStart={setDragTemplate}
+            onDragMove={(x, y) => setDragPos({ x, y })}
             onDragEnd={handleDragEnd}
           />
         </View>
       </ScrollView>
 
-      {/* Ficha flotante mientras se arrastra — sigue el dedo/cursor por
-          encima del calendario, que vive en otra sección de esta misma
-          pantalla. */}
       {dragTemplate && dragPos && (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.dragGhost,
-            { left: dragPos.x - 90, top: dragPos.y - 24, backgroundColor: dragTemplate.color, borderRadius: radius.pill },
-          ]}
-        >
+        <View pointerEvents="none" style={[styles.dragGhost, { left: dragPos.x - 90, top: dragPos.y - 24, backgroundColor: dragTemplate.color, borderRadius: radius.pill }]}>
           <Ionicons name="reorder-two-outline" size={14} color="#FFFFFF" />
           <Text style={{ color: '#FFFFFF', fontWeight: '700', marginLeft: 6, fontSize: 13 }} numberOfLines={1}>
             {dragTemplate.name}
@@ -361,118 +396,73 @@ export default function Presupuesto() {
         </View>
       )}
 
-      {/* Anuncio para lectores de pantalla del resultado del arrastre —
-          la vía accesible sin mouse/touch es el botón "Asignar presupuesto
-          a una fecha" (flujo guiado), operable por completo con teclado. */}
-      {dragMessage && (
+      {announce && (
         <Text accessibilityLiveRegion="polite" style={styles.srOnly}>
-          {dragMessage}
+          {announce}
         </Text>
       )}
 
-      {templateSheetOpen && (
-        <BudgetTemplateSheet
-          periodLabel={periodKeyLabel(viewingPeriodKey)}
-          scope={scope}
-          templates={templates}
-          currentTemplateId={activeAssignment?.templateId}
-          onAssign={(templateId) => {
-            assignTemplateToPeriod(templateId, viewingPeriodKey);
-            setTemplateSheetOpen(false);
-          }}
-          onUnassign={() => {
-            unassignPeriod(viewingPeriodKey);
-            setTemplateSheetOpen(false);
-          }}
-          onCreate={(name, color, kind: BudgetTemplateKind) => {
-            const id = addBudgetTemplate({ name, color, kind });
-            assignTemplateToPeriod(id, viewingPeriodKey);
-            setTemplateSheetOpen(false);
-          }}
-          onDelete={(templateId) => deleteBudgetTemplate(templateId)}
-          onClose={() => setTemplateSheetOpen(false)}
-        />
+      {newTemplateOpen && (
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surfaceSolid, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: radius.lg }]}>
+            <Text style={[typography.headline, { color: colors.textPrimary, marginBottom: spacing.sm }]}>Nuevo presupuesto</Text>
+            <TemplateMetaForm
+              onSave={(name, color, kind, icon) => {
+                const id = addBudgetTemplate({ name, color, kind, icon });
+                setSelectedTemplateId(id);
+                setNewTemplateOpen(false);
+              }}
+              onCancel={() => setNewTemplateOpen(false)}
+            />
+          </View>
+        </View>
       )}
 
-      {assignFlowOpen && (
-        <AssignBudgetFlow
-          templates={templates}
-          onAssign={(templateId, key) => {
-            assignTemplateToPeriod(templateId, key);
-            setViewingPeriodKey(key);
-          }}
-          onDelete={(templateId) => deleteBudgetTemplate(templateId)}
-          onClose={() => setAssignFlowOpen(false)}
-        />
+      {conflicts && conflicts.length > 0 && pendingStart && pendingEnd && selectedTemplate && (
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surfaceSolid, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: radius.lg }]}>
+            <Ionicons name="alert-circle-outline" size={26} color={colors.warning} />
+            <Text style={[typography.headline, { color: colors.textPrimary, marginTop: spacing.sm }]}>Estas fechas ya tienen presupuesto</Text>
+            <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.sm }]}>
+              {conflicts.map((c) => c.template?.name ?? 'otro presupuesto').join(', ')} ya cubre parte de{' '}
+              {rangeLabel(pendingStart, pendingEnd)}. Al confirmar, &quot;{selectedTemplate.name}&quot; será el que aplique esos días — el otro presupuesto
+              sigue existiendo, solo deja de aplicar ahí.
+            </Text>
+            <View style={styles.conflictActions}>
+              <Pressable onPress={() => setConflicts(null)}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Continuar y asignar de todos modos"
+                onPress={handleConfirm}
+                style={[styles.continueBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill }]}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Continuar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       )}
 
       {summaryOpen && (
         <MonthBudgetBreakdown
           monthIso={calendarMonthIso}
-          templates={templates}
+          templates={allTemplates}
           assignments={assignments}
           templateLines={templateLines}
           currency={profile.primaryCurrency}
           onClose={() => setSummaryOpen(false)}
         />
       )}
-
-      {introOpen && (
-        <View style={styles.modalBackdrop}>
-          <View
-            style={[
-              styles.modalCard,
-              { backgroundColor: colors.surfaceSolid, borderColor: colors.surfaceBorder, borderWidth: surface.borderWidth, borderRadius: radius.lg },
-              surfaceShadow(surface),
-            ]}
-          >
-            <Ionicons name="calendar-number-outline" size={30} color={colors.accentFrom} />
-            <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.sm }]}>Nuevo: presupuestos con nombre</Text>
-            <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.sm }]}>
-              Ahora puedes armar varios presupuestos para situaciones distintas — uno para tus días de clases o
-              trabajo, otro para vacaciones, y hasta eventos de un solo día — y aplicarlos a las semanas o meses
-              que quieras desde el calendario.
-            </Text>
-            <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.sm }]}>
-              También puedes moverte a periodos pasados o futuros con las flechas del calendario.
-            </Text>
-            <Pressable
-              accessibilityLabel="Entendido"
-              onPress={() => {
-                setIntroOpen(false);
-                updateProfileDraft({ seenBudgetTemplatesIntro: true });
-              }}
-              style={[styles.introCta, { borderRadius: radius.pill, backgroundColor: colors.accentFrom, marginTop: spacing.lg }]}
-            >
-              <Text style={[typography.headline, { color: '#FFFFFF' }]}>Entendido</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  rowCenter: { flexDirection: 'row', alignItems: 'center' },
-  scopeToggle: { flexDirection: 'row', borderWidth: 1, padding: 3, alignSelf: 'flex-start' },
-  scopeBtn: { paddingHorizontal: 18, paddingVertical: 8 },
+  twoColumn: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  rangeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rangePill: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   navBtn: { padding: 6 },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
-  assignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginTop: 4 },
-  modalBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15,23,42,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalCard: { width: '100%', maxWidth: 360, padding: 24 },
-  introCta: { paddingVertical: 14, alignItems: 'center' },
   dragGhost: {
     position: 'absolute',
     width: 180,
@@ -489,4 +479,18 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: { width: '100%', maxWidth: 380, padding: 20 },
+  conflictActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 16, marginTop: 18 },
+  continueBtn: { paddingHorizontal: 20, paddingVertical: 10 },
 });

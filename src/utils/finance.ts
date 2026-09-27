@@ -14,7 +14,9 @@ import type {
   TemplateBudgetLine,
   Transaction,
 } from '@/data/types';
-import { comparePeriodKeys, parsePeriodKey } from '@/utils/budgetPeriods';
+import { comparePeriodKeys, parsePeriodKey, getAssignmentRange, dateInRange, isoDatesBetween, rangesOverlap, type DateRange } from '@/utils/budgetPeriods';
+import { WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
+import { daysInMonth, parseISODate, toISODate } from '@/utils/date';
 import type { MarketQuote } from '@/providers/types';
 
 // Todas las funciones aquí son puras: reciben datos del store y devuelven
@@ -820,6 +822,323 @@ export function resolveBudgetForPeriod(input: {
   const lines = buildLinesFromTemplateLines(ownLines, overridesHere, conceptSpend, subcategorySpend, incomeConceptActual, thresholds);
 
   return { template, assignment, lines, conceptSpend, subcategorySpend, incomeConceptActual };
+}
+
+// ============================================================
+// Resolución por RANGO arbitrario (spec v2 "Plan de gastos"): una
+// asignación ya no vive solo en un day/week/month exacto — puede cubrir
+// cualquier tramo de fechas. La regla central es "nunca sumar
+// automáticamente plantillas completas... resolver solapamientos": para
+// cada día del calendario gana la asignación con el rango más ESPECÍFICO
+// (el más corto) que lo cubra — generaliza exactamente la prioridad
+// día > semana > mes que ya existía, así que ninguna asignación vieja
+// cambia de resultado. Con esto, dos plantillas NUNCA se mezclan el mismo
+// día: sigue habiendo un solo ganador, así que no hace falta un motor de
+// "reemplazar/agregar por categoría" para cumplir el invariante de no
+// contar dos veces.
+// ============================================================
+
+export function resolveTemplateForDate(
+  date: Date,
+  templates: BudgetTemplate[],
+  assignments: BudgetAssignment[]
+): { template: BudgetTemplate | undefined; assignment: BudgetAssignment | undefined } {
+  let best: { assignment: BudgetAssignment; range: DateRange } | null = null;
+  for (const a of assignments) {
+    const range = getAssignmentRange(a);
+    if (!range || !dateInRange(date, range)) continue;
+    if (!best) {
+      best = { assignment: a, range };
+      continue;
+    }
+    const bestSpan = best.range.end.getTime() - best.range.start.getTime();
+    const span = range.end.getTime() - range.start.getTime();
+    // Más corto gana; empate → la más reciente (createdAt) gana, nunca
+    // "la última guardada" de forma implícita por orden de arreglo.
+    if (span < bestSpan || (span === bestSpan && a.createdAt > best.assignment.createdAt)) {
+      best = { assignment: a, range };
+    }
+  }
+  if (best) {
+    const template = templates.find((t) => t.id === best!.assignment.templateId);
+    if (template) return { template, assignment: best.assignment };
+  }
+  return { template: templates.find((t) => t.isDefault), assignment: undefined };
+}
+
+// Cuánto aporta UN renglón de plantilla en UN día calendario específico —
+// nunca dividiendo el mes entre cuatro semanas (spec), usando días REALES
+// del mes/rango. Fijas (dayOfMonth/dayOfWeek/oneTimeDate) cuentan una sola
+// vez en su fecha real, nunca prorrateadas; variables se reparten entre
+// los días que de verdad les tocan.
+function dailyLineContribution(line: TemplateBudgetLine, date: Date): number {
+  const dow = date.getDay();
+  const dom = date.getDate();
+  const monthDays = daysInMonth(date);
+
+  if (line.periodicity === 'day') {
+    if (line.frequency === 'one_time') {
+      return line.oneTimeDate && toISODate(date) === line.oneTimeDate ? line.monthlyAmount : 0;
+    }
+    const daily = line.baseAmount ?? line.monthlyAmount / monthDays;
+    if (line.frequency === 'weekdays') return dow >= 1 && dow <= 5 ? daily : 0;
+    if (line.frequency === 'weekends') return dow === 0 || dow === 6 ? daily : 0;
+    if (line.frequency === 'custom') {
+      // No se sabe cuáles días de la semana eligió exactamente — se
+      // reparte proporcional (perWeek/7) en vez de adivinar cuáles,
+      // consistente en promedio con computeMonthlyAmount.
+      const perWeek = Math.min(6, Math.max(1, line.customDaysPerWeek ?? 1));
+      return daily * (perWeek / 7);
+    }
+    return daily; // all_days
+  }
+
+  if (line.periodicity === 'week') {
+    const weeklyAmount = line.monthlyAmount / WEEKS_PER_MONTH;
+    if (line.dayOfWeek !== undefined) return dow === line.dayOfWeek ? weeklyAmount : 0;
+    return weeklyAmount / 7;
+  }
+
+  // periodicity === 'month' (o sin declarar — mensual es el default histórico)
+  if (line.dayOfMonth !== undefined) return dom === Math.min(line.dayOfMonth, monthDays) ? line.monthlyAmount : 0;
+  if (line.oneTimeDate) return toISODate(date) === line.oneTimeDate ? line.monthlyAmount : 0;
+  return line.monthlyAmount / monthDays;
+}
+
+export interface ResolvedRangeBudget {
+  // Total planeado/gastado del rango completo, ya sin doble conteo.
+  plannedExpense: number;
+  plannedIncome: number;
+  actualExpense: number;
+  actualIncome: number;
+  // Desglose por categoría para "Detalle de gastos" — suma la aportación
+  // diaria real de cada renglón (de la plantilla que gane cada día) más el
+  // gasto real correspondiente, para poder explicar cualquier total alto.
+  categoryBreakdown: { categoryId: string; categoryName: string; planned: number; actual: number }[];
+}
+
+// Ingresos/egresos planeados de un RANGO de fechas (puede cruzar varias
+// asignaciones/plantillas distintas) contra el gasto/ingreso REAL del
+// mismo rango — mismos filtros para ambos números (invariante del spec:
+// "vista previa y resumen coinciden").
+export function resolveBudgetForRange(input: {
+  startIso: string;
+  endIso: string;
+  templates: BudgetTemplate[];
+  templateLines: TemplateBudgetLine[];
+  assignments: BudgetAssignment[];
+  transactions: Transaction[];
+}): ResolvedRangeBudget {
+  const { startIso, endIso, templates, templateLines, assignments, transactions } = input;
+  const dates = isoDatesBetween(startIso, endIso).map((iso) => parseISODate(iso));
+  const linesByTemplate = new Map<string, TemplateBudgetLine[]>();
+  for (const l of templateLines) {
+    if (l.deletedAt) continue;
+    if (!linesByTemplate.has(l.templateId)) linesByTemplate.set(l.templateId, []);
+    linesByTemplate.get(l.templateId)!.push(l);
+  }
+
+  let plannedExpense = 0;
+  let plannedIncome = 0;
+  const byCategory = new Map<string, { categoryName: string; planned: number }>();
+
+  for (const date of dates) {
+    const { template } = resolveTemplateForDate(date, templates, assignments);
+    if (!template) continue;
+    const lines = linesByTemplate.get(template.id) ?? [];
+    for (const line of lines) {
+      const amount = dailyLineContribution(line, date);
+      if (amount === 0) continue;
+      const isIncome = !!findIncomeConcept(line.categoryId);
+      if (isIncome) plannedIncome += amount;
+      else plannedExpense += amount;
+      const sub = parseSubBudgetId(line.categoryId);
+      const name = sub
+        ? (findSubcategoryAnyCategory(sub.subcategoryId)?.subcategory.name ?? line.categoryId)
+        : (findBudgetConcept(line.categoryId)?.name ?? findIncomeConcept(line.categoryId)?.name ?? line.categoryId);
+      const bucket = byCategory.get(line.categoryId) ?? { categoryName: name, planned: 0 };
+      bucket.planned += isIncome ? 0 : amount;
+      byCategory.set(line.categoryId, bucket);
+    }
+  }
+
+  const start = parseISODate(startIso);
+  const end = parseISODate(endIso);
+  end.setHours(23, 59, 59, 999);
+  const conceptSpend = spendByConceptInRange(transactions, start, end);
+  const subSpend = spendBySubBudgetInRange(transactions, start, end);
+  const incomeSpend = incomeByConceptInRange(transactions, start, end);
+  const actualExpense = Object.values(conceptSpend).reduce((a, b) => a + b, 0);
+  const actualIncome = Object.values(incomeSpend).reduce((a, b) => a + b, 0);
+
+  const categoryBreakdown = Array.from(byCategory.entries()).map(([categoryId, v]) => {
+    const sub = parseSubBudgetId(categoryId);
+    const actual = sub ? (subSpend[categoryId] ?? 0) : (conceptSpend[categoryId] ?? 0);
+    return { categoryId, categoryName: v.categoryName, planned: v.planned, actual };
+  });
+  // Gastos reales sin ningún plan que los cubra — spec: "mostrar gastos
+  // sin plan como categoría propia, nunca esconderlos".
+  const covered = new Set(categoryBreakdown.map((c) => c.categoryId));
+  for (const [conceptId, actual] of Object.entries(conceptSpend)) {
+    if (actual > 0 && !covered.has(conceptId)) {
+      categoryBreakdown.push({ categoryId: conceptId, categoryName: findBudgetConcept(conceptId)?.name ?? conceptId, planned: 0, actual });
+    }
+  }
+
+  return {
+    plannedExpense,
+    plannedIncome,
+    actualExpense,
+    actualIncome,
+    categoryBreakdown: categoryBreakdown.sort((a, b) => b.actual - a.actual),
+  };
+}
+
+// Planeado/gastado de UNA plantilla específica, solo en los días que ELLA
+// misma cubre dentro de una ventana (ej. el mes que se está viendo) — a
+// diferencia de resolveBudgetForRange (que mezcla quien gane cada día),
+// esta ignora otras plantillas por completo: útil para el resumen del
+// panel de acción cuando no hay un rango pendiente que previsualizar.
+export function resolveTemplateBudgetInRange(input: {
+  template: BudgetTemplate;
+  templateLines: TemplateBudgetLine[];
+  assignments: BudgetAssignment[];
+  startIso: string;
+  endIso: string;
+  transactions: Transaction[];
+}): { planned: number; actual: number; categoryBreakdown: { categoryId: string; categoryName: string; planned: number; actual: number }[] } {
+  const { template, templateLines, assignments, startIso, endIso, transactions } = input;
+  const windowStart = parseISODate(startIso);
+  const windowEnd = parseISODate(endIso);
+  windowEnd.setHours(23, 59, 59, 999);
+  const ownAssignments = assignments.filter((a) => a.templateId === template.id && !a.deletedAt);
+  const ownLines = templateLines.filter((l) => l.templateId === template.id && !l.deletedAt);
+
+  const coveredIsoDays = new Set<string>();
+  for (const a of ownAssignments) {
+    const range = getAssignmentRange(a);
+    if (!range) continue;
+    const from = range.start.getTime() > windowStart.getTime() ? range.start : windowStart;
+    const to = range.end.getTime() < windowEnd.getTime() ? range.end : windowEnd;
+    for (const d = new Date(from); d.getTime() <= to.getTime(); d.setDate(d.getDate() + 1)) {
+      coveredIsoDays.add(toISODate(d));
+    }
+  }
+
+  let planned = 0;
+  const plannedByCategory = new Map<string, { categoryName: string; planned: number }>();
+  for (const iso of coveredIsoDays) {
+    const date = parseISODate(iso);
+    for (const line of ownLines) {
+      if (findIncomeConcept(line.categoryId)) continue;
+      const amount = dailyLineContribution(line, date);
+      if (amount === 0) continue;
+      planned += amount;
+      const sub = parseSubBudgetId(line.categoryId);
+      const name = sub
+        ? (findSubcategoryAnyCategory(sub.subcategoryId)?.subcategory.name ?? line.categoryId)
+        : (findBudgetConcept(line.categoryId)?.name ?? line.categoryId);
+      const bucket = plannedByCategory.get(line.categoryId) ?? { categoryName: name, planned: 0 };
+      bucket.planned += amount;
+      plannedByCategory.set(line.categoryId, bucket);
+    }
+  }
+
+  const coveredExpenses = transactions.filter(
+    (t) => SPEND_TYPES.includes(t.type) && countsForBudget(t) && coveredIsoDays.has(t.date.slice(0, 10))
+  );
+  const actual = coveredExpenses.reduce((sum, t) => sum + t.amount, 0);
+
+  const actualByCategory = new Map<string, number>();
+  for (const t of coveredExpenses) {
+    const sub = BUDGET_CONCEPTS.flatMap((c) => c.matches.map((m) => ({ conceptId: c.id, ...m }))).find(
+      (m) => m.categoryId === t.categoryId && (!m.subcategoryIds || m.subcategoryIds.includes(t.subcategoryId))
+    );
+    if (!sub) continue;
+    const subBudgetKey = makeSubBudgetId(sub.conceptId, t.subcategoryId);
+    const key = plannedByCategory.has(subBudgetKey) ? subBudgetKey : sub.conceptId;
+    actualByCategory.set(key, (actualByCategory.get(key) ?? 0) + t.amount);
+  }
+
+  const categoryBreakdown = Array.from(plannedByCategory.entries()).map(([categoryId, v]) => ({
+    categoryId,
+    categoryName: v.categoryName,
+    planned: v.planned,
+    actual: actualByCategory.get(categoryId) ?? 0,
+  }));
+  const covered = new Set(categoryBreakdown.map((c) => c.categoryId));
+  for (const [conceptId, amount] of actualByCategory.entries()) {
+    if (!covered.has(conceptId)) {
+      categoryBreakdown.push({ categoryId: conceptId, categoryName: findBudgetConcept(conceptId)?.name ?? conceptId, planned: 0, actual: amount });
+    }
+  }
+
+  return { planned, actual, categoryBreakdown: categoryBreakdown.sort((a, b) => b.actual - a.actual) };
+}
+
+export interface UpcomingAssignmentSummary {
+  assignment: BudgetAssignment;
+  template: BudgetTemplate;
+  range: DateRange;
+  plannedExpense: number;
+}
+
+// Próximas asignaciones (de CUALQUIER plantilla, no solo la seleccionada)
+// que empiezan después de una fecha — para el bloque "Próximas semanas"
+// del panel de acción (spec: imagen de referencia mezcla Vacaciones y
+// Clases en una sola lista ordenada por fecha).
+export function upcomingAssignments(
+  afterIso: string,
+  assignments: BudgetAssignment[],
+  templates: BudgetTemplate[],
+  templateLines: TemplateBudgetLine[],
+  limit: number
+): UpcomingAssignmentSummary[] {
+  const after = parseISODate(afterIso);
+  const results: UpcomingAssignmentSummary[] = [];
+  for (const a of assignments) {
+    if (a.deletedAt) continue;
+    const range = getAssignmentRange(a);
+    const template = templates.find((t) => t.id === a.templateId && !t.deletedAt);
+    if (!range || !template || template.isDefault) continue;
+    if (range.start.getTime() <= after.getTime()) continue;
+    const resolved = resolveBudgetForRange({
+      startIso: toISODate(range.start),
+      endIso: toISODate(range.end),
+      templates,
+      templateLines,
+      assignments: [a],
+      transactions: [],
+    });
+    results.push({ assignment: a, template, range, plannedExpense: resolved.plannedExpense });
+  }
+  return results.sort((a, b) => a.range.start.getTime() - b.range.start.getTime()).slice(0, Math.max(0, limit));
+}
+
+// Asignaciones existentes que se traslapan con un rango nuevo que se está
+// por confirmar — para el aviso de conflicto (spec: "nombrar el
+// presupuesto anterior, los días afectados... antes de confirmar"). Con
+// resolución por "rango más específico gana", el nuevo rango (más corto
+// que un mes/semana completos, casi siempre) gana solo sin tocar la
+// asignación anterior — el aviso es informativo, no requiere mutar nada.
+export function findOverlappingAssignments(
+  startIso: string,
+  endIso: string,
+  assignments: BudgetAssignment[],
+  templates: BudgetTemplate[]
+): { assignment: BudgetAssignment; template: BudgetTemplate | undefined }[] {
+  const start = parseISODate(startIso);
+  const end = parseISODate(endIso);
+  end.setHours(23, 59, 59, 999);
+  const newRange: DateRange = { start, end };
+  const out: { assignment: BudgetAssignment; template: BudgetTemplate | undefined }[] = [];
+  for (const a of assignments) {
+    if (a.deletedAt) continue;
+    const range = getAssignmentRange(a);
+    if (!range || !rangesOverlap(range, newRange)) continue;
+    out.push({ assignment: a, template: templates.find((t) => t.id === a.templateId) });
+  }
+  return out;
 }
 
 // Arma las `BudgetLine[]` de un conjunto de renglones de plantilla, con

@@ -11,7 +11,7 @@ import { WEEKS_PER_MONTH } from '@/utils/budgetCalculator';
 import { formatCurrency } from '@/utils/format';
 
 import { DonutChart } from './DonutChart';
-import { KIND_LABELS } from './BudgetTemplateSheet';
+import { KIND_LABELS } from './budgetTemplateMeta';
 import { GlassCard } from './GlassCard';
 import { TemplateMetaForm } from './TemplateMetaForm';
 
@@ -149,19 +149,19 @@ export function BudgetTemplateList({
   const [creating, setCreating] = useState(false);
   const palette = [colors.accentFrom, colors.accentTo, colors.warning, colors.info, colors.success, colors.danger];
 
-  const handleSaveMeta = (template: BudgetTemplate) => (name: string, color: string, kind: BudgetTemplateKind) => {
+  const handleSaveMeta = (template: BudgetTemplate) => (name: string, color: string, kind: BudgetTemplateKind, icon: string) => {
     // Semanal↔mensual re-escala los montos con la misma regla (×4 / ÷4)
     // que ya usa el resto de la app — nunca si de por medio hay un "Día"
     // (un evento con fecha propia, no una tasa recurrente que convertir).
     if (kind !== template.kind && template.kind !== 'day' && kind !== 'day') {
       rescaleTemplateLines(template.id, kind === 'month' ? WEEKS_PER_MONTH : 1 / WEEKS_PER_MONTH);
     }
-    updateBudgetTemplate(template.id, { name, color, kind });
+    updateBudgetTemplate(template.id, { name, color, kind, icon });
     setEditingMetaId(null);
   };
 
-  const handleCreate = (name: string, color: string, kind: BudgetTemplateKind) => {
-    addBudgetTemplate({ name, color, kind });
+  const handleCreate = (name: string, color: string, kind: BudgetTemplateKind, icon: string) => {
+    addBudgetTemplate({ name, color, kind, icon });
     setCreating(false);
   };
 
@@ -196,7 +196,7 @@ export function BudgetTemplateList({
             {isOpen && editingMetaId === t.id && (
               <View style={{ marginTop: spacing.md }}>
                 <TemplateMetaForm
-                  initial={{ name: t.name, color: t.color, kind: t.kind }}
+                  initial={{ name: t.name, color: t.color, kind: t.kind, icon: t.icon }}
                   lockKind={t.isDefault}
                   onSave={handleSaveMeta(t)}
                   onCancel={() => setEditingMetaId(null)}

@@ -45,6 +45,7 @@ import type { SyncQueueEntry, SyncTable } from '@/services/sync/types';
 import type { VisualStyleDefinition } from '@/theme/visualStyles';
 import type { CetesRates, MarketQuote } from '@/providers/types';
 import { nextAssignmentsOfTemplate } from '@/utils/finance';
+import { makeRangeKey } from '@/utils/budgetPeriods';
 import { generateId } from '@/utils/id';
 import { accountDeltasForTransaction, mergeDeltas, reverseDeltas } from '@/utils/ledger';
 
@@ -208,6 +209,14 @@ interface AppState {
   rescaleTemplateLines: (templateId: string, factor: number) => void;
   assignTemplateToPeriod: (templateId: string, periodKey: string) => void;
   unassignPeriod: (periodKey: string) => void;
+  // Asigna una plantilla a un rango de fechas arbitrario elegido a mano en
+  // el calendario (spec v2 "Plan de gastos") — a diferencia de
+  // assignTemplateToPeriod, SIEMPRE crea una asignación nueva (nunca
+  // reemplaza una existente por periodKey): dos rangos pueden traslaparse
+  // a propósito, y quien gana cada día lo decide resolveTemplateForDate
+  // (el rango más corto), nunca un upsert silencioso.
+  assignTemplateToRange: (templateId: string, startDateIso: string, endDateIso: string) => string;
+  removeBudgetAssignment: (id: string) => void;
   // Guarda el ajuste de un renglón para un periodo. `propagate` decide a
   // dónde más se aplica (spec: "sí / no / personalizado 1-24"):
   // 'none' solo este periodo, 'all' también la plantilla completa, o un
@@ -645,6 +654,26 @@ export const useAppStore = create<AppState>()(
             ),
           }));
           enqueue('budget_assignments', current.id, 'delete', updated as unknown as Record<string, unknown>);
+        },
+        assignTemplateToRange: (templateId, startDateIso, endDateIso) => {
+          const periodKey = makeRangeKey(startDateIso, endDateIso);
+          const record = withNewMeta({ templateId, periodKey, startDate: startDateIso, endDate: endDateIso } as Draft<BudgetAssignment>);
+          set((s) => ({ budgetAssignments: [...s.budgetAssignments, record] }));
+          enqueue('budget_assignments', record.id, 'upsert', record as unknown as Record<string, unknown>);
+          return record.id;
+        },
+        removeBudgetAssignment: (id) => {
+          const current = get().budgetAssignments.find((a) => a.id === id && !a.deletedAt);
+          if (!current) return;
+          const now = new Date().toISOString();
+          const updated = touch(current, { deletedAt: now } as Partial<BudgetAssignment>);
+          set((s) => ({
+            budgetAssignments: s.budgetAssignments.map((a) => (a.id === id ? updated : a)),
+            periodBudgetOverrides: s.periodBudgetOverrides.map((o) =>
+              o.assignmentId === id && !o.deletedAt ? touch(o, { deletedAt: now } as Partial<PeriodBudgetOverride>) : o
+            ),
+          }));
+          enqueue('budget_assignments', id, 'delete', updated as unknown as Record<string, unknown>);
         },
         setPeriodOverride: (periodKey, categoryId, patch, propagate) => {
           const state = get();

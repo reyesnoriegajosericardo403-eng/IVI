@@ -157,6 +157,11 @@ export interface BudgetTemplate extends SyncMeta {
   // Color con el que se pintan en el calendario los periodos donde esta
   // plantilla está aplicada.
   color: string;
+  // Ícono (nombre de Ionicons) para identificarla de un vistazo en los
+  // chips del encabezado de Presupuesto y en el calendario — spec:
+  // "marcador legible de presupuesto confirmado". Sin ícono elegido se
+  // usa uno por default según `kind` (ver BUDGET_TEMPLATE_ICONS).
+  icon?: string;
   // La plantilla "Mi presupuesto" a la que se migró lo que ya existía —
   // se usa como respaldo en cualquier periodo sin plantilla asignada, y
   // nunca se puede borrar (solo renombrar o cambiarle el color).
@@ -182,10 +187,22 @@ export interface TemplateBudgetLine extends SyncMeta {
 }
 
 // Qué plantilla está cargada en qué periodo. periodKey:
-// "2026-09" (mes), "2026-W36" (semana ISO) o "2026-09-15" (día).
+// "month:2026-09", "week:2026-09-07" (lunes de esa semana), "day:2026-09-15",
+// o "range:2026-09-28:2026-09-30" para un rango de fechas elegido a mano
+// (spec v2 "Plan de gastos": "elegir inicio y fin... incluso si el periodo
+// cruza semanas, meses o años" — no todo cabe en un día/semana/mes exacto).
 export interface BudgetAssignment extends SyncMeta {
   templateId: string;
   periodKey: string;
+  // Rango real que cubre esta asignación, en fechas locales inclusivas
+  // (AAAA-MM-DD). SIEMPRE presente en asignaciones nuevas — es la única
+  // fuente de verdad que usa el motor de resolución (getAssignmentRange en
+  // budgetPeriods.ts); periodKey se conserva solo como etiqueta/llave de
+  // agrupación legible. Opcional únicamente por compatibilidad con
+  // asignaciones ya guardadas antes de este campo, que se siguen
+  // resolviendo derivando el rango de su periodKey (day/week/month).
+  startDate?: string;
+  endDate?: string;
 }
 
 // Ajuste de un renglón SOLO para el periodo de ese assignment.

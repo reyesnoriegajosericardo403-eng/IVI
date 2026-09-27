@@ -1,4 +1,4 @@
-import { daysInMonth } from './date';
+import { daysInMonth, parseISODate, toISODate } from './date';
 
 // Llaves de periodo para los presupuestos con nombre. Se prefijan con el
 // tipo porque una semana y un día se verían idénticos ("2026-09-07") si
@@ -117,6 +117,75 @@ export function comparePeriodKeys(a: string, b: string): number {
 
 export function periodScopeOf(key: string): PeriodScope | null {
   return parsePeriodKey(key)?.scope ?? null;
+}
+
+// ============================================================
+// Rangos de fechas arbitrarios (spec v2 "Plan de gastos"): además de
+// day/week/month, una asignación puede cubrir cualquier tramo de fechas
+// elegido a mano ("28 sep – 30 sep"). `startDate`/`endDate` en
+// BudgetAssignment son la fuente de verdad para estas — periodKey queda
+// solo como etiqueta/llave legible ("range:2026-09-28:2026-09-30").
+// ============================================================
+
+export interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+export function makeRangeKey(startIso: string, endIso: string): string {
+  return `range:${startIso}:${endIso}`;
+}
+
+// Rango real que cubre una asignación — SIEMPRE se resuelve desde
+// startDate/endDate cuando están presentes (asignaciones nuevas); las
+// asignaciones guardadas antes de este campo caen a derivar el rango de su
+// periodKey (day/week/month), así ninguna asignación vieja se rompe.
+export function getAssignmentRange(assignment: { periodKey: string; startDate?: string; endDate?: string }): DateRange | null {
+  if (assignment.startDate && assignment.endDate) {
+    const start = parseISODate(assignment.startDate);
+    const end = parseISODate(assignment.endDate);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+  const parsed = parsePeriodKey(assignment.periodKey);
+  return parsed ? { start: parsed.start, end: parsed.end } : null;
+}
+
+export function rangeSpanDays(range: DateRange): number {
+  return Math.round((range.end.getTime() - range.start.getTime()) / 86400000) + 1;
+}
+
+export function rangesOverlap(a: DateRange, b: DateRange): boolean {
+  return a.start.getTime() <= b.end.getTime() && b.start.getTime() <= a.end.getTime();
+}
+
+export function dateInRange(date: Date, range: DateRange): boolean {
+  return date.getTime() >= range.start.getTime() && date.getTime() <= range.end.getTime();
+}
+
+// Todas las fechas ISO (AAAA-MM-DD) entre dos fechas, inclusive — para
+// pintar la vista previa de un rango recién elegido en el calendario.
+export function isoDatesBetween(startIso: string, endIso: string): string[] {
+  const start = parseISODate(startIso);
+  const end = parseISODate(endIso);
+  const [from, to] = start.getTime() <= end.getTime() ? [start, end] : [end, start];
+  const dates: string[] = [];
+  for (const d = new Date(from); d.getTime() <= to.getTime(); d.setDate(d.getDate() + 1)) {
+    dates.push(toISODate(d));
+  }
+  return dates;
+}
+
+// Texto para el encabezado/pastilla de fechas: "28 sep – 30 sep 2026" (un
+// solo día: "28 sep 2026"; cruza de mes o año: se nombra cada extremo).
+export function rangeLabel(startIso: string, endIso: string): string {
+  const start = parseISODate(startIso);
+  const end = parseISODate(endIso);
+  if (startIso === endIso) return `${start.getDate()} ${MONTH_SHORT[start.getMonth()]} ${start.getFullYear()}`;
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  return sameMonth
+    ? `${start.getDate()} – ${end.getDate()} ${MONTH_SHORT[start.getMonth()]} ${start.getFullYear()}`
+    : `${start.getDate()} ${MONTH_SHORT[start.getMonth()]} – ${end.getDate()} ${MONTH_SHORT[end.getMonth()]} ${end.getFullYear()}`;
 }
 
 // El periodo REAL de hoy está por terminar — para ofrecer "repetir el

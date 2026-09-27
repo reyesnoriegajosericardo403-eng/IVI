@@ -4,56 +4,52 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Budget, BudgetAssignment, BudgetTemplate } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { makePeriodKey, parsePeriodKey, type PeriodScope } from '@/utils/budgetPeriods';
+import { getAssignmentRange, dateInRange } from '@/utils/budgetPeriods';
 import { addMonths, buildMonthGrid, monthLabel, parseISODate, WEEKDAY_LABELS } from '@/utils/date';
 
-// Calendario de asignación de presupuestos: pinta cada día con el color
-// de la plantilla que le toca y deja tocar un mes, una semana o un día
-// para asignarle una (spec: "cuando se seleccione un presupuesto en el
-// calendario, el calendario debe tener ese color en sus fechas en las
-// que el presupuesto está aplicado").
-//
-// Qué color gana en un día: primero una plantilla de DÍA asignada a esa
-// fecha exacta, luego la de su SEMANA, y al final la del MES. Los
-// eventos de un día (los de esta función y los que ya existían como
-// gastos "de una vez") se marcan además con un punto en la esquina, para
-// que se vean aunque ese día ya tenga color de semana o mes (spec:
-// "estos eventos de un día se pueden poner encima incluso de una semana
-// que ya tenga un tipo de presupuesto asignado").
+import { templateIcon } from './budgetTemplateMeta';
+
+// Calendario de asignación de presupuestos (rediseño según imagen de
+// referencia + spec v2 "Plan de gastos"): cada día muestra el ícono de la
+// plantilla que lo cubre — sólido cuando ya está confirmado, con borde
+// discontinuo cuando es una selección todavía sin guardar (spec: "las
+// fechas seleccionadas y todavía no guardadas se distinguen claramente de
+// las fechas con presupuesto ya asignado... nunca depender solo del
+// color"). Tocar un día empieza/extiende un RANGO (no un periodo fijo de
+// día/semana/mes) — quien arma ese rango es la pantalla padre.
 
 export function BudgetCalendar({
   monthIso,
   onChangeMonth,
-  mode,
   templates,
   assignments,
   oneTimeBudgets,
-  selectedPeriodKey,
-  onSelectPeriod,
+  pendingDates,
+  pendingIcon,
+  pendingColor,
+  onDayPress,
   previewDates,
   previewColor,
+  previewIcon,
   onGridLayout,
 }: {
   monthIso: string;
   onChangeMonth: (iso: string) => void;
-  // Qué se asigna al tocar: el mes completo, la semana del día tocado, o
-  // ese día suelto.
-  mode: PeriodScope;
   templates: BudgetTemplate[];
   assignments: BudgetAssignment[];
   // Gastos "de una vez" que ya existían (Budget.oneTimeDate) — solo para
   // marcarlos, no se pueden reasignar desde aquí.
   oneTimeBudgets: Budget[];
-  selectedPeriodKey: string;
-  onSelectPeriod: (periodKey: string) => void;
-  // Vista previa mientras se arrastra una ficha desde "Mis presupuestos"
-  // (spec: "círculo semitransparente o con borde discontinuo... nunca
-  // rectángulos"). Fechas en formato ISO ("2026-09-15").
+  // Rango elegido a mano, todavía SIN CONFIRMAR (spec: "Pendiente de
+  // guardar" — nunca el mismo tratamiento visual que un plan confirmado).
+  pendingDates?: Set<string>;
+  pendingIcon?: string;
+  pendingColor?: string;
+  onDayPress?: (iso: string) => void;
+  // Vista previa mientras se arrastra una ficha desde "Mis presupuestos".
   previewDates?: Set<string>;
   previewColor?: string;
-  // Posición/tamaño en página de la cuadrícula de días — para que la
-  // pantalla que arrastra la ficha sepa sobre qué celda está el dedo o el
-  // cursor sin que este componente tenga que saber nada de arrastre.
+  previewIcon?: string;
   onGridLayout?: (layout: { pageX: number; pageY: number; width: number; height: number; rows: number }) => void;
 }) {
   const { colors, typography, spacing } = useTheme();
@@ -68,9 +64,18 @@ export function BudgetCalendar({
   };
   const templateById = new Map(templates.map((t) => [t.id, t]));
 
-  const templateForKey = (key: string): BudgetTemplate | undefined => {
-    const assignment = assignments.find((a) => a.periodKey === key);
-    return assignment ? templateById.get(assignment.templateId) : undefined;
+  // Qué asignación confirmada gana un día: el rango más corto que lo
+  // cubra (igual que resolveTemplateForDate en finance.ts) — así el
+  // calendario nunca muestra dos plantillas encimadas el mismo día.
+  const templateForDate = (date: Date): BudgetTemplate | undefined => {
+    let best: { assignment: BudgetAssignment; span: number } | null = null;
+    for (const a of assignments) {
+      const range = getAssignmentRange(a);
+      if (!range || !dateInRange(date, range)) continue;
+      const span = range.end.getTime() - range.start.getTime();
+      if (!best || span < best.span) best = { assignment: a, span };
+    }
+    return best ? templateById.get(best.assignment.templateId) : undefined;
   };
 
   const oneTimeDates = new Set(oneTimeBudgets.map((b) => b.oneTimeDate).filter((d): d is string => !!d));
@@ -97,96 +102,70 @@ export function BudgetCalendar({
 
       <View ref={gridRef} onLayout={reportGridLayout}>
         {weeks.map((week, wIdx) => (
-        <View key={wIdx} style={styles.weekRow}>
-          {week.map((cell) => {
-            const date = parseISODate(cell.iso);
-            const dayKey = makePeriodKey('day', date);
-            const weekKey = makePeriodKey('week', date);
-            const monthKey = makePeriodKey('month', date);
-            const applied = templateForKey(dayKey) ?? templateForKey(weekKey) ?? templateForKey(monthKey);
-            const keyForMode = mode === 'day' ? dayKey : mode === 'week' ? weekKey : monthKey;
-            const isSelected = keyForMode === selectedPeriodKey;
-            const hasEvent = oneTimeDates.has(cell.iso) || !!templateForKey(dayKey);
-            const isPreview = !!previewDates?.has(cell.iso);
+          <View key={wIdx} style={styles.weekRow}>
+            {week.map((cell) => {
+              const date = parseISODate(cell.iso);
+              const applied = templateForDate(date);
+              const hasEvent = oneTimeDates.has(cell.iso);
+              const isPending = !!pendingDates?.has(cell.iso);
+              const isPreview = !!previewDates?.has(cell.iso);
 
-            return (
-              <Pressable
-                key={cell.iso}
-                accessibilityLabel={`Día ${cell.day} de ${monthLabel(monthIso)}`}
-                onPress={() => onSelectPeriod(keyForMode)}
-                style={[styles.dayCell, { opacity: cell.inMonth ? 1 : 0.35 }]}
-              >
-                {/* Círculo alrededor del número — nunca un rectángulo de fondo
-                    (spec: "las fechas asignadas deben identificarse mediante
-                    círculos... nunca mediante rectángulos"). Sólido cuando ya
-                    está confirmado, punteado y semitransparente en vista previa. */}
-                <View
-                  style={[
-                    styles.dayCircle,
-                    isPreview
-                      ? { borderWidth: 2, borderStyle: 'dashed', borderColor: previewColor, backgroundColor: `${previewColor}40` }
-                      : applied
-                        ? { backgroundColor: applied.color }
-                        : null,
-                    isSelected && { borderWidth: 2, borderColor: colors.accentFrom },
-                  ]}
+              const iconName = isPreview ? previewIcon : isPending ? pendingIcon : applied ? templateIcon(applied) : undefined;
+              const badgeColor = isPreview ? previewColor : isPending ? pendingColor : applied?.color;
+
+              return (
+                <Pressable
+                  key={cell.iso}
+                  accessibilityLabel={`Día ${cell.day} de ${monthLabel(monthIso)}${applied ? `, ${applied.name}` : ''}${isPending ? ', selección pendiente de guardar' : ''}`}
+                  onPress={() => onDayPress?.(cell.iso)}
+                  style={[styles.dayCell, { opacity: cell.inMonth ? 1 : 0.35 }]}
                 >
-                  <Text
+                  <View
                     style={[
-                      typography.caption,
-                      { color: applied || isPreview ? '#FFFFFF' : colors.textSecondary, fontWeight: applied ? '700' : '400' },
+                      styles.dayCircle,
+                      isPending || isPreview
+                        ? { borderWidth: 2, borderStyle: 'dashed', borderColor: badgeColor, backgroundColor: `${badgeColor}33` }
+                        : applied
+                          ? { backgroundColor: applied.color }
+                          : null,
                     ]}
                   >
-                    {cell.day}
-                  </Text>
-                </View>
-                {hasEvent && <View style={[styles.eventDot, { backgroundColor: colors.warning }]} />}
-              </Pressable>
-            );
-          })}
-        </View>
+                    {iconName ? (
+                      <Ionicons name={iconName as any} size={13} color={isPending || isPreview ? badgeColor : '#FFFFFF'} />
+                    ) : (
+                      <Text style={[typography.caption, { color: colors.textSecondary }]}>{cell.day}</Text>
+                    )}
+                  </View>
+                  {iconName && <Text style={[styles.dayNumberUnder, { color: colors.textTertiary }]}>{cell.day}</Text>}
+                  {hasEvent && <View style={[styles.eventDot, { backgroundColor: colors.warning }]} />}
+                </Pressable>
+              );
+            })}
+          </View>
         ))}
       </View>
     </View>
   );
 }
 
-// Leyenda de colores — se renderiza ARRIBA de la cuadrícula (más fácil de
-// leer de un vistazo al entrar que al final de una cuadrícula larga; spec:
-// "no se entiende... como se ve en tu calendario que ya fue asignado").
-export function BudgetTemplateLegend({ templates }: { templates: BudgetTemplate[] }) {
+// Leyenda: dos estados nada más, siempre visibles arriba del calendario
+// (spec: "una fecha con plan confirmado y otra seleccionada sin guardar se
+// distinguen sin depender del color" — el patrón sólido/discontinuo hace
+// ese trabajo, la leyenda solo lo nombra por escrito).
+export function BudgetTemplateLegend({ templates: _templates }: { templates: BudgetTemplate[] }) {
   const { colors, typography } = useTheme();
-  if (templates.length === 0) return null;
   return (
     <View style={styles.legendWrap}>
-      {templates.map((t) => (
-        <View key={t.id} style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: t.color }]} />
-          <Text style={[typography.micro, { color: colors.textTertiary }]}>{t.name}</Text>
-        </View>
-      ))}
       <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
-        <Text style={[typography.micro, { color: colors.textTertiary }]}>Evento de un día</Text>
+        <View style={[styles.legendSwatch, { borderWidth: 2, borderStyle: 'dashed', borderColor: colors.accentFrom }]} />
+        <Text style={[typography.micro, { color: colors.textTertiary }]}>Seleccionado, pendiente de guardar</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendSwatch, { backgroundColor: colors.accentFrom }]} />
+        <Text style={[typography.micro, { color: colors.textTertiary }]}>Día asignado</Text>
       </View>
     </View>
   );
-}
-
-// Etiqueta corta de qué plantilla aplica en un periodo — para el chip de
-// arriba de la pantalla de Presupuesto.
-export function templateLabelForPeriod(
-  periodKey: string,
-  templates: BudgetTemplate[],
-  assignments: BudgetAssignment[]
-): BudgetTemplate | undefined {
-  const assignment = assignments.find((a) => a.periodKey === periodKey);
-  if (assignment) return templates.find((t) => t.id === assignment.templateId);
-  return templates.find((t) => t.isDefault);
-}
-
-export function periodScopeFromKey(periodKey: string): PeriodScope {
-  return parsePeriodKey(periodKey)?.scope ?? 'month';
 }
 
 const styles = StyleSheet.create({
@@ -194,10 +173,11 @@ const styles = StyleSheet.create({
   navBtn: { padding: 6 },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekdayCell: { flex: 1, textAlign: 'center' },
-  dayCell: { flex: 1, height: 34, alignItems: 'center', justifyContent: 'center', margin: 1 },
-  dayCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  dayCell: { flex: 1, height: 38, alignItems: 'center', justifyContent: 'center', margin: 1 },
+  dayCircle: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  dayNumberUnder: { fontSize: 9, marginTop: 1 },
   eventDot: { position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3 },
-  legendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendSwatch: { width: 14, height: 14, borderRadius: 4 },
 });

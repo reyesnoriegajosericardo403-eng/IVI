@@ -1,34 +1,35 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import { ACCOUNT_COLOR_SWATCHES } from '@/data/accountColors';
 import type { BudgetTemplateKind } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 
-import { KIND_LABELS } from './BudgetTemplateSheet';
+import { BUDGET_TEMPLATE_ICON_CHOICES, DEFAULT_TEMPLATE_ICON, KIND_LABELS } from './budgetTemplateMeta';
 
 const EDITABLE_KINDS: BudgetTemplateKind[] = ['week', 'month', 'day'];
 
-// Formulario para crear o editar el nombre/color/periodo de una
-// plantilla — a diferencia de la caja "creating" de BudgetTemplateSheet
-// (que fuerza el periodo al del calendario abierto), aquí se elige
-// explícitamente (spec: "al momento de crear el presupuesto debería
-// estar la opción de elegir el periodo").
+// Formulario para crear o editar nombre/ícono/color/periodo de una
+// plantilla de presupuesto (spec: "al momento de crear el presupuesto
+// debería estar la opción de elegir el periodo").
 export function TemplateMetaForm({
   initial,
   lockKind = false,
   onSave,
   onCancel,
 }: {
-  initial?: { name: string; color: string; kind: BudgetTemplateKind };
+  initial?: { name: string; color: string; kind: BudgetTemplateKind; icon?: string };
   lockKind?: boolean;
-  onSave: (name: string, color: string, kind: BudgetTemplateKind) => void;
+  onSave: (name: string, color: string, kind: BudgetTemplateKind, icon: string) => void;
   onCancel: () => void;
 }) {
   const { colors, typography, spacing, radius, surface } = useTheme();
   const [name, setName] = useState(initial?.name ?? '');
   const [color, setColor] = useState(initial?.color ?? ACCOUNT_COLOR_SWATCHES[0]);
   const [kind, setKind] = useState<BudgetTemplateKind>(initial?.kind ?? 'month');
+  const [icon, setIcon] = useState(initial?.icon ?? DEFAULT_TEMPLATE_ICON[initial?.kind ?? 'month']);
 
   // Un presupuesto de tipo Día es un evento con fecha propia — no tiene
   // sentido convertirlo a semanal/mensual (ni viceversa), así que su
@@ -38,7 +39,7 @@ export function TemplateMetaForm({
   const handleSave = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    onSave(trimmed, color, kind);
+    onSave(trimmed, color, kind, icon);
   };
 
   return (
@@ -79,6 +80,23 @@ export function TemplateMetaForm({
         </View>
       )}
 
+      <Text style={[typography.micro, { color: colors.textTertiary }]}>Ícono</Text>
+      <View style={styles.swatchRow}>
+        {BUDGET_TEMPLATE_ICON_CHOICES.map((name) => (
+          <Pressable
+            key={name}
+            accessibilityLabel={`Ícono ${name}`}
+            onPress={() => setIcon(name)}
+            style={[
+              styles.iconChoice,
+              { borderRadius: radius.pill, borderColor: icon === name ? colors.accentFrom : colors.surfaceBorder, backgroundColor: icon === name ? colors.accentSoft : 'transparent' },
+            ]}
+          >
+            <Ionicons name={name as any} size={17} color={icon === name ? colors.accentFrom : colors.textSecondary} />
+          </Pressable>
+        ))}
+      </View>
+
       <Text style={[typography.micro, { color: colors.textTertiary }]}>Color en el calendario</Text>
       <View style={styles.swatchRow}>
         {ACCOUNT_COLOR_SWATCHES.map((c) => (
@@ -114,6 +132,7 @@ const styles = StyleSheet.create({
   kindChip: { paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1 },
   swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   swatch: { width: 26, height: 26, borderRadius: 13, borderWidth: 2 },
+  iconChoice: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 16 },
   saveBtn: { paddingHorizontal: 18, paddingVertical: 8 },
 });

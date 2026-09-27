@@ -3,10 +3,21 @@ import { repositoryByTable } from '@/services/supabase/repositories';
 import { useAppStore } from '@/store/useAppStore';
 import type { SyncTable } from './types';
 
+// Las 12 tablas de SyncTable, completas — un olvido aquí es una fuga
+// silenciosa de una sola vía: pushPendingChanges() sí sube cualquier tabla
+// (usa repositoryByTable directo desde la cola), pero pullRemoteChanges()
+// solo trae de vuelta las que estén en esta lista. Encontrado en auditoría
+// 2026-09-27: faltaban las 4 tablas de presupuestos con nombre —
+// funcionaban al escribir, pero un segundo dispositivo (o una
+// reinstalación) nunca veía esos cambios de vuelta.
 const ALL_TABLES: SyncTable[] = [
   'accounts',
   'transactions',
   'budgets',
+  'budget_templates',
+  'template_budget_lines',
+  'budget_assignments',
+  'period_budget_overrides',
   'goals',
   'investments',
   'liabilities',
