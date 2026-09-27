@@ -65,6 +65,14 @@ export default function Dashboard() {
   // (spec: "aplicado en toda la app, hasta la más olvidada"), así que ahí
   // se usa esa en vez del azul fijo.
   const budgetCardColor = activeStyle.supportsBackgroundPhoto ? colors.accentFrom : BUDGET_CARD_COLOR;
+  // Estas 3 fichas (Presupuesto, sobrante, aviso) se tiñen de un color
+  // sólido a propósito en los otros 3 estilos — se ven bien opacas ahí. En
+  // Vidrio líquido, opacas rompían la promesa de "líquido" de raíz: se
+  // veían como bloques planos tapando la foto por completo (reporte
+  // directo del usuario, comparando contra el resto de fichas que sí dejan
+  // ver la foto). El mismo tinte a menor alpha dejan pasar la foto sin
+  // perder de qué color/aviso se trata.
+  const bannerTintAlpha = activeStyle.supportsBackgroundPhoto ? 0.5 : 0.86;
   const maxWidth = useContentMaxWidth();
   const profile = useAppStore((s) => s.profile);
   const rawAccounts = useAppStore((s) => s.accounts);
@@ -358,7 +366,7 @@ export default function Dashboard() {
             key={p.scope}
             style={[
               styles.rolloverCard,
-              { backgroundColor: withAlpha(colors.accentFrom, 0.86), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+              { backgroundColor: withAlpha(colors.accentFrom, bannerTintAlpha), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
               surfaceShadow(surface),
               surfaceBlur(surface),
             ]}
@@ -403,7 +411,7 @@ export default function Dashboard() {
             onPress={() => router.push('/presupuesto')}
             style={[
               styles.budgetBanner,
-              { backgroundColor: withAlpha(insightToneColor[topInsight.tone], 0.86), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+              { backgroundColor: withAlpha(insightToneColor[topInsight.tone], bannerTintAlpha), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
               surfaceShadow(surface),
               surfaceBlur(surface),
             ]}
@@ -482,7 +490,7 @@ export default function Dashboard() {
         <View
           style={[
             styles.budgetInviteBanner,
-            { backgroundColor: withAlpha(budgetCardColor, 0.86), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+            { backgroundColor: withAlpha(budgetCardColor, bannerTintAlpha), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
             surfaceShadow(surface),
             surfaceBlur(surface),
           ]}
@@ -521,7 +529,12 @@ export default function Dashboard() {
               <Text style={[typography.caption, { color: 'rgba(255,255,255,0.85)', marginBottom: spacing.sm }]}>
                 Cómo van tus gastos — presupuestado contra lo que ya llevas gastado este mes.
               </Text>
-              <BudgetProgressChart items={homeBudgetItems} currency={profile.primaryCurrency} maxBars={homeBudgetMaxBars} />
+              <BudgetProgressChart
+                items={homeBudgetItems}
+                currency={profile.primaryCurrency}
+                maxBars={homeBudgetMaxBars}
+                labelColor="rgba(255,255,255,0.85)"
+              />
             </View>
           )}
         </View>

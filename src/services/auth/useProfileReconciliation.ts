@@ -25,13 +25,35 @@ export function useProfileReconciliation(userId: string | null): { ready: boolea
 
     (async () => {
       try {
+        // Si el perfil local tiene cambios sin confirmar todavía en el
+        // servidor (profileDirty, persistido — sobrevive cerrar la app),
+        // NUNCA se pisan con lo que traiga fetchRemoteProfile: ese remoto
+        // puede estar desactualizado precisamente porque la subida anterior
+        // no alcanzó a completarse antes de cerrar la app (spec: "cerré la
+        // app y el nombre/la foto volvieron a como estaban antes" — bug
+        // reproducido con este exacto patrón: reconciliar al reabrir
+        // adoptaba el perfil viejo del servidor sin fijarse si el local
+        // tenía algo pendiente de subir). En ese caso solo se dispara
+        // runSync() para intentar subir lo pendiente cuanto antes.
+        const { profile, profileDirty, adoptRemoteProfile } = useAppStore.getState();
+        if (profileDirty) {
+          runSync();
+          return;
+        }
+
         const remote = await fetchRemoteProfile(userId);
-        const { profile, adoptRemoteProfile, markProfileDirty } = useAppStore.getState();
+        // Se vuelve a leer el estado — pudo volverse dirty MIENTRAS
+        // fetchRemoteProfile estaba en vuelo (ej. el usuario cambió el
+        // nombre justo en ese momento).
+        if (useAppStore.getState().profileDirty) {
+          runSync();
+          return;
+        }
 
         if (remote?.onboardingComplete) {
           adoptRemoteProfile(remote);
         } else if (profile.onboardingComplete) {
-          markProfileDirty();
+          useAppStore.getState().markProfileDirty();
           runSync();
         }
       } finally {

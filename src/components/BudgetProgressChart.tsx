@@ -23,7 +23,15 @@ const GAP = 18;
 // (spec: "puedan ver en que se están pasando, o ya se pasaron"). Ambos
 // tonos van translúcidos con un brillito arriba — el mismo lenguaje de
 // vidrio que el resto de la app, pero más leve.
-function ThermometerBar({ item, maxBudgeted }: { item: BudgetProgressItem; maxBudgeted: number }) {
+function ThermometerBar({
+  item,
+  maxBudgeted,
+  labelColor,
+}: {
+  item: BudgetProgressItem;
+  maxBudgeted: number;
+  labelColor?: string;
+}) {
   const { colors, typography } = useTheme();
   // Sin presupuesto (gasto que se coló sin planear): no hay una altura de
   // "100%" contra la cual medir, así que la barra completa es el gasto
@@ -37,17 +45,17 @@ function ThermometerBar({ item, maxBudgeted }: { item: BudgetProgressItem; maxBu
     const fillId = `budgetFill-${item.id}`;
     return (
       <View style={styles.barSlot}>
-        <Text style={[typography.micro, { color: colors.textTertiary, marginBottom: 2 }]}>Sin plan</Text>
+        <Text style={[typography.micro, { color: labelColor ?? colors.textTertiary, marginBottom: 2 }]}>Sin plan</Text>
         <Svg width={BAR_WIDTH} height={CHART_HEIGHT + 6}>
           <Defs>
             <LinearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={colors.danger} stopOpacity={0.85} />
-              <Stop offset="1" stopColor={colors.danger} stopOpacity={0.55} />
+              <Stop offset="0" stopColor={colors.danger} stopOpacity={0.95} />
+              <Stop offset="1" stopColor={colors.danger} stopOpacity={0.7} />
             </LinearGradient>
           </Defs>
           <Rect x={2} y={top} width={BAR_WIDTH - 4} height={barHeight} rx={8} fill={`url(#${fillId})`} />
         </Svg>
-        <Text style={[typography.micro, { color: colors.textSecondary, marginTop: 4, textAlign: 'center' }]} numberOfLines={1}>
+        <Text style={[typography.micro, { color: labelColor ?? colors.textSecondary, marginTop: 4, textAlign: 'center' }]} numberOfLines={1}>
           {item.label}
         </Text>
       </View>
@@ -70,26 +78,26 @@ function ThermometerBar({ item, maxBudgeted }: { item: BudgetProgressItem; maxBu
       <Svg width={BAR_WIDTH} height={CHART_HEIGHT + 6}>
         <Defs>
           <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={colors.info} stopOpacity={0.55} />
-            <Stop offset="1" stopColor={colors.info} stopOpacity={0.22} />
+            <Stop offset="0" stopColor={colors.info} stopOpacity={0.75} />
+            <Stop offset="1" stopColor={colors.info} stopOpacity={0.4} />
           </LinearGradient>
           <LinearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={colors.danger} stopOpacity={0.85} />
-            <Stop offset="1" stopColor={colors.danger} stopOpacity={0.55} />
+            <Stop offset="0" stopColor={colors.danger} stopOpacity={0.95} />
+            <Stop offset="1" stopColor={colors.danger} stopOpacity={0.7} />
           </LinearGradient>
         </Defs>
         {/* Presupuestado: azul, siempre a toda su altura (el 100% de referencia). */}
-        <Rect x={2} y={top} width={BAR_WIDTH - 4} height={barHeight} rx={8} fill={`url(#${gradId})`} stroke={colors.info} strokeOpacity={0.3} strokeWidth={1} />
+        <Rect x={2} y={top} width={BAR_WIDTH - 4} height={barHeight} rx={8} fill={`url(#${gradId})`} stroke={colors.info} strokeOpacity={0.6} strokeWidth={1} />
         {/* Gastado real: rojo, relleno desde abajo. */}
         {fillHeight > 0 && (
           <Rect x={2} y={fillTop} width={BAR_WIDTH - 4} height={fillHeight} rx={8} fill={`url(#${fillId})`} />
         )}
       </Svg>
-      <Text style={[typography.micro, { color: colors.textSecondary, marginTop: 4, textAlign: 'center' }]} numberOfLines={1}>
+      <Text style={[typography.micro, { color: labelColor ?? colors.textSecondary, marginTop: 4, textAlign: 'center' }]} numberOfLines={1}>
         {item.label}
       </Text>
       <Text
-        style={[typography.micro, { color: exceeded ? colors.danger : colors.textTertiary, fontWeight: '700', textAlign: 'center' }]}
+        style={[typography.micro, { color: exceeded ? colors.danger : (labelColor ?? colors.textTertiary), fontWeight: '700', textAlign: 'center' }]}
         numberOfLines={1}
       >
         {Math.round(ratio * 100)}%
@@ -123,14 +131,14 @@ function capItems(items: BudgetProgressItem[], maxBars: number): BudgetProgressI
 // lenguaje que ya usan Sparkline/BarTrend (spec: "líneas de los ejes x y
 // y... igual en trazos suaves"). El eje X ya lo cubre la etiqueta de cada
 // barra (nombre de categoría), así que aquí solo falta la escala.
-function YAxisRuler({ maxBudgeted }: { maxBudgeted: number }) {
+function YAxisRuler({ maxBudgeted, labelColor }: { maxBudgeted: number; labelColor?: string }) {
   const { colors, typography } = useTheme();
   const ticks = [maxBudgeted, maxBudgeted / 2, 0];
   return (
     <View style={[styles.yAxis, { height: CHART_HEIGHT }]}>
       {ticks.map((v, i) => (
         <View key={i} style={styles.yAxisTick}>
-          <Text style={[typography.micro, { color: colors.textTertiary }]} numberOfLines={1}>
+          <Text style={[typography.micro, { color: labelColor ?? colors.textTertiary }]} numberOfLines={1}>
             {compactAmount(v)}
           </Text>
           <View style={[styles.yAxisLine, { backgroundColor: colors.divider }]} />
@@ -147,10 +155,17 @@ export function BudgetProgressChart({
   items,
   currency,
   maxBars = 4,
+  labelColor,
 }: {
   items: BudgetProgressItem[];
   currency: Currency;
   maxBars?: number;
+  // Solo la ficha "Tu presupuesto" de Inicio la usa — ahí el fondo es la
+  // paleta de acento (o la foto, en Vidrio líquido) tintada, no el vidrio
+  // neutro oscuro de siempre, así que el texto tenue de costumbre
+  // (colors.textTertiary) se puede perder. En Presupuesto se deja sin
+  // definir y usa los mismos colores de siempre.
+  labelColor?: string;
 }) {
   const { colors, typography, spacing } = useTheme();
   const displayItems = capItems(items, maxBars);
@@ -167,20 +182,20 @@ export function BudgetProgressChart({
       <View style={styles.legendRow}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.info }]} />
-          <Text style={[typography.micro, { color: colors.textTertiary }]}>
+          <Text style={[typography.micro, { color: labelColor ?? colors.textTertiary }]}>
             Presupuestado {formatCurrency(totalBudgeted, currency)}
           </Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
-          <Text style={[typography.micro, { color: colors.textTertiary }]}>Gastado {formatCurrency(totalActual, currency)}</Text>
+          <Text style={[typography.micro, { color: labelColor ?? colors.textTertiary }]}>Gastado {formatCurrency(totalActual, currency)}</Text>
         </View>
       </View>
       <View style={styles.chartRow}>
-        <YAxisRuler maxBudgeted={maxBudgeted} />
+        <YAxisRuler maxBudgeted={maxBudgeted} labelColor={labelColor} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.barsRow}>
           {displayItems.map((item) => (
-            <ThermometerBar key={item.id} item={item} maxBudgeted={maxBudgeted} />
+            <ThermometerBar key={item.id} item={item} maxBudgeted={maxBudgeted} labelColor={labelColor} />
           ))}
         </ScrollView>
       </View>
