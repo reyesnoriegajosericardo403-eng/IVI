@@ -19,6 +19,7 @@ import type {
   DeleteTransactionArgs,
   ResolvedAction,
   SetBudgetLineArgs,
+  TransferBetweenAccountsArgs,
   UpdateGoalTargetArgs,
   UpdateLiabilityBalanceArgs,
 } from './chatTypes';
@@ -131,6 +132,11 @@ export interface DeleteBudgetLineCandidate {
 }
 export interface DeleteTransactionCandidate {
   transactionId: unknown;
+}
+export interface TransferBetweenAccountsCandidate {
+  fromAccountNameHint: string;
+  toAccountNameHint: string;
+  amount: unknown;
 }
 
 const ACCOUNT_TYPE_SYNONYMS: Record<string, AccountType> = {
@@ -258,6 +264,37 @@ export function resolveAddTransaction(candidate: AddTransactionCandidate, ctx: A
     ? `Agregar ${transactionType === 'income' ? 'ingreso' : 'gasto'} de ${formatCurrency(amount, account.currency)} en "${account.name}"`
     : `${transactionType === 'income' ? 'Agregar' : 'Quitar'} ${formatCurrency(amount, account.currency)} ${transactionType === 'income' ? 'a' : 'de'} "${account.name}"`;
   return { ok: true, action: { type: 'add_transaction', args }, summary };
+}
+
+// ---------- Transferencias entre cuentas propias (backlog #144) ----------
+// A diferencia de add_transaction, esto crea UN solo movimiento tipo
+// 'transfer' con accountId (origen) + toAccountId (destino) — el ledger
+// (src/utils/ledger.ts) ya sabe restar del origen y sumar al destino, y
+// finance.ts ya excluye 'transfer' de gasto/ingreso (nunca contamina
+// Presupuesto). Sin conversión de divisas: si las cuentas tienen monedas
+// distintas se rechaza en vez de sumar/restar números que no son
+// comparables — mover soporte de FX real es un problema aparte.
+export function resolveTransferBetweenAccounts(candidate: TransferBetweenAccountsCandidate, ctx: ActionValidationContext): ResolveResult {
+  const amount = positiveAmount(candidate.amount);
+  if (amount === null) return { ok: false, reason: 'No reconocí un monto claro para transferir — dime un número, por ejemplo "500".' };
+  const fromAccount = resolveAccountByNameHint(candidate.fromAccountNameHint, ctx.accounts);
+  if (!fromAccount) return { ok: false, reason: `No encontré ninguna cuenta que se llame "${candidate.fromAccountNameHint}".` };
+  const toAccount = resolveAccountByNameHint(candidate.toAccountNameHint, ctx.accounts);
+  if (!toAccount) return { ok: false, reason: `No encontré ninguna cuenta que se llame "${candidate.toAccountNameHint}".` };
+  if (fromAccount.id === toAccount.id) return { ok: false, reason: 'La cuenta de origen y destino no pueden ser la misma.' };
+  if (fromAccount.currency !== toAccount.currency) {
+    return { ok: false, reason: `"${fromAccount.name}" y "${toAccount.name}" usan monedas distintas — todavía no puedo convertir entre ellas.` };
+  }
+  const args: TransferBetweenAccountsArgs = {
+    fromAccountId: fromAccount.id,
+    fromAccountName: fromAccount.name,
+    toAccountId: toAccount.id,
+    toAccountName: toAccount.name,
+    amount,
+    currency: fromAccount.currency,
+  };
+  const summary = `Transferir ${formatCurrency(amount, fromAccount.currency)} de "${fromAccount.name}" a "${toAccount.name}"`;
+  return { ok: true, action: { type: 'transfer_between_accounts', args }, summary };
 }
 
 // ---------- Cuentas ----------

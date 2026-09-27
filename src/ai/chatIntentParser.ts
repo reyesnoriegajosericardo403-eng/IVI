@@ -17,6 +17,7 @@ import {
   resolveDeleteGoal,
   resolveDeleteLiability,
   resolveSetBudgetLine,
+  resolveTransferBetweenAccounts,
   resolveUpdateLiabilityBalance,
   type ActionValidationContext,
   type ResolveResult,
@@ -46,8 +47,41 @@ function captureNameAfter(text: string, keyword: string): string | null {
 const ADD_VERBS = ['agregar', 'agrega', 'agrego', 'crea', 'crear', 'creo', 'abre', 'abrir', 'anade', 'anadir', 'nueva', 'nuevo', 'registra', 'registrar'];
 const DELETE_VERBS = ['borrar', 'borra', 'borro', 'elimina', 'eliminar', 'elimino', 'quita', 'quitar', 'quito'];
 
+// Verbos de transferencia entre cuentas propias (backlog #144) — ninguno
+// se traslapa con ACCOUNT_INCREMENT_WORDS/ACCOUNT_DECREMENT_WORDS de
+// localParser.ts, así que no compite con el ajuste genérico de saldo.
+const TRANSFER_VERBS = [
+  'transferir', 'transfiere', 'transfirio', 'transfi',
+  'pasar', 'pasa', 'paso',
+  'mover', 'mueve', 'muevo', 'movi',
+  'mandar', 'manda', 'mando',
+  'enviar', 'envia', 'envio',
+];
+
+// Captura "de <cuenta A> a <cuenta B>" sobre el texto ORIGINAL (conserva
+// mayúsculas/acentos del nombre). Se detiene antes de un número suelto
+// para no tragarse un monto que venga DESPUÉS del nombre de la cuenta
+// destino (ej. "...a mi tarjeta nu 500 pesos").
+const TRANSFER_ACCOUNTS_REGEX =
+  /\bde\s+(?:mi|la|el|tu|una|un)?\s*([\p{L}][\p{L}\s]*?)\s+(?:a|hacia|para)\s+(?:mi|la|el|tu|una|un)?\s*([\p{L}][\p{L}\s]*?)(?=\s+\d|$|[.,;])/iu;
+
 export function detectChatIntent(rawText: string, ctx: ActionValidationContext): ResolveResult | null {
   const normalized = normalize(rawText);
+
+  // ---- Transferencias entre cuentas propias (revisado ANTES que el resto
+  // de "Cuentas" — no comparte palabra clave con agregar/borrar cuenta,
+  // pero sí necesita ganarle al ajuste genérico de saldo del final). ----
+  if (hasAnyWord(normalized, TRANSFER_VERBS)) {
+    const match = rawText.match(TRANSFER_ACCOUNTS_REGEX);
+    const amount = extractAmount(rawText);
+    if (match && amount !== null) {
+      const fromAccountNameHint = match[1].trim();
+      const toAccountNameHint = match[2].trim();
+      if (fromAccountNameHint.length >= 2 && toAccountNameHint.length >= 2) {
+        return resolveTransferBetweenAccounts({ fromAccountNameHint, toAccountNameHint, amount }, ctx);
+      }
+    }
+  }
 
   // ---- Cuentas ----
   if (hasAnyWord(normalized, DELETE_VERBS) && /\bcuenta\b/.test(normalized)) {

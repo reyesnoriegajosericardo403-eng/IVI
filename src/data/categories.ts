@@ -368,6 +368,24 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
       { id: 'edu_tutoring', name: 'Clases particulares y regularización', keywords: ['clases particulares', 'regularización', 'tutor', 'asesoría escolar'] },
     ],
   },
+  // Categoría propia para el tipo 'transfer' (data/types.ts, ledger.ts) —
+  // mueve dinero entre cuentas propias del usuario sin contar como
+  // gasto/ingreso real, así que su única subcategoría queda fuera del
+  // presupuesto a propósito (excludedFromBudget), igual que "Otros" de
+  // Miscelánea. Motor de intenciones financieras (backlog #144).
+  {
+    id: 'transfer',
+    name: 'Transferencias',
+    icon: 'transfer',
+    subcategories: [
+      {
+        id: 'transfer_own',
+        name: 'Entre mis cuentas',
+        keywords: ['transferencia', 'transferir', 'transfiere', 'pasar dinero', 'mover dinero', 'traspaso'],
+        excludedFromBudget: true,
+      },
+    ],
+  },
 ];
 
 export function findCategory(categoryId: string): CategoryDef | undefined {

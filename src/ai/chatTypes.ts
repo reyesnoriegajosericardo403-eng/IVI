@@ -24,7 +24,8 @@ export type AIActionType =
   | 'delete_liability'
   | 'set_budget_line'
   | 'delete_budget_line'
-  | 'delete_transaction';
+  | 'delete_transaction'
+  | 'transfer_between_accounts';
 
 // Un tipo de argumentos angosto por acción — nunca un parche genérico
 // (spec del plan: "tipos angostos, nunca parches genéricos") — así el
@@ -101,6 +102,14 @@ export interface DeleteTransactionArgs {
   transactionId: string;
   transactionSummary: string;
 }
+export interface TransferBetweenAccountsArgs {
+  fromAccountId: string;
+  fromAccountName: string;
+  toAccountId: string;
+  toAccountName: string;
+  amount: number;
+  currency: Currency;
+}
 
 // Unión discriminada usada por el catálogo (src/ai/actionCatalog.ts) y por
 // `aiApplyAction` (useAppStore.ts) para que el switch de despacho sea
@@ -119,7 +128,8 @@ export type ResolvedAction =
   | { type: 'delete_liability'; args: DeleteLiabilityArgs }
   | { type: 'set_budget_line'; args: SetBudgetLineArgs }
   | { type: 'delete_budget_line'; args: DeleteBudgetLineArgs }
-  | { type: 'delete_transaction'; args: DeleteTransactionArgs };
+  | { type: 'delete_transaction'; args: DeleteTransactionArgs }
+  | { type: 'transfer_between_accounts'; args: TransferBetweenAccountsArgs };
 
 export type AIActionStatus = 'proposed' | 'applied' | 'dismissed' | 'failed';
 

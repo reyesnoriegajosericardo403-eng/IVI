@@ -19,6 +19,7 @@ import {
   type DeleteLiabilityArgs,
   type DeleteTransactionArgs,
   type SetBudgetLineArgs,
+  type TransferBetweenAccountsArgs,
   type UpdateGoalTargetArgs,
   type UpdateLiabilityBalanceArgs,
 } from '@/ai/chatTypes';
@@ -927,6 +928,27 @@ export const useAppStore = create<AppState>()(
                 subcategoryId: args.subcategoryId,
                 accountId: args.accountId,
                 merchant: args.merchant,
+                date: new Date().toISOString(),
+                origin: 'manual',
+                notes: 'Agregado desde el chat de IA',
+              });
+              return { ok: true };
+            }
+            case 'transfer_between_accounts': {
+              const args = action.args as unknown as TransferBetweenAccountsArgs;
+              const fromAccount = state.accounts.find((a) => a.id === args.fromAccountId && !a.deletedAt);
+              if (!fromAccount) return { ok: false, error: `La cuenta "${args.fromAccountName}" ya no existe.` };
+              const toAccount = state.accounts.find((a) => a.id === args.toAccountId && !a.deletedAt);
+              if (!toAccount) return { ok: false, error: `La cuenta "${args.toAccountName}" ya no existe.` };
+              state.addTransaction({
+                type: 'transfer',
+                amount: args.amount,
+                currency: args.currency,
+                categoryId: 'transfer',
+                subcategoryId: 'transfer_own',
+                accountId: args.fromAccountId,
+                toAccountId: args.toAccountId,
+                merchant: `${fromAccount.name} → ${toAccount.name}`,
                 date: new Date().toISOString(),
                 origin: 'manual',
                 notes: 'Agregado desde el chat de IA',

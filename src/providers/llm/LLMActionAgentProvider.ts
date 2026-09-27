@@ -10,6 +10,7 @@ import {
   resolveDeleteLiability,
   resolveDeleteTransaction,
   resolveSetBudgetLine,
+  resolveTransferBetweenAccounts,
   resolveUpdateGoalTarget,
   resolveUpdateLiabilityBalance,
   type ActionValidationContext,
@@ -50,6 +51,7 @@ Si el mensaje pide agregar, quitar o cambiar un dato, "action" debe ser EXACTAME
 - {"type":"set_budget_line","categoryHint":"string","monthlyAmount":number}
 - {"type":"delete_budget_line","categoryHint":"string"}
 - {"type":"delete_transaction","transactionId":"id real de movimientos_recientes abajo, nunca inventado"}
+- {"type":"transfer_between_accounts","fromAccountNameHint":"string","toAccountNameHint":"string","amount":number} — mover dinero entre dos cuentas propias del usuario, nunca hacia/desde una cuenta de otra persona
 
 "reply" siempre es una frase corta y natural — nunca describas ahí el detalle exacto de la acción (monto, cuenta), eso lo arma la app aparte a partir de "action".`;
 
@@ -90,6 +92,11 @@ function resolveModelAction(raw: unknown, ctx: ActionValidationContext): Resolve
       return resolveDeleteBudgetLine({ categoryHint: String(a.categoryHint ?? '') }, ctx);
     case 'delete_transaction':
       return resolveDeleteTransaction({ transactionId: a.transactionId }, ctx);
+    case 'transfer_between_accounts':
+      return resolveTransferBetweenAccounts(
+        { fromAccountNameHint: String(a.fromAccountNameHint ?? ''), toAccountNameHint: String(a.toAccountNameHint ?? ''), amount: a.amount },
+        ctx
+      );
     default:
       return null;
   }
