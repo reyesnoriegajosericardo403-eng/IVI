@@ -78,7 +78,24 @@ export default function Appearance() {
         setUploadError('No se pudo leer esa imagen — intenta con otra.');
         return;
       }
-      setCustomUri(asset.uri);
+      if (Platform.OS === 'web') {
+        // En web, expo-image-picker entrega un `blob:` URL — solo vive
+        // mientras dura la pestaña/documento actual. Un PWA instalado en un
+        // celular/iPad recarga el documento muy seguido (cambio de app,
+        // presión de memoria de iOS), lo que mata ese blob y el fondo
+        // "desaparece" — se veía como el error reportado. Se convierte a un
+        // `data:` URI (persistente, sobrevive recargas) reescalado a un
+        // tamaño manejable antes de guardarlo en el perfil.
+        try {
+          const dataUri = await blobUriToPersistentDataUri(asset.uri, 1600, 0.82);
+          setCustomUri(dataUri);
+        } catch {
+          setUploadError('No se pudo procesar esa imagen — intenta con otra.');
+          return;
+        }
+      } else {
+        setCustomUri(asset.uri);
+      }
       setMode('custom');
     } catch {
       setUploadError('Algo falló al abrir tus fotos. Vuelve a intentar.');
@@ -225,6 +242,37 @@ export default function Appearance() {
       )}
     </SafeAreaView>
   );
+}
+
+// El `blob:` URL que entrega expo-image-picker en web solo vive mientras
+// dura el documento actual — un PWA instalado en un celular/iPad recarga el
+// documento muy seguido (cambio de app, presión de memoria de iOS), lo que
+// mata ese blob y el fondo elegido desaparece. Se redibuja la foto en un
+// <canvas> fuera de pantalla (reescalada a `maxDim` en su lado más largo,
+// para no guardar varios MB de perfil en el store) y se codifica como
+// `data:` URI, que sí sobrevive cualquier recarga porque viaja como texto
+// dentro del propio perfil persistido.
+function blobUriToPersistentDataUri(blobUri: string, maxDim: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new (window as unknown as { Image: new () => HTMLImageElement }).Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('No 2D context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    img.src = blobUri;
+  });
 }
 
 function BackgroundOptionRow({

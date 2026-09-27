@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { AccessibilityInfo, Image, Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Defs, Filter, FeGaussianBlur, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { AccessibilityInfo, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Svg, { Circle, Defs, Filter, FeGaussianBlur, Image as SvgImage, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { findBackgroundImage } from '@/data/backgroundCatalog';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -52,10 +52,20 @@ export function AppBackground({ children }: { children: React.ReactNode }) {
       {gradient && gradient.length >= 2 && size.width > 0 && !showPhoto && (
         <GradientLayer stops={gradient} glow={glow ?? null} width={size.width} height={size.height} scheme={scheme} />
       )}
-      {showPhoto && (
+      {/* Igual que GradientLayer: se espera a tener el tamaño REAL medido
+          (size.width > 0) y se le pasa en píxeles — nunca "100%"/absoluteFill
+          puro. Confirmado con un dispositivo real (spec 2026-09-27): la foto
+          por CSS/absoluteFill quedaba comprimida a una franja en vez de
+          cubrir la pantalla en el PWA de celular/iPad — el mismo patrón que
+          ya usa el degradado (medir primero, dibujar en un <Svg> con
+          dimensiones exactas) es el que sí se sostiene en cualquier
+          plataforma. */}
+      {showPhoto && size.width > 0 && (
         <BackgroundPhotoLayer
           uri={photoSource!.uri}
           source={photoSource!.reactSource}
+          width={size.width}
+          height={size.height}
           focalX={isTablet ? profile.backgroundFocalXDesktop ?? 0.5 : profile.backgroundFocalXMobile ?? 0.5}
           focalY={isTablet ? profile.backgroundFocalYDesktop ?? 0.5 : profile.backgroundFocalYMobile ?? 0.5}
           darkness={profile.backgroundDarkness ?? 0.55}
@@ -82,14 +92,27 @@ function resolveBackgroundPhoto(
   return null;
 }
 
-// La foto en sí, con su punto focal, oscurecimiento y desenfoque — todo en
-// una sola capa absoluta detrás del contenido. El desenfoque de la FOTO
-// (distinto del backdrop-blur de las tarjetas de vidrio, que sigue viviendo
-// en surfaceStyle.ts) solo es real en web (filter: blur); en nativo se
-// omite con elegancia en vez de fingirlo (spec: "degradarse con elegancia").
+// De 0/0.5/1 (la grilla 3x3 de "Mover imagen") a las palabras clave que
+// entiende `preserveAspectRatio` de SVG — "slice" es exactamente el
+// recorte tipo `resizeMode="cover"`, pero anclado a coordenadas de píxel
+// reales en vez de depender de que el CSS del navegador calcule bien un
+// `position:absolute` con porcentajes (lo que fallaba en el dispositivo).
+function focalKeyword(x: number, y: number): string {
+  const xKey = x < 0.34 ? 'xMin' : x > 0.66 ? 'xMax' : 'xMid';
+  const yKey = y < 0.34 ? 'YMin' : y > 0.66 ? 'YMax' : 'YMid';
+  return `${xKey}${yKey} slice`;
+}
+
+// La foto en sí, con su punto focal, oscurecimiento y desenfoque — dibujada
+// dentro de un <Svg> con el tamaño MEDIDO en píxeles (igual que
+// GradientLayer), nunca con `position:absolute` + porcentajes: eso es justo
+// lo que se comprimía a una franja en el PWA de un dispositivo real
+// (celular/iPad) en vez de cubrir toda la pantalla.
 function BackgroundPhotoLayer({
   uri,
   source,
+  width,
+  height,
   focalX,
   focalY,
   darkness,
@@ -97,29 +120,25 @@ function BackgroundPhotoLayer({
 }: {
   uri?: string;
   source?: unknown;
+  width: number;
+  height: number;
   focalX: number;
   focalY: number;
   darkness: number;
   blurAmount: number;
 }) {
   const imgSource = uri ? { uri } : (source as number);
-  const blurPx = Math.round(blurAmount * 14); // 0 a 14px — sutil, nunca al punto de perder la escena.
-
-  const webObjectPosition = Platform.OS === 'web' ? { objectFit: 'cover', objectPosition: `${focalX * 100}% ${focalY * 100}%` } : null;
-  const webFilter = Platform.OS === 'web' && blurPx > 0 ? { filter: `blur(${blurPx}px)`, transform: 'scale(1.06)' } : null;
+  const blurPx = Math.round(blurAmount * 12); // 0 a 12px — sutil, nunca al punto de perder la escena.
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Image
-        source={imgSource}
-        resizeMode="cover"
-        style={[StyleSheet.absoluteFill, (webObjectPosition as object) ?? null, (webFilter as object) ?? null]}
-      />
-      {/* Oscurecimiento graduado: más oscuro abajo (donde suele vivir la
-          barra de navegación) y arriba (encabezados), más claro al centro —
-          nunca un tinte plano parejo. */}
-      <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+      <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         <Defs>
+          {blurPx > 0 && (
+            <Filter id="bgPhotoBlur" x="-15%" y="-15%" width="130%" height="130%">
+              <FeGaussianBlur stdDeviation={blurPx} edgeMode="duplicate" />
+            </Filter>
+          )}
           <LinearGradient id="bgDarken" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0%" stopColor="#000000" stopOpacity={darkness * 0.75} />
             <Stop offset="42%" stopColor="#000000" stopOpacity={darkness * 0.4} />
@@ -127,7 +146,19 @@ function BackgroundPhotoLayer({
             <Stop offset="100%" stopColor="#000000" stopOpacity={darkness * 0.85} />
           </LinearGradient>
         </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#bgDarken)" />
+        <SvgImage
+          x="0"
+          y="0"
+          width={width}
+          height={height}
+          href={imgSource as never}
+          preserveAspectRatio={focalKeyword(focalX, focalY)}
+          filter={blurPx > 0 ? 'url(#bgPhotoBlur)' : undefined}
+        />
+        {/* Oscurecimiento graduado: más oscuro abajo (donde suele vivir la
+            barra de navegación) y arriba (encabezados), más claro al centro
+            — nunca un tinte plano parejo. */}
+        <Rect x="0" y="0" width={width} height={height} fill="url(#bgDarken)" />
       </Svg>
     </View>
   );

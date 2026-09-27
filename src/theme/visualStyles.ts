@@ -280,13 +280,20 @@ const neoBrutalist: VisualStyleDefinition = {
 const LIQUID_GLASS_BACKGROUND = '#1B2029';
 const liquidGlassVariant: VisualStyleVariant = {
   colors: {
-    background: LIQUID_GLASS_BACKGROUND,
+    // 'transparent', no el hex — cada pantalla pinta su propio
+    // SafeAreaView/View con `colors.background`, y si fuera opaco taparía
+    // por completo la foto de fondo que pinta AppBackground.tsx detrás de
+    // TODA la app (mismo patrón ya usado por vidrio/degradado suave abajo:
+    // el color real vive en `surface.backgroundGradient`, no aquí).
+    background: 'transparent',
     backgroundAlt: '#20262F',
-    // glass_base (#303844) con el tint_alpha inicial del material (spec:
-    // "0.56 a 0.76") — se deja fijo por ahora, el ajuste automático por
-    // luminosidad de foto es un afinamiento posterior.
-    surface: 'rgba(48,56,68,0.62)',
-    surfaceBorder: 'rgba(255,255,255,0.18)', // glass_outline_light
+    // glass_base (#303844) — más transparente que el "0.56 a 0.76" que
+    // sugería el prompt original: contra una foto de verdad esa opacidad se
+    // veía casi sólida (feedback directo del usuario comparando contra la
+    // imagen de referencia), así que se bajó hasta que el fondo se nota de
+    // verdad a través de la ficha sin perder legibilidad del texto.
+    surface: 'rgba(48,56,68,0.38)',
+    surfaceBorder: 'rgba(255,255,255,0.22)', // glass_outline_light, un poco más marcado para compensar el relleno más transparente
     surfaceSolid: '#2A313C',
     textPrimary: '#FEFCF8',
     textSecondary: '#D7D6D1',
@@ -304,7 +311,7 @@ const liquidGlassVariant: VisualStyleVariant = {
     warning: '#E3B873',
     danger: '#F27F82', // spent_or_negative
     info: '#99B5D4', // planned_data
-    tabBarBackground: 'rgba(27,32,41,0.78)',
+    tabBarBackground: 'rgba(27,32,41,0.58)',
     divider: 'rgba(255,255,255,0.10)',
   },
   surface: {
@@ -315,8 +322,13 @@ const liquidGlassVariant: VisualStyleVariant = {
     shadowOffsetY: 10,
     radiusScale: 1.05, // corner_radius 20-28px sobre un radius.lg base de 24
     borderWidth: 1,
-    blur: 26, // backdrop_blur 18-32px, punto medio-alto
-    backgroundGradient: null,
+    blur: 30, // backdrop_blur 18-32px, cerca del máximo — más transparencia pide más desenfoque real para que el texto siga legible
+    // Dos paradas del mismo color (no null): AppBackground.tsx solo pinta
+    // ALGO de fondo propio cuando `backgroundGradient` tiene 2+ paradas —
+    // si fuera null, cada pantalla individual (que ahora tiene su propio
+    // `colors.background: 'transparent'`) quedaría sin ningún color detrás
+    // cuando el usuario no eligió foto ("Sin foto").
+    backgroundGradient: [LIQUID_GLASS_BACKGROUND, LIQUID_GLASS_BACKGROUND],
     backgroundGlow: null,
     boldText: false,
   },
