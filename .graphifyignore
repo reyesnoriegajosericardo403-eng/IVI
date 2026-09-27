@@ -1,0 +1,34 @@
+# Graphify solo debe capturar ARQUITECTURA/INGENIERÍA del código — nunca
+# datos de usuarios reales. VALU nunca guarda datos de usuarios en este
+# repositorio (viven exclusivamente en Supabase, protegidos por RLS), pero
+# esta lista es la barrera explícita y redundante de todos modos.
+
+# Credenciales y configuración local (ya cubierto por .gitignore, redundante a propósito)
+.env
+.env.local
+.env*.local
+*.pem
+*.key
+*.jks
+*.p12
+*.mobileprovision
+
+# Dependencias y builds — ruido, no arquitectura
+node_modules/
+dist/
+web-build/
+.expo/
+.git/
+
+# Assets binarios (fotos del catálogo de fondos) — contenido de producto,
+# no código ni estructura de datos
+assets/backgrounds/
+assets/*.png
+assets/*.jpg
+
+# Nunca meter aquí volcados de datos reales si alguna vez existieran
+# (exports, backups, capturas de la base de datos real)
+*.sql.bak
+**/exports/
+**/backups/
+**/*dump*.json

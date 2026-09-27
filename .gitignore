@@ -41,3 +41,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Graphify — cache incremental local, se regenera solo (graph.json y
+# graph.html SÍ se versionan, son el entregable real)
+graphify-out/cache/
