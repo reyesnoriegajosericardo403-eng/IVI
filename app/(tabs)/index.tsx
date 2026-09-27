@@ -59,7 +59,12 @@ const GROUP_LABELS: Record<BudgetGroupId, string> = { necesidades: 'Necesidades'
 const BUDGET_CARD_COLOR = '#1D4ED8';
 
 export default function Dashboard() {
-  const { colors, typography, spacing, radius, surface } = useTheme();
+  const { colors, typography, spacing, radius, surface, style: activeStyle } = useTheme();
+  // El azul fijo es la identidad de esta ficha en los estilos de siempre —
+  // pero "Vidrio líquido" trae su propia paleta de acento seleccionable
+  // (spec: "aplicado en toda la app, hasta la más olvidada"), así que ahí
+  // se usa esa en vez del azul fijo.
+  const budgetCardColor = activeStyle.supportsBackgroundPhoto ? colors.accentFrom : BUDGET_CARD_COLOR;
   const maxWidth = useContentMaxWidth();
   const profile = useAppStore((s) => s.profile);
   const rawAccounts = useAppStore((s) => s.accounts);
@@ -477,7 +482,7 @@ export default function Dashboard() {
         <View
           style={[
             styles.budgetInviteBanner,
-            { backgroundColor: withAlpha(BUDGET_CARD_COLOR, 0.86), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+            { backgroundColor: withAlpha(budgetCardColor, 0.86), borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
             surfaceShadow(surface),
             surfaceBlur(surface),
           ]}
@@ -500,10 +505,10 @@ export default function Dashboard() {
             onPress={() => router.push('/presupuesto')}
             style={[styles.budgetBannerCta, { borderRadius: radius.pill, marginTop: spacing.md }]}
           >
-            <Text style={{ color: BUDGET_CARD_COLOR, fontWeight: '700' }}>
+            <Text style={{ color: budgetCardColor, fontWeight: '700' }}>
               {hasBudget ? 'Modificar presupuesto' : budgetBanner.cta}
             </Text>
-            <Ionicons name="arrow-forward" size={14} color={BUDGET_CARD_COLOR} style={{ marginLeft: 6 }} />
+            <Ionicons name="arrow-forward" size={14} color={budgetCardColor} style={{ marginLeft: 6 }} />
           </Pressable>
 
           {/* Distribución del presupuesto por grupo — presupuestado en

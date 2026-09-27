@@ -21,6 +21,15 @@ export async function fetchRemoteProfile(userId: string): Promise<UserProfile | 
     },
     visualStyle: data.visual_style ?? undefined,
     lastPermanentVisualStyle: data.last_permanent_visual_style ?? undefined,
+    accentPaletteId: data.accent_palette_id ?? undefined,
+    backgroundMode: data.background_mode ?? undefined,
+    backgroundCatalogImageId: data.background_catalog_image_id ?? undefined,
+    backgroundFocalXMobile: data.background_focal_x_mobile ?? undefined,
+    backgroundFocalYMobile: data.background_focal_y_mobile ?? undefined,
+    backgroundFocalXDesktop: data.background_focal_x_desktop ?? undefined,
+    backgroundFocalYDesktop: data.background_focal_y_desktop ?? undefined,
+    backgroundDarkness: data.background_darkness ?? undefined,
+    backgroundBlurAmount: data.background_blur_amount ?? undefined,
   };
 }
 
@@ -38,6 +47,15 @@ export async function pushRemoteProfile(userId: string, profile: UserProfile): P
       budget_threshold_exceeded: profile.budgetThresholds.exceeded,
       visual_style: profile.visualStyle ?? null,
       last_permanent_visual_style: profile.lastPermanentVisualStyle ?? null,
+      accent_palette_id: profile.accentPaletteId ?? null,
+      background_mode: profile.backgroundMode ?? null,
+      background_catalog_image_id: profile.backgroundCatalogImageId ?? null,
+      background_focal_x_mobile: profile.backgroundFocalXMobile ?? null,
+      background_focal_y_mobile: profile.backgroundFocalYMobile ?? null,
+      background_focal_x_desktop: profile.backgroundFocalXDesktop ?? null,
+      background_focal_y_desktop: profile.backgroundFocalYDesktop ?? null,
+      background_darkness: profile.backgroundDarkness ?? null,
+      background_blur_amount: profile.backgroundBlurAmount ?? null,
     })
     .eq('user_id', userId);
 }

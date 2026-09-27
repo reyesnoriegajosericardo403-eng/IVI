@@ -300,6 +300,34 @@ export interface UserProfile {
   sex?: 'hombre' | 'mujer' | 'prefiero_no_decirlo';
   // Color del círculo de iniciales del avatar (Account Dropdown/Perfil).
   avatarColor?: string;
+
+  // ---- Apariencia: paleta de acento y fondo (solo aplica cuando el
+  // estilo visual activo trae `supportsBackgroundPhoto`, hoy "Vidrio
+  // líquido") ----
+  // Una de ACCENT_PALETTES (theme/accentPalettes.ts). Nunca cambia los
+  // colores semánticos financieros, solo botón principal/iconos activos.
+  accentPaletteId?: string;
+  // 'none' = fondo fijo cálido oscuro sin foto; 'catalog' = una de las
+  // fotos preestablecidas por la propietaria; 'custom' = foto privada del
+  // propio usuario.
+  backgroundMode?: 'none' | 'catalog' | 'custom';
+  // id de BackgroundImage dentro de backgroundCatalog.ts cuando backgroundMode === 'catalog'.
+  backgroundCatalogImageId?: string;
+  // URI local del dispositivo cuando backgroundMode === 'custom' — nunca
+  // se sincroniza a Supabase (la foto es privada de este dispositivo; solo
+  // sus ajustes sí viajan con el perfil).
+  backgroundCustomUri?: string;
+  // Punto focal (0 a 1) para recortar la foto sin estirarla — por
+  // dispositivo, porque un recorte vertical (celular) y uno horizontal
+  // (escritorio) casi nunca comparten el mismo encuadre ideal.
+  backgroundFocalXMobile?: number;
+  backgroundFocalYMobile?: number;
+  backgroundFocalXDesktop?: number;
+  backgroundFocalYDesktop?: number;
+  // 0 a 1 — "Qué tan oscuro" en Ajustes > Apariencia.
+  backgroundDarkness?: number;
+  // 0 a 1 — "Qué tan nítido" (a mayor valor, más desenfoque).
+  backgroundBlurAmount?: number;
 }
 
 export interface NetWorthSnapshot extends SyncMeta {

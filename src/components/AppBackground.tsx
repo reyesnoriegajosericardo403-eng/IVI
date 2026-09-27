@@ -1,36 +1,134 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, Image, Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Defs, Filter, FeGaussianBlur, LinearGradient, Rect, Stop } from 'react-native-svg';
 
+import { findBackgroundImage } from '@/data/backgroundCatalog';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
-// Fondo de la app según el estilo visual activo: un degradado suave (vidrio,
-// degradado suave) o un color sólido (brutalista). Vive DETRÁS de todas las
-// pantallas — por eso los estilos con degradado dejan `colors.background` en
-// 'transparent': las pantallas siguen pintando su fondo como siempre, solo
-// que ese fondo deja ver el degradado de aquí abajo.
+// Fondo de la app según el estilo visual activo — vive DETRÁS de todas las
+// pantallas (montado una sola vez en app/_layout.tsx), así que cualquier
+// cosa que se agregue aquí aparece en TODA la app sin tocar una sola
+// pantalla (spec: "aplicado absolutamente en toda la app, hasta en la más
+// olvidada"). Tres capas posibles, de atrás hacia adelante:
+//   1. Degradado suave (vidrio, degradado suave) o color sólido (brutalista,
+//      vidrio líquido sin foto) — como ya existía.
+//   2. Fotografía elegida (catálogo o propia), solo si el estilo activo la
+//      soporta (`supportsBackgroundPhoto`) y el usuario eligió una.
+//   3. Oscurecimiento graduado + desenfoque encima de la foto, para que el
+//      contenido financiero se lea siempre (spec: "queda suavemente
+//      desenfocada y oscurecida bajo texto y fichas").
 export function AppBackground({ children }: { children: React.ReactNode }) {
-  const { surface, colors, scheme } = useTheme();
+  const { surface, colors, scheme, style } = useTheme();
+  const profile = useAppStore((s) => s.profile);
+  const { isTablet } = useBreakpoint();
   const gradient = surface.backgroundGradient;
   const glow = surface.backgroundGlow;
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [reduceTransparency, setReduceTransparency] = useState(false);
+
+  React.useEffect(() => {
+    AccessibilityInfo.isReduceTransparencyEnabled?.()
+      .then(setReduceTransparency)
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('reduceTransparencyChanged', setReduceTransparency);
+    return () => sub?.remove?.();
+  }, []);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
   };
 
+  const photoSource = resolveBackgroundPhoto(style.supportsBackgroundPhoto, profile);
+  const showPhoto = !!photoSource && !reduceTransparency;
+
   return (
     <View
       onLayout={onLayout}
-      // El primer tono del degradado sirve de base mientras se mide el
-      // tamaño, así nunca hay un destello blanco al abrir.
       style={[styles.root, { backgroundColor: gradient?.[0] ?? colors.background }]}
     >
-      {gradient && gradient.length >= 2 && size.width > 0 && (
+      {gradient && gradient.length >= 2 && size.width > 0 && !showPhoto && (
         <GradientLayer stops={gradient} glow={glow ?? null} width={size.width} height={size.height} scheme={scheme} />
       )}
+      {showPhoto && (
+        <BackgroundPhotoLayer
+          uri={photoSource!.uri}
+          source={photoSource!.reactSource}
+          focalX={isTablet ? profile.backgroundFocalXDesktop ?? 0.5 : profile.backgroundFocalXMobile ?? 0.5}
+          focalY={isTablet ? profile.backgroundFocalYDesktop ?? 0.5 : profile.backgroundFocalYMobile ?? 0.5}
+          darkness={profile.backgroundDarkness ?? 0.55}
+          blurAmount={profile.backgroundBlurAmount ?? 0.3}
+        />
+      )}
       <View style={styles.root}>{children}</View>
+    </View>
+  );
+}
+
+function resolveBackgroundPhoto(
+  supports: boolean | undefined,
+  profile: { backgroundMode?: string; backgroundCatalogImageId?: string; backgroundCustomUri?: string }
+): { uri?: string; reactSource?: unknown } | null {
+  if (!supports) return null;
+  if (profile.backgroundMode === 'custom' && profile.backgroundCustomUri) {
+    return { uri: profile.backgroundCustomUri };
+  }
+  if (profile.backgroundMode === 'catalog' && profile.backgroundCatalogImageId) {
+    const image = findBackgroundImage(profile.backgroundCatalogImageId);
+    if (image) return { reactSource: image.source };
+  }
+  return null;
+}
+
+// La foto en sí, con su punto focal, oscurecimiento y desenfoque — todo en
+// una sola capa absoluta detrás del contenido. El desenfoque de la FOTO
+// (distinto del backdrop-blur de las tarjetas de vidrio, que sigue viviendo
+// en surfaceStyle.ts) solo es real en web (filter: blur); en nativo se
+// omite con elegancia en vez de fingirlo (spec: "degradarse con elegancia").
+function BackgroundPhotoLayer({
+  uri,
+  source,
+  focalX,
+  focalY,
+  darkness,
+  blurAmount,
+}: {
+  uri?: string;
+  source?: unknown;
+  focalX: number;
+  focalY: number;
+  darkness: number;
+  blurAmount: number;
+}) {
+  const imgSource = uri ? { uri } : (source as number);
+  const blurPx = Math.round(blurAmount * 14); // 0 a 14px — sutil, nunca al punto de perder la escena.
+
+  const webObjectPosition = Platform.OS === 'web' ? { objectFit: 'cover', objectPosition: `${focalX * 100}% ${focalY * 100}%` } : null;
+  const webFilter = Platform.OS === 'web' && blurPx > 0 ? { filter: `blur(${blurPx}px)`, transform: 'scale(1.06)' } : null;
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Image
+        source={imgSource}
+        resizeMode="cover"
+        style={[StyleSheet.absoluteFill, (webObjectPosition as object) ?? null, (webFilter as object) ?? null]}
+      />
+      {/* Oscurecimiento graduado: más oscuro abajo (donde suele vivir la
+          barra de navegación) y arriba (encabezados), más claro al centro —
+          nunca un tinte plano parejo. */}
+      <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="bgDarken" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#000000" stopOpacity={darkness * 0.75} />
+            <Stop offset="42%" stopColor="#000000" stopOpacity={darkness * 0.4} />
+            <Stop offset="70%" stopColor="#000000" stopOpacity={darkness * 0.55} />
+            <Stop offset="100%" stopColor="#000000" stopOpacity={darkness * 0.85} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#bgDarken)" />
+      </Svg>
     </View>
   );
 }

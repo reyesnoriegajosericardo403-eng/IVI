@@ -25,7 +25,7 @@ const THEME_OPTIONS: Array<{ id: UserProfile['themePreference']; label: string; 
 const CURRENCIES: Currency[] = ['MXN', 'USD'];
 
 export default function Settings() {
-  const { colors, typography, spacing, radius } = useTheme();
+  const { colors, typography, spacing, radius, style: activeStyle } = useTheme();
   const profile = useAppStore((s) => s.profile);
   const setThemePreference = useAppStore((s) => s.setThemePreference);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
@@ -151,6 +151,19 @@ export default function Settings() {
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>ESTILO VISUAL</Text>
           <StylePicker />
+          {activeStyle.supportsBackgroundPhoto && (
+            <Pressable
+              accessibilityLabel="Personalizar Vidrio líquido"
+              onPress={() => router.push('/appearance')}
+              style={[styles.row, { padding: spacing.md, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: radius.md }]}
+            >
+              <Ionicons name="color-palette-outline" size={18} color={colors.accentFrom} />
+              <Text style={[typography.body, { color: colors.accentFrom, fontWeight: '700', flex: 1, marginLeft: spacing.md }]}>
+                Personalizar Vidrio líquido
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.accentFrom} />
+            </Pressable>
+          )}
         </View>
 
         <View style={{ gap: spacing.sm }}>

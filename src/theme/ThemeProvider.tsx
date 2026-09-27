@@ -2,7 +2,9 @@ import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { useAppStore } from '@/store/useAppStore';
+import { findAccentPalette } from './accentPalettes';
 import { type ThemeColors } from './colors';
+import { withAlpha } from './surfaceStyle';
 import { mergeVisualStyles, resolveVisualStyle, selectableVisualStyles } from './themeRegistry';
 import { radius as baseRadius, spacing, typography as baseTypography } from './tokens';
 import { type StyleSurface, type VisualStyleDefinition } from './visualStyles';
@@ -38,6 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const preference = useAppStore((s) => s.profile.themePreference);
   const selectedStyleId = useAppStore((s) => s.profile.visualStyle);
   const lastPermanentStyleId = useAppStore((s) => s.profile.lastPermanentVisualStyle);
+  const accentPaletteId = useAppStore((s) => s.profile.accentPaletteId);
   const remoteVisualStyles = useAppStore((s) => s.remoteVisualStyles);
   const setVisualStyle = useAppStore((s) => s.setVisualStyle);
 
@@ -62,6 +65,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<ThemeContextValue>(() => {
     const variant = scheme === 'dark' ? resolved.style.dark : resolved.style.light;
+    // Solo "Vidrio líquido" ofrece paleta de acento seleccionable (spec: "el
+    // tema de color aparece selectivamente en el aviso principal, botón
+    // principal, iconos activos, chips seleccionados") — nunca toca
+    // success/warning/danger/info, que son semánticos y fijos.
+    const colors: ThemeColors = resolved.style.supportsBackgroundPhoto
+      ? (() => {
+          const palette = findAccentPalette(accentPaletteId);
+          return {
+            ...variant.colors,
+            accentFrom: palette.accent,
+            accentTo: palette.insightSurface,
+            accentSoft: withAlpha(palette.accent, 0.16),
+          };
+        })()
+      : variant.colors;
     const { radiusScale, boldText } = variant.surface;
 
     const radius = {
@@ -82,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       : baseTypography;
 
     return {
-      colors: variant.colors,
+      colors,
       surface: variant.surface,
       style: resolved.style,
       availableStyles: selectableVisualStyles(allStyles),
@@ -91,7 +109,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       spacing,
       typography,
     };
-  }, [scheme, resolved.style, allStyles]);
+  }, [scheme, resolved.style, allStyles, accentPaletteId]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

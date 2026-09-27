@@ -63,6 +63,11 @@ export interface VisualStyleDefinition {
   expiresAt: string | null;
   light: VisualStyleVariant;
   dark: VisualStyleVariant;
+  // Solo "Vidrio líquido" la trae en true — habilita en Ajustes > Apariencia
+  // la sección de Fondo (catálogo/foto propia) y la paleta de acento
+  // seleccionable. Los demás estilos no tienen material pensado para
+  // mostrar una fotografía detrás, así que no se les ofrece.
+  supportsBackgroundPhoto?: boolean;
 }
 
 // Sombra suave compartida por los estilos no brutalistas.
@@ -262,9 +267,77 @@ const neoBrutalist: VisualStyleDefinition = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// 4. Vidrio líquido — material premium con fondo fijo cálido oscuro (o una
+//    fotografía elegida) y vidrio grafito neutro encima. A diferencia de los
+//    otros tres, es UNA sola identidad (no cambia entre claro/oscuro: la
+//    dirección de diseño pide justo eso, "personalidad serena... premium sin
+//    ostentación", no un modo claro alterno) — `light` y `dark` son el mismo
+//    objeto a propósito. El acento (botón principal, iconos activos, chips)
+//    lo decide la paleta que el usuario elija por separado
+//    (theme/accentPalettes.ts); aquí solo va un default razonable.
+// ---------------------------------------------------------------------------
+const LIQUID_GLASS_BACKGROUND = '#1B2029';
+const liquidGlassVariant: VisualStyleVariant = {
+  colors: {
+    background: LIQUID_GLASS_BACKGROUND,
+    backgroundAlt: '#20262F',
+    // glass_base (#303844) con el tint_alpha inicial del material (spec:
+    // "0.56 a 0.76") — se deja fijo por ahora, el ajuste automático por
+    // luminosidad de foto es un afinamiento posterior.
+    surface: 'rgba(48,56,68,0.62)',
+    surfaceBorder: 'rgba(255,255,255,0.18)', // glass_outline_light
+    surfaceSolid: '#2A313C',
+    textPrimary: '#FEFCF8',
+    textSecondary: '#D7D6D1',
+    textTertiary: '#9CA1AA',
+    // Default antes de aplicar la paleta de acento elegida (azul glaciar).
+    accentFrom: '#9EC8EC',
+    accentTo: '#4D6C93',
+    accentSoft: 'rgba(158,200,236,0.16)',
+    // Colores semánticos financieros del JSON — nunca cambian con la
+    // paleta de acento ni con la foto de fondo.
+    success: '#75CBB0', // positive_or_category_green
+    // El JSON no define un tono de "advertencia" propio (solo
+    // planeado/gastado/positivo) — se deriva un ámbar cálido coherente con
+    // la dirección de diseño, distinto del acento y del rojo de gastado.
+    warning: '#E3B873',
+    danger: '#F27F82', // spent_or_negative
+    info: '#99B5D4', // planned_data
+    tabBarBackground: 'rgba(27,32,41,0.78)',
+    divider: 'rgba(255,255,255,0.10)',
+  },
+  surface: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.28, // glass_shadow
+    shadowRadius: 20,
+    shadowOffsetX: 0,
+    shadowOffsetY: 10,
+    radiusScale: 1.05, // corner_radius 20-28px sobre un radius.lg base de 24
+    borderWidth: 1,
+    blur: 26, // backdrop_blur 18-32px, punto medio-alto
+    backgroundGradient: null,
+    backgroundGlow: null,
+    boldText: false,
+  },
+};
+export const LIQUID_GLASS_STYLE_ID = 'liquid_glass';
+const liquidGlass: VisualStyleDefinition = {
+  id: LIQUID_GLASS_STYLE_ID,
+  name: 'Vidrio líquido',
+  description: 'Serena y premium: vidrio grafito sobre un fondo oscuro cálido o una foto que elijas.',
+  status: 'permanent',
+  version: '1.0',
+  publishedAt: null,
+  expiresAt: null,
+  light: liquidGlassVariant,
+  dark: liquidGlassVariant,
+  supportsBackgroundPhoto: true,
+};
+
 // Los estilos que viajan dentro de la app. Un tema remoto con el mismo id
 // tiene prioridad, para poder corregir uno de estos sin publicar una versión
 // nueva de la app.
-export const BUILT_IN_VISUAL_STYLES: VisualStyleDefinition[] = [glassmorphism, softGradient, neoBrutalist];
+export const BUILT_IN_VISUAL_STYLES: VisualStyleDefinition[] = [glassmorphism, softGradient, neoBrutalist, liquidGlass];
 
 export const DEFAULT_VISUAL_STYLE_ID = glassmorphism.id;
