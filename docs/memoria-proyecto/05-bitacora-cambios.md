@@ -8,6 +8,83 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-09-27 — Transferencias entre cuentas + endurecimiento de sync + limpieza de estilos
+
+- **Motor local: transferencias entre cuentas propias** (cierra la tarea
+  #144, ver [[06-pendientes]]): nueva acción `transfer_between_accounts`
+  en el catálogo de acciones del chat de IA, reconocible por regex local
+  ("transfiere 500 de mi efectivo a mi tarjeta nu") o vía LLM conectado.
+  Nueva categoría "Transferencias" para que se vea bien en Movimientos.
+- **Sync endurecido contra pérdida de datos al forzar el cierre de la
+  app en iOS** (reporte real del usuario, ver [[06-pendientes]] para el
+  detalle completo): flag `profileDirty` para que reabrir la app nunca
+  pise un cambio local sin confirmar; subida de emergencia con `fetch`
+  + `keepalive:true` disparada en `visibilitychange`/`pagehide`/
+  `AppState` en el primer instante en que el sistema avisa que la app se
+  va a segundo plano; `getSession()` en vez de `getUser()` para ahorrar
+  un viaje de red. Mitiga la ventana de la carrera contra el sistema
+  operativo, pero queda documentado como límite real de plataforma, no
+  como bug cerrado.
+- **Estilo "Neo brutalista" eliminado por completo** (pedido explícito) y
+  "Vidrio líquido" pasa a ser la 2ª opción de la lista (antes era la
+  última). Quien lo tenía puesto cae solo al de vidrio, sin romper nada.
+- Corregida una fuga de sincronización de una sola vía: `ALL_TABLES` en
+  `SyncEngine.ts` no traía de vuelta las 4 tablas de "presupuestos con
+  nombre" (`budget_templates`, `template_budget_lines`,
+  `budget_assignments`, `period_budget_overrides") — el push funcionaba,
+  el pull no.
+
+## 2026-09-27 (antes) — Apariencia: Vidrio líquido, paletas y fondo de foto
+
+Ver [[01-arquitectura]] sección 1.7 para el detalle técnico completo.
+
+- Nueva pantalla `app/appearance.tsx`: vista previa, paleta de acento (8
+  colores), fondo (catálogo de 5 categorías o foto propia), ajustar
+  (arrastrar directo sobre la vista previa para mover el punto focal,
+  sliders de oscuridad/desenfoque).
+- `AppBackground.tsx` pinta el fondo compartido por TODA la app; se
+  corrigió un bug real donde el color de fondo de cada pantalla era
+  opaco y tapaba la foto por completo.
+- Selector de foto propia en web: el `blob:` URL que devuelve
+  `expo-image-picker` se convierte a `data:` URI antes de guardar (moría
+  al recargar la página, así que la foto "desaparecía").
+- La foto propia ahora sincroniza a Supabase como `data:` URI (migración
+  0019) — antes era solo local, decisión revertida explícitamente porque
+  el usuario reportó perderla al cerrar la app.
+- Nueva categoría de bug encontrada y corregida: reconciliar el perfil al
+  reabrir la app podía pisar un cambio local sin confirmar todavía —
+  origen del trabajo de `profileDirty` de la entrada de arriba.
+- `app/perfil.tsx` y `app/appearance.tsx` ahora esperan (`await
+  runSync()`) a que la subida se intente de verdad antes de salir de la
+  pantalla, mostrando "Guardando…".
+- Se agregaron las primeras 5 fotos reales aprobadas al catálogo de
+  fondos (Soft y calma ×2, Gym y movimiento, Naturaleza ×2).
+
+## Chat de IA con acciones sobre datos + rediseño visual
+
+Ver [[01-arquitectura]] secciones 1.5 y 4 para el detalle técnico
+completo (pipeline de seguridad de 3 capas, catálogo cerrado de acciones).
+
+- El chat de IA (`app/(tabs)/ia.tsx`) pasó de ser solo-lectura a poder
+  **modificar datos reales** (cuentas, metas, deudas, presupuesto,
+  transacciones) con un catálogo cerrado de acciones + confirmación
+  obligatoria por `HoldToConfirmButton` (nunca un tap) + revalidación
+  contra datos reales al confirmar.
+- Rediseño visual completo tras feedback directo ("no me agradó para
+  nada, se ve serio y nada confortable"): branding VALU, paleta oscura
+  fija, `AiOrb.tsx` con el logo real de la app en vez de una esfera
+  abstracta, sin tonos naranjas, sidebar de conversaciones contraíble.
+- `usePressToTalk.ts` extraído de `capture.tsx` para compartir la lógica
+  de mantener/soltar el micrófono entre la captura rápida y el chat.
+
+## Presupuesto — rediseño v2 "Plan de gastos" + calendario por rango
+
+- El calendario de Presupuesto ahora asigna una plantilla a un **rango de
+  fechas elegido a mano** (ej. "28 sep – 30 sep"), no solo a un
+  día/semana/mes exacto (migración 0017).
+- Plantillas de presupuesto con nombre propio, ícono elegible y
+  re-escalado automático semana↔mes.
+
 ## 2026-09-02 — Motor de clasificación más inteligente + memoria de correcciones
 
 - Cuentas con las que se paga cada categoría: pasó de ser una lista de

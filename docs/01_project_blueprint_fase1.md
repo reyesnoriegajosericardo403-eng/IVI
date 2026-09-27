@@ -2,13 +2,15 @@
 
 > **Única Fuente de Verdad** para el estado del proyecto al cierre de la
 > Fase 1 (producto base + arquitectura a prueba de futuro + BYOK + chat de
-> IA con acciones sobre datos). Generado por auditoría directa del código,
-> `git log` (127+ commits), la lista de 248 tareas rastreadas, y
-> `docs/memoria-proyecto/` (que sigue siendo la memoria detallada del
-> "cómo" — este documento es el "dónde estamos parados y qué sigue").
+> IA con acciones sobre datos + Apariencia con fondo de foto). Generado
+> por auditoría directa del código, `git log`, la lista de 263+ tareas
+> rastreadas, y `docs/memoria-proyecto/` (que sigue siendo la memoria
+> detallada del "cómo" — este documento es el "dónde estamos parados y qué
+> sigue").
 >
-> Fecha de corte: 2026-09-27 · Rama: `claude/valu-finance-ai-app-rxlwyi` ·
-> Último commit: `9b115ee`.
+> Fecha de corte: 2026-09-27 (actualizado tras la ronda de transferencias +
+> endurecimiento de sync) · Rama: `claude/valu-finance-ai-app-rxlwyi` ·
+> Último commit: `430c6df`.
 
 ---
 
@@ -43,14 +45,15 @@ iOS/Android si se compilara — hoy solo se usa/prueba en web.
   `transaction/new.tsx` + `transaction/[id].tsx`,
   `budget-template/[id].tsx`.
 - **Configuración**: `settings.tsx`, `ai-settings.tsx`, `perfil.tsx`,
-  `privacidad.tsx`, `terminos.tsx`, `instalar.tsx` (guía PWA).
+  `appearance.tsx` **(nuevo)**, `privacidad.tsx`, `terminos.tsx`,
+  `instalar.tsx` (guía PWA).
 - **Presupuesto**: `presupuesto.tsx` (rediseñado 3 bloques: resumen,
   calendario, lista de plantillas).
 - **Salud financiera**: `salud-financiera.tsx`.
 
 Cada una de estas pantallas pasó por al menos un ciclo completo de
 diseño → feedback del usuario → rediseño (ver Sección 2). Ninguna es un
-placeholder — las 248 tareas rastreadas terminan, casi todas, en
+placeholder — las 263+ tareas rastreadas terminan, casi todas, en
 "Verificar (tsc + Playwright), commit y push".
 
 ### 1.3 Esquema de datos — jerarquía y clasificación exacta
@@ -95,21 +98,29 @@ Catálogo estático (NO vive en Supabase — es código, `src/data/categories.ts
    └─ SubcategoryDef[] (146 total)
         └─ keywords: string[]  (858 total, verificado por conteo directo)
 
-Chat de IA (NUEVO esta fase — deliberadamente NO extiende SyncMeta,
+Chat de IA (deliberadamente NO extiende SyncMeta,
 local-only, ver Sección 3)
 ├─ ChatConversation   (id, title, createdAt, updatedAt, lastPreview, pinned?)
 ├─ ChatMessage        (id, conversationId, role, text, createdAt, action?)
-└─ AIActionProposal   (id, type: AIActionType[13 valores], args, summary,
+└─ AIActionProposal   (id, type: AIActionType[14 valores], args, summary,
                          status: proposed|applied|dismissed|failed)
 ```
 
 `UserProfile` (no tiene id propio — 1 por usuario) guarda preferencias:
 moneda, tema, `visualStyle`/`lastPermanentVisualStyle`, `age`/`sex` (para
-tono de encuesta), `seenBudgetTemplatesIntro`.
+tono de encuesta), `seenBudgetTemplatesIntro`, y — **nuevo, Apariencia**
+(Sección 1.7) — `accentPaletteId`, `backgroundMode`
+(`none`|`catalog`|`custom`), `backgroundCatalogImageId`,
+`backgroundCustomUri` (foto propia, como `data:` URI base64 — sincroniza a
+Supabase igual que el resto del perfil, ver 1.7), `backgroundFocalX/Y`
+(mobile y desktop por separado), `backgroundDarkness`,
+`backgroundBlurAmount`. Además, `profileDirty: boolean` (en el store, no
+en `UserProfile`) marca ediciones locales sin confirmar en el servidor —
+pieza central del endurecimiento de sync (Sección 1.6).
 
-**Backend real**: 16 migraciones SQL versionadas en `supabase/migrations/`
-(`0001` núcleo hasta `0016` estilo visual de perfil), todas con Row Level
-Security — cada usuario solo lee/escribe sus propias filas.
+**Backend real**: 19 migraciones SQL versionadas en `supabase/migrations/`
+(`0001` núcleo hasta `0019` sincroniza `background_custom_uri`), todas con
+Row Level Security — cada usuario solo lee/escribe sus propias filas.
 
 ### 1.4 Capa de proveedores intercambiables (`src/providers/`)
 
@@ -176,25 +187,127 @@ Mensaje del usuario
   → aiApplyAction() [useAppStore.ts] — RE-VALIDA contra el estado ACTUAL
       (cierra TOCTOU: si el usuario borró la cuenta entre que se propuso y
       se confirmó, la acción falla en vez de aplicarse a un id fantasma)
-      → despacha por switch EXHAUSTIVO (13 tipos, TS no compila si falta uno)
+      → despacha por switch EXHAUSTIVO (14 tipos, TS no compila si falta uno)
       → llama la acción hermana real (addAccount, deleteGoal, etc.) → enqueue()
 ```
 
-Catálogo cerrado de 13 `AIActionType`: `add_transaction`, `add_account`,
+Catálogo cerrado de 14 `AIActionType`: `add_transaction`, `add_account`,
 `delete_account`, `add_goal`, `contribute_to_goal`, `update_goal_target`,
 `delete_goal`, `add_liability`, `update_liability_balance`,
 `delete_liability`, `set_budget_line`, `delete_budget_line`,
-`delete_transaction`. **Nunca** incluye código, ajustes, autenticación ni
-el sistema de estilos — solo entidades de datos del propio usuario. Como
-mucho una acción propuesta por turno.
+`delete_transaction`, `transfer_between_accounts` **(nuevo, cierra la
+tarea #144 — ver 2.3)**. **Nunca** incluye código, ajustes, autenticación
+ni el sistema de estilos — solo entidades de datos del propio usuario.
+Como mucho una acción propuesta por turno.
 
 ### 1.6 Motor de sincronización (`src/services/sync/SyncEngine.ts`)
 
-`runSync()`: empuja primero la cola de pendientes (`pendingSync`,
-`enqueue()` en cada mutación del store), luego trae cambios remotos y
-fusiona con "el más reciente gana" por `updatedAt`. Si Supabase no está
-configurado o no hay sesión, no hace nada — la app sigue en modo local
-puro (nunca se rompe por falta de config).
+`runSync()`: sube primero el perfil si está `profileDirty` (más urgente y
+pequeño que la cola de entidades — ver el porqué abajo), luego empuja la
+cola de pendientes (`pendingSync`, `enqueue()` en cada mutación del
+store), luego trae cambios remotos y fusiona con "el más reciente gana"
+por `updatedAt`. Si Supabase no está configurado o no hay sesión, no hace
+nada — la app sigue en modo local puro (nunca se rompe por falta de
+config). `ALL_TABLES` (la lista que usa `pullRemoteChanges` para TRAER
+cambios remotos) ya cubre las 12 tablas reales de `SyncTable` — el hueco
+de las 4 tablas de presupuesto documentado en una auditoría anterior de
+este mismo blueprint (Sección 3.1) **ya está corregido**.
+
+**Endurecimiento contra pérdida de datos por cierre forzado del proceso
+(2026-09-27, dos rondas).** Reporte del usuario: el nombre y la foto de
+fondo se revertían al reabrir la app — primero se reprodujo con un simple
+cerrar/reabrir (sin forzar el cierre), después con quitar la PWA de "apps
+activas" en iOS (force-quit real del proceso, no solo pasarlo a segundo
+plano). Dos mecanismos separados, porque son dos causas distintas:
+
+1. **`profileDirty` (bug de reconciliación, resuelto de raíz).**
+   `useProfileReconciliation` adoptaba el perfil remoto de Supabase al
+   reabrir la app sin fijarse si el perfil LOCAL tenía un cambio todavía
+   sin confirmar en el servidor — si la subida anterior no había
+   terminado antes de cerrar, reabrir traía de vuelta el perfil viejo y
+   "borraba" el cambio. Corregido con un flag `profileDirty` (persistido)
+   que la reconciliación revisa ANTES de adoptar cualquier cosa del
+   servidor: si hay un cambio local sin confirmar, nunca se pisa — solo
+   se dispara `runSync()` para intentar subirlo. **Esto resolvió el caso
+   de "solo cerré y reabrí la app".**
+2. **Cierre forzado del proceso (mitigado, límite de plataforma — no
+   "resuelto" al 100%).** Un PWA instalado en iOS puede terminar el
+   proceso por completo al quitarlo de "apps activas", matando una
+   petición de red a medio vuelo aunque se haya disparado en el primer
+   instante posible. Mitigaciones aplicadas, en orden de cuándo se
+   disparan:
+   - `useSyncEngine.ts` registra `visibilitychange` (web) y `AppState`
+     (nativo) para disparar una subida de emergencia en el primer
+     instante en que el sistema avisa que la app se va a segundo plano —
+     no espera al ciclo de 60s. También registra `pagehide` en paralelo
+     (Safari/iOS no siempre dispara `visibilitychange` de forma
+     confiable en este escenario).
+   - Esa subida de emergencia (`pushProfileNow()`, en web) usa un `fetch`
+     crudo con `keepalive:true` contra el REST de Supabase — en vez del
+     cliente `supabase-js` normal, cuyo `fetch` interno NO sobrevive el
+     cierre del proceso. `keepalive` le entrega la petición a la capa de
+     red del propio navegador/SO (mismo mecanismo que los beacons de
+     analítica), que puede seguir en vuelo aunque el proceso que la
+     disparó ya haya muerto.
+   - `getUserId()`/`getSessionCreds()` usan `supabase.auth.getSession()`
+     (lee la sesión local) en vez de `getUser()` (valida contra el
+     servidor) — un viaje de red menos en cada sincronización, reduciendo
+     el tiempo entre "se dispara la subida" y "sale hacia el servidor".
+
+   **Honestidad sobre el límite real**: esto reduce la ventana de la
+   carrera contra el sistema operativo, pero **ninguna mitigación
+   solo-JS puede cerrarla del todo** — si el proceso muere antes de que
+   el `fetch` con keepalive alcance a salir, el cambio se pierde
+   igual. Confirmado que la sesión de Supabase SÍ sobrevive un
+   force-quit (no pide iniciar sesión de nuevo), lo que descarta un
+   borrado total de `localStorage` — es específicamente una carrera de
+   timing contra el cierre del proceso, no un borrado de almacenamiento.
+   Queda como **deuda técnica documentada** (Sección 3), no como bug
+   cerrado.
+
+### 1.7 Apariencia — Vidrio líquido, paletas y fondo de foto (`app/appearance.tsx`)
+
+Sistema de personalización visual construido en varias rondas
+(60a58be→8740bac):
+
+- **Estilos visuales como datos** (`src/theme/visualStyles.ts`): cada
+  estilo es un objeto con colores + "tokens de superficie" (borde,
+  sombra, blur, degradado). Estilos activos: **Vidrio** (glassmorphism,
+  default), **Vidrio líquido** (2º lugar — único con foto de fondo y
+  paleta de acento elegible) y **Degradado suave**. *Neo brutalista* se
+  quitó por completo (2026-09-27, pedido explícito del usuario) —
+  `resolveVisualStyle()` ya sabía regresar a un estilo permanente cuando
+  el id guardado no existe, así que a quien lo tenía puesto no se le
+  rompe nada, cae solo al de vidrio.
+- **`AppBackground.tsx`**, montado una sola vez en `app/_layout.tsx`,
+  pinta el fondo compartido por TODA la app (foto o degradado) detrás de
+  cada pantalla — cada pantalla pinta su propio contenedor con
+  `colors.background: 'transparent'` para dejarlo ver (bug real
+  corregido: si ese color era opaco, tapaba la foto por completo aunque
+  todo lo demás estuviera bien).
+- **`BackgroundPhotoLayer.tsx`** (compartido entre `AppBackground` y la
+  vista previa de `AppearancePreview.tsx`, con `filterIdSuffix` para no
+  chocar ids de SVG cuando ambos están montados a la vez): foto + punto
+  focal + degradado de oscurecimiento + blur opcional, todo dentro de un
+  `<Svg>` de tamaño exacto en píxeles.
+- **Catálogo de fondos** (`src/data/backgroundCatalog.ts`): 5 categorías
+  (Soft y calma, Gym y movimiento, Naturaleza, Inspiracional,
+  Arquitectura), con fotos reales aprobadas por el usuario en las
+  primeras 3.
+- **Foto propia**: selector (`expo-image-picker`), arrastrar directo
+  sobre la vista previa para mover el punto focal (reemplazó una rejilla
+  3×3 de "Mover imagen"), sliders de oscuridad/desenfoque. En web, el
+  `blob:` URL que devuelve el selector se convierte a `data:` URI
+  (canvas + `toDataURL`) antes de guardarse — un `blob:` muere al
+  recargar la página, así que sin esto la foto "desaparecía" al reabrir
+  (bug real, corregido).
+- **Sincroniza a Supabase** como el resto del perfil (migración 0019) —
+  decisión explícita de sincronizar la foto entera como `data:` URI en
+  vez de dejarla solo local, para que sobreviva cerrar la app (ver 1.6).
+- `app/perfil.tsx` y `app/appearance.tsx` comparten el mismo patrón:
+  botón "Guardar"/"Aplicar" que espera (`await runSync()`) a que la
+  subida se intente de verdad antes de salir de la pantalla, mostrando
+  "Guardando…" y deshabilitando los botones mientras tanto.
 
 ---
 
@@ -211,6 +324,8 @@ Registro honesto de lo que se probó, se rechazó o se revirtió — y por qué.
 | Tonos naranjas en el fondo/acentos del chat | *"quita los tonos naranjas"* — explícito | Paleta `CHAT_PALETTE` sin naranjas, verificado por escaneo automático de colores (Playwright) en la sesión |
 | Sidebar de conversaciones fija, sin contraer | *"la barra lateral se debe poder contraer y retraer con un botón"* | Patrón riel (`RAIL_WIDTH=68`) + columna completa (`SIDEBAR_WIDTH=300`) con toggle |
 | Componente `SwipeToConfirm` (deslizar para confirmar el registro de voz) — tareas #71-73 | No se sentía bien en pantallas táctiles reales (feedback de uso) | Eliminado por completo (#74) y reemplazado por `HoldToConfirmButton` (mantener presionado) — hoy es el patrón estándar de confirmación en TODA la app, incluido `ChatActionCard` |
+| Estilo visual "Neo brutalista" (borde grueso, sombra dura, tipografía pesada) | Pedido explícito del usuario (2026-09-27): quitarlo por completo | Eliminado de `visualStyles.ts` — `resolveVisualStyle()` ya sabía regresar a un estilo permanente cuando el id guardado no existe, así que a quien lo tenía puesto no se le rompe nada |
+| Orden de estilos: Vidrio → Degradado suave → Neo brutalista → Vidrio líquido (4º/último) | Pedido explícito: subir Vidrio líquido a 2º lugar | `BUILT_IN_VISUAL_STYLES = [glassmorphism, liquidGlass, softGradient]` |
 
 ### 2.2 Decisiones de arquitectura evaluadas y rechazadas (ADRs negativos)
 
@@ -272,64 +387,71 @@ específico que se está presupuestando.
 
 ### 2.3 Trabajo pausado deliberadamente (no fallido — diferido con razón documentada)
 
-**Tarea #144 — Motor de intenciones financieras por voz (transferencias,
-deudas, metas).** Un segundo JSON del usuario (catálogo v9, 2026-09-02)
-pedía que la captura por voz entendiera "pasé X de A a B", "le debo X a
-Y", "le metí X a mi meta de Z". Se investigó **antes de tocar código** y
-se decidió NO implementarlo en ese momento por dos razones concretas:
+**Tarea #144 — Motor de intenciones financieras (transferencias, deudas,
+metas).** Un segundo JSON del usuario (catálogo v9, 2026-09-02) pedía que
+el registro entendiera "pasé X de A a B", "le debo X a Y", "le metí X a mi
+meta de Z". Se investigó **antes de tocar código** y se decidió NO
+implementarlo en ese momento por dos razones concretas:
 
 1. El modelo de datos ya soporta transferencias (`Transaction.type =
    'transfer'`, matemática correcta en `ledger.ts`) pero **ninguna
-   pantalla las crea ni las muestra especial** — `movimientos.tsx` las
+   pantalla las creaba ni las mostraba especial** — `movimientos.tsx` las
    mostraría como "Miscelánea -$500" en vez de una transferencia real.
-   Activarlo por voz sin la vista habría sido una función a medias.
-2. Crear/abonar una deuda o meta por voz acopla DOS mutaciones a la vez
-   (el pasivo/meta + la cuenta de origen) — no es una extensión chica.
+   Activarlo sin la vista habría sido una función a medias.
+2. Crear/abonar una deuda o meta acopla DOS mutaciones a la vez (el
+   pasivo/meta + la cuenta de origen) — no es una extensión chica.
 
-**Este trabajo NO se perdió**: la infraestructura de seguridad que pedía
-(resolución de nombres reales, catálogo cerrado, validación) es
-exactamente lo que se construyó después para el **chat de texto**
-(`actionCatalog.ts`, Sección 1.5). Sigue pendiente la mitad **por voz**
-— ver Sección 3 y 5.
+**Actualización 2026-09-27 — RESUELTA vía chat de texto/voz del chat de
+IA.** Deudas y metas ya se habían cerrado en la ronda del catálogo de
+acciones (Sección 1.5). Hoy se cerró la pieza que faltaba,
+**transferencias**: nueva acción `transfer_between_accounts` en
+`actionCatalog.ts` (resuelve ambas cuentas por nombre, exige misma moneda
+— sin conversión de divisas todavía —, valida que no sea la misma cuenta),
+reconocimiento local por regex en `chatIntentParser.ts` ("transfiere 500
+de mi efectivo a mi tarjeta nu"), y una categoría "Transferencias" nueva
+(`categories.ts`) para que se vea bien en Movimientos en vez de caer en
+Miscelánea. La razón #1 de arriba (sin vista en Movimientos) ya no
+aplica: la categoría dedicada + el campo `merchant` ("Efectivo →
+Tarjeta Nu") resuelven la visualización sin tocar `movimientos.tsx`.
+
+**Lo que queda pendiente de esto** (ver Sección 3.3): la captura rápida
+dedicada (`app/capture.tsx` + `src/ai/localParser.ts`, el motor "de un
+solo movimiento a la vez") sigue sin transferencias/deudas/metas — solo
+el chat de IA (`ia.tsx`) las tiene, vía `actionCatalog.ts`. El micrófono
+del chat sí se beneficia (transcribe con el mismo Speech-to-Text y pasa
+por `chatIntentParser.ts`), pero el atajo de "Grabar por voz" de la
+pantalla de inicio (que abre `capture.tsx` directo) no.
 
 ---
 
 ## 3. Deuda Técnica y Parches
 
-### 3.1 🔴 Bug real encontrado en esta auditoría (no documentado antes)
+### 3.1 ✅ Resuelto — fuga de sincronización de una sola vía en 4 tablas de presupuesto
 
 **Fuga de sincronización de una sola vía en 4 tablas de presupuesto.**
 `src/services/sync/types.ts` define `SyncTable` con 12 valores, y
 `repositoryByTable` (`src/services/supabase/repositories.ts`) tiene
-repositorio real para las 12. Pero `ALL_TABLES` en
+repositorio real para las 12. `ALL_TABLES` en
 `src/services/sync/SyncEngine.ts` (la lista que usa `pullRemoteChanges`
-para TRAER cambios remotos) solo tiene **8**:
+para TRAER cambios remotos) llegó a tener solo **8**, dejando fuera:
+`budget_templates`, `template_budget_lines`, `budget_assignments`,
+`period_budget_overrides` — exactamente las 4 tablas del sistema de
+"presupuestos con nombre" (tareas #166-178, uno de los rediseños más
+grandes de la Fase 1).
 
-```ts
-const ALL_TABLES: SyncTable[] = [
-  'accounts', 'transactions', 'budgets', 'goals',
-  'investments', 'liabilities', 'net_worth_snapshots', 'audit_log',
-];
-```
+**Efecto que tuvo mientras estuvo sin corregir**: `pushPendingChanges()`
+sí subía cambios de estas 4 tablas (usa `pendingSync` +
+`repositoryByTable` directo, sin pasar por `ALL_TABLES`), pero
+`pullRemoteChanges()` nunca las volvía a bajar. Un usuario que editara sus
+plantillas de presupuesto en un segundo dispositivo, o que reinstalara la
+app, nunca veía esos cambios reflejados — el push funcionaba, el pull no,
+fuga silenciosa de una sola vía. No estallaba con ningún error visible,
+por eso pasó desapercibido hasta esta auditoría.
 
-Faltan: `budget_templates`, `template_budget_lines`,
-`budget_assignments`, `period_budget_overrides` — exactamente las 4
-tablas del sistema de "presupuestos con nombre" (tareas #166-178, uno de
-los rediseños más grandes de la Fase 1).
-
-**Efecto concreto**: `pushPendingChanges()` sí sube cambios de estas 4
-tablas (usa `pendingSync` + `repositoryByTable` directo, sin pasar por
-`ALL_TABLES`), pero `pullRemoteChanges()` nunca las vuelve a bajar. Un
-usuario que edite sus plantillas de presupuesto en un segundo dispositivo,
-o que reinstale la app, **nunca verá esos cambios reflejados** — el push
-funciona, el pull no, así que es fuga silenciosa de una sola vía, no
-pérdida de datos en el servidor (los datos SÍ llegan a Supabase, solo no
-regresan). No estalla con ningún error visible, por eso pasó
-desapercibido.
-
-**Severidad**: media-alta — silenciosa, afecta justo el feature de
-presupuesto más reciente y complejo. Arreglo: agregar las 4 tablas a
-`ALL_TABLES` (una línea), verificar con dos dispositivos/pestañas.
+**Estado actual: corregido.** `ALL_TABLES` ya incluye las 12 tablas reales
+de `SyncTable` (ver `src/services/sync/SyncEngine.ts`, comentario "auditoría
+2026-09-27"). Queda como entrada histórica del blueprint — el código ya
+no tiene el hueco.
 
 ### 3.2 La conexión de IA — qué es bug real y qué es diseño esperado
 
@@ -381,20 +503,35 @@ proyecto porque es la única que no se puede probar por Playwright/tsc.
   Function** — "best-effort": una función que arranca en frío pierde el
   contador. Suficiente para frenar abuso sostenido, no es un límite
   garantizado.
-- **Voz vs. chat: dos motores de lenguaje que no se comparten.** El
-  catálogo de acciones (`actionCatalog.ts`) que el chat ya usa para
-  escribir datos NO está conectado a `capture.tsx` — la captura de voz
-  sigue limitada a un solo movimiento/ajuste de saldo por vez, sin acceso
-  a metas/deudas/presupuesto. Es la mitad no resuelta de la tarea #144.
+- **Voz/captura rápida vs. chat: dos motores de lenguaje que no se
+  comparten todavía.** El catálogo de acciones (`actionCatalog.ts`) que
+  el chat ya usa para escribir datos (incluyendo transferencias, deudas y
+  metas — ver 2.3) NO está conectado a `capture.tsx` — la captura rápida
+  dedicada sigue limitada a un solo movimiento/ajuste de saldo por vez,
+  sin acceso a metas/deudas/presupuesto/transferencias. Es la mitad
+  todavía sin resolver de la tarea #144: el chat de texto/voz (`ia.tsx`)
+  ya cubre las tres, `capture.tsx` (el atajo directo de "Grabar por voz")
+  no.
+- **iOS PWA + cierre forzado del proceso — mitigado, no cerrado del
+  todo.** Ver Sección 1.6: hay defensas reales (`keepalive` fetch,
+  `pagehide`/`visibilitychange`, `getSession()` en vez de `getUser()`)
+  pero sigue siendo una carrera de timing contra el sistema operativo que
+  ningún fix solo-JS garantiza cerrar al 100%.
+- **Transferencias sin conversión de divisas.** `transfer_between_accounts`
+  (Sección 1.5/2.3) rechaza explícitamente mover dinero entre dos cuentas
+  de monedas distintas en vez de adivinar un tipo de cambio — es un límite
+  a propósito, no un olvido, pero significa que alguien con cuentas en
+  MXN y USD no puede transferir entre ellas todavía.
 
 ### 3.4 Tareas abiertas en el backlog (estado real, no aspiracional)
 
 | # | Tarea | Estado |
 |---|---|---|
-| 144 | Motor de intenciones financieras por voz (transferencias, deudas, metas) | **pending** — ver 2.3 y 5 |
+| 144 | Motor de intenciones financieras (transferencias, deudas, metas) | **resuelto vía chat de IA** (texto y voz del chat) — pendiente solo en `capture.tsx`/atajo directo de voz, ver 3.3 |
 | 148 | Captura por voz: mantener presionado + iluminación futurista | **in_progress** |
 | 149 | Nota grande "mantén presionado" + explicación del ícono LISTO | **pending** |
 | 158 | Onboarding: cálculo mensual del presupuesto mal | **in_progress** — bug de cálculo aún sin cerrar |
+| — | Pérdida de datos en force-quit de iOS PWA | **mitigado, no cerrado** — ver 1.6 y 3.3 |
 
 ### 3.5 Validación pendiente en hardware real
 
@@ -432,7 +569,7 @@ confirmarse).
 │  │ SIEMPRE ACTIVO (local)    │ │   │  SUPABASE                      │
 │  │ localParser.ts            │ │   │  Postgres + RLS + Auth +       │
 │  │ localCopilot.ts           │ │   │  Edge Functions                │
-│  │ chatIntentParser.ts +     │ │   │  (12 tablas, 16 migraciones)   │
+│  │ chatIntentParser.ts +     │ │   │  (12 tablas, 19 migraciones)   │
 │  │ actionCatalog.ts          │ │   └─────────────────────────────────┘
 │  └──────────────────────────┘ │
 │  ┌──────────────────────────┐ │   ┌─────────────────────────────────┐
@@ -468,7 +605,7 @@ llegar ahí.
 
 ### 4.3 Seguridad del sistema de escritura por IA (resumen operativo)
 
-1. Catálogo cerrado de 13 tipos, unión discriminada de TypeScript.
+1. Catálogo cerrado de 14 tipos, unión discriminada de TypeScript.
 2. Nunca se aplica nada sin `HoldToConfirmButton` explícito (~900ms).
 3. Se revalida contra datos reales DOS veces (al proponer y al confirmar).
 4. El texto de la tarjeta lo genera código desde `args` ya validados,
@@ -490,50 +627,60 @@ llegar ahí.
 
 VALU tiene un **producto financiero completo y funcional** (registro,
 presupuesto, patrimonio, metas, inversión, sincronización real con
-conflictos resueltos) más un **chat de IA que ya puede leer y escribir
-datos de forma segura**, recién rediseñado para ser visualmente atractivo
-y "delightful". Lo que sigue (Fase 2, según las dos últimas conversaciones)
-es **hacer el motor de lenguaje del chat dramáticamente más capaz** —ya
-sea escalando el enfoque local (embeddings + transformer ligero) o
+conflictos resueltos), un **chat de IA que ya puede leer y escribir
+datos de forma segura** (incluyendo transferencias entre cuentas, cerrado
+2026-09-27), y un **sistema de Apariencia** con vidrio líquido, paletas y
+fondo de foto propia sincronizado a Supabase (Sección 1.7). Lo que sigue
+para hacer el motor de lenguaje del chat dramáticamente más capaz —ya sea
+escalando el enfoque local (embeddings + transformer ligero) o
 construyendo una arquitectura híbrida edge+backend (knowledge graph +
-federated learning)— pero **ninguna de las dos rutas tiene código
-todavía**: existen solo como los dos documentos JSON de planeación ya
-entregados en esta conversación.
+federated learning)— **sigue sin código todavía**: existen solo como los
+dos documentos JSON de planeación ya entregados en conversaciones
+anteriores. Lo que sí avanzó desde el corte original de este blueprint
+fue la deuda de producto (Pasos 1 y 3 de abajo), no el motor de lenguaje
+en sí.
 
-### 5.2 Primeros 3 pasos concretos para arrancar Fase 2
+### 5.2 Estado de los 3 pasos originales + lo que sigue
 
-**Paso 1 — Cerrar la deuda técnica encontrada en esta auditoría antes de
-construir encima.** Arreglar `ALL_TABLES` en `SyncEngine.ts` (agregar las
-4 tablas de presupuesto faltantes) y decidir/verificar de una vez por
-todas la conexión BYOK con una clave real de al menos un proveedor
-(idealmente Claude, ya que es el que más se ha tocado — tarea #226). Es
-barato, reduce riesgo, y evita apilar una arquitectura de IA más compleja
-sobre una capa de sincronización con un hueco conocido.
+**Paso 1 — Cerrar la deuda técnica antes de construir encima. ✅ Mitad
+hecha.** `ALL_TABLES` en `SyncEngine.ts` ya tiene las 12 tablas (Sección
+3.1, resuelto). La conexión BYOK con una clave real de producción sigue
+**sin verificarse end-to-end** desde este entorno (sigue siendo la pieza
+de mayor incertidumbre — Sección 3.2, sin cambios).
 
-**Paso 2 — Decidir la estrategia de Fase 2 explícitamente (no las dos a
-la vez).** Hay dos roadmaps ya redactados en esta conversación con
-objetivos distintos:
-- *Roadmap A* (4 fases, embeddings→transformer→fine-tuning): mejora el
-  motor 100% local, sin backend nuevo, sin costo de infraestructura
-  recurrente, pero acotado por lo que cabe en el dispositivo.
-- *Roadmap B* (5 fases, edge + "cerebro" centralizado tipo knowledge
-  graph + federated learning): requiere backend nuevo (vector DB + graph
-  DB), más ambicioso, pero es un cambio de arquitectura real (VALU pasa
-  de "solo Supabase" a tener un segundo sistema de datos) que debe
-  decidirse con los ojos abiertos sobre costo operativo y complejidad.
+**Paso 2 — Decidir la estrategia de Fase 2 explícitamente.** Sin decisión
+todavía entre Roadmap A (embeddings/transformer 100% local) y Roadmap B
+(edge + backend centralizado tipo knowledge graph). Sigue siendo la
+decisión pendiente más importante antes de invertir en el motor de
+lenguaje en sí — ninguno de los dos tiene una sola línea de código.
 
-Recomendación operativa: empezar por lo que el Roadmap A llama Fase 1
-(distillation + embeddings semánticos locales) de cualquier forma —
-es compatible con ambos caminos y no compromete la decisión sobre B.
+**Paso 3 — Retomar la tarea #144 reutilizando lo construido para el
+chat. ✅ Hecho para texto/chat, pendiente para voz dedicada.**
+`transfer_between_accounts` ya existe en `actionCatalog.ts` con
+reconocimiento local (regex) y vía LLM — deudas, metas y ahora
+transferencias completas, todas disponibles desde `ia.tsx` (texto o el
+micrófono del chat). Lo que NO se hizo (y sigue siendo el entregable más
+barato disponible antes de invertir en el motor de lenguaje grande): **
+conectar `capture.tsx`/`localParser.ts`** (el atajo directo de "Grabar
+por voz" de la pantalla de inicio) al mismo `actionCatalog.ts`, en vez de
+dejarlo limitado a un solo movimiento/ajuste de saldo. La infraestructura
+de validación/seguridad ya existe y es la misma — es trabajo de
+integración, no de diseño nuevo.
 
-**Paso 3 — Retomar la tarea #144 (voz) reutilizando lo ya construido para
-el chat (texto).** La razón por la que se pausó en su momento (falta de
-vista de transferencias en Movimientos, acoplar dos mutaciones a la vez)
-ya no aplica igual de fuerte: `actionCatalog.ts` ya resuelve exactamente
-ese problema para `add_liability`+cuenta, `contribute_to_goal`+cuenta,
-etc. — el trabajo real que falta es conectar `capture.tsx`/`localParser.ts`
-a ese mismo catálogo (en vez de construir una segunda capa de validación
-desde cero) y sí construir la vista de transferencias en Movimientos.
-Es la pieza de "deuda de producto" más antigua y ya casi resuelta por
-código que ya existe — buen primer entregable de Fase 2 antes de invertir
-en el motor de lenguaje más grande.
+### 5.3 Otros dos hilos abiertos, fuera del roadmap original
+
+Dos piezas de trabajo real ocurrieron entre el corte original de este
+blueprint y hoy, impulsadas por reportes directos del usuario, no por el
+roadmap de Fase 2 — vale la pena que quien retome esto las tenga
+presentes:
+
+- **Apariencia (Sección 1.7)**: sistema completo de fondo de foto +
+  paleta de acento + Vidrio líquido, con su propia ronda de bugs reales
+  encontrados y corregidos (foto opaca tapando el fondo, `blob:` URL no
+  persistente, reconciliación de perfil pisando cambios locales).
+- **Endurecimiento de sync contra force-quit de iOS (Sección 1.6)**:
+  mitigado con `keepalive` fetch + `pagehide` + `getSession()`, pero
+  documentado explícitamente como **no resuelto al 100%** — es un límite
+  real de plataforma, no un bug de código pendiente de arreglar. Quien
+  retome esto no debería asumir que ya está "cerrado" solo porque hay
+  commits al respecto.

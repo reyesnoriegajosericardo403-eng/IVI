@@ -34,12 +34,27 @@ de partida.
 | 0010 | Color y "tarjeta de transporte" en cuentas; cuenta destino de un presupuesto. Crea `excluded_account_ids` (ver el problema arriba). |
 | 0011 | Intento de renombrar `excluded_account_ids` → `included_account_ids` (cuando se pasó de lista de exclusión a lista de inclusión de cuentas). **Falló en la base real** porque 0010 nunca se había corrido ahí. |
 | 0012 | Corrección idempotente de 0011: revisa si existe la columna vieja (la renombra) o si no existe ninguna de las dos (la crea directo), y vuelve a asegurar el resto de columnas de 0010 con `if not exists`. Segura de correr más de una vez. |
+| 0013 | Columna de sexo en las respuestas de la encuesta de bienvenida. |
+| 0014 | Plantillas de presupuesto con nombre (`budget_templates`, `template_budget_lines`, `budget_assignments`, `period_budget_overrides`). |
+| 0015 | Tabla `ui_themes` para publicar estilos visuales remotos sin actualizar la app. |
+| 0016 | `visual_style` / `last_permanent_visual_style` en el perfil. |
+| 0017 | Rediseño de Presupuesto v2 ("Plan de gastos"): `budget_assignments.start_date/end_date` (rango de fechas elegido a mano) + `budget_templates.icon`. Aditiva, sin backfill (el cliente deriva el rango de `period_key` cuando estas columnas vienen vacías). |
+| 0018 | Sistema "Vidrio líquido": `accent_palette_id`, `background_mode`, `background_catalog_image_id`, `background_focal_x/y_mobile/desktop`, `background_darkness`, `background_blur_amount` en el perfil. |
+| 0019 | `background_custom_uri` (foto propia, como `data:` URI) — reversa explícita de la decisión de 0018 de dejarla solo local: se sincroniza para que sobreviva cerrar la app (ver [[06-pendientes]] por el bug de reconciliación que esto ayudó a resolver). |
 
 ## Estado actual del esquema (tablas principales)
 
-`profiles`, `accounts`, `transactions`, `budgets`, `goals`,
-`investments`, `liabilities`, `net_worth_snapshots`, `audit_log`,
-`survey_responses`.
+`profiles`, `accounts`, `transactions`, `budgets`, `budget_templates`,
+`template_budget_lines`, `budget_assignments`, `period_budget_overrides`,
+`goals`, `investments`, `liabilities`, `net_worth_snapshots`, `audit_log`,
+`survey_responses`, `ui_themes`.
+
+Campos relevantes de `profiles` hoy, además de los de siempre
+(`name`, `primary_currency`, `theme_preference`...): `visual_style`,
+`last_permanent_visual_style`, `accent_palette_id`, `background_mode`,
+`background_catalog_image_id`, `background_focal_x/y_mobile/desktop`,
+`background_darkness`, `background_blur_amount`, `background_custom_uri`
+(0016-0019, ver arriba).
 
 Campos relevantes de `budgets` hoy: `category_id`, `monthly_amount`,
 `currency`, `thresholds` (attention/warning/exceeded), `periodicity`,

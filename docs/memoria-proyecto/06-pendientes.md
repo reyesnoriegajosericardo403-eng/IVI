@@ -2,29 +2,81 @@
 
 Ver también: [[README|Índice]]
 
-## Motor de intenciones financieras por voz (transferencias, deudas, metas) — NO implementado
+## Resuelto (2026-09-27) — Motor de intenciones financieras por voz/chat (transferencias, deudas, metas)
 
 Un segundo JSON del usuario (catálogo v9, 2026-09-02) pedía que el
 registro por voz entendiera verbos de dirección ("pasé X de A a B",
 "le debo X a Y", "le metí X a mi meta de Z") para mover dinero entre
 cuentas, crear/abonar deudas y abonar a metas directamente. Se investigó
-antes de tocar código y se decidió NO implementarlo esta sesión:
+antes de tocar código y se decidió NO implementarlo esa sesión (ver razones
+históricas abajo) — deudas y metas se resolvieron después vía el catálogo
+de acciones del **chat de IA** (`actionCatalog.ts`), y el 2026-09-27 se
+cerró la pieza que faltaba, **transferencias**:
 
-- El modelo de datos ya soporta transferencias (`Transaction.type =
+- Nueva acción `transfer_between_accounts` (`src/ai/actionCatalog.ts`):
+  resuelve ambas cuentas por nombre real, exige la misma moneda (sin
+  conversión de divisas todavía — se rechaza en vez de adivinar un tipo
+  de cambio), valida que no sea la misma cuenta.
+- Reconocimiento local por regex (`src/ai/chatIntentParser.ts`) para
+  frases como "transfiere 500 de mi efectivo a mi tarjeta nu" — sin
+  necesitar ninguna IA conectada. Mismo tipo de acción disponible vía LLM
+  conectado.
+- Nueva categoría "Transferencias" (`categories.ts` + `iconMap.ts`) para
+  que el movimiento se vea bien en Movimientos (`"Efectivo → Tarjeta Nu"`
+  vía el campo `merchant`) en vez de caer en Miscelánea — resolviendo así
+  la razón #1 original de por qué se había pausado (no había vista para
+  transferencias).
+
+**Lo que sigue sin resolver**: esto vive en el chat de IA (`ia.tsx`,
+texto o su propio micrófono) — la captura rápida dedicada
+(`app/capture.tsx` + `src/ai/localParser.ts`, el atajo directo de
+"Grabar por voz" desde Inicio) sigue limitada a un solo movimiento/ajuste
+de saldo, sin transferencias/deudas/metas. Conectarla al mismo
+`actionCatalog.ts` es la pieza de deuda de producto más barata que queda
+de este backlog.
+
+### Razones históricas de por qué se pausó originalmente (2026-09-02)
+
+- El modelo de datos ya soportaba transferencias (`Transaction.type =
   'transfer'` + `toAccountId`, con la matemática de saldos ya correcta
-  en `src/utils/ledger.ts`) — pero **ninguna pantalla las crea hoy**, y
-  Movimientos (`app/(tabs)/movimientos.tsx`) no tiene una vista especial
-  para ese tipo: mostraría "Miscelánea -$500" en vez de una
-  transferencia real, aunque el saldo de las dos cuentas se mueva bien.
-  Activarlo por voz sin antes construir esa vista habría creado una
-  función a medias, viéndose rota aunque el dinero se calculara bien.
-- Crear/abonar una deuda o abonar a una meta por voz implica acoplar DOS
-  mutaciones a la vez (el pasivo/la meta + la cuenta de origen), con su
-  propio diseño de validaciones — no es una extensión chica del parser.
+  en `src/utils/ledger.ts`) — pero ninguna pantalla las creaba, y
+  Movimientos no tenía una vista especial para ese tipo. Ya resuelto
+  arriba con la categoría dedicada.
+- Crear/abonar una deuda o abonar a una meta implicaba acoplar DOS
+  mutaciones a la vez (el pasivo/la meta + la cuenta de origen) — se
+  resolvió después con el mismo patrón de `actionCatalog.ts`
+  (`resolveAddLiability`, `resolveContributeToGoal`, etc.).
 
-Queda como una función completa aparte para una sesión dedicada:
-detección de intención + resolución de nombres de cuentas/acreedores/
-metas reales + la vista de Movimientos para transferencias.
+## Mitigado, no resuelto (2026-09-27) — pérdida de datos al forzar el cierre de la app en iOS
+
+Reporte del usuario: nombre y foto de fondo se revertían al reabrir la
+app. Se identificaron y corrigieron DOS causas distintas:
+
+1. **Bug real de reconciliación (resuelto de raíz)**: al reabrir,
+   `useProfileReconciliation` podía adoptar el perfil viejo de Supabase
+   sin fijarse si el perfil local tenía un cambio sin confirmar todavía
+   — corregido con un flag `profileDirty` que bloquea esa adopción.
+   Confirmado por el usuario que esto arregló el caso de "solo cerré y
+   reabrí la app, sin forzar nada".
+2. **Cierre forzado real del proceso (quitar la app de "apps activas" en
+   iOS) — mitigado, no cerrado del todo.** Un PWA instalado puede
+   terminar el proceso por completo en ese momento, matando una petición
+   de red a medio vuelo. Se aplicaron tres defensas (`fetch` con
+   `keepalive:true` en vez del cliente supabase-js normal, listeners de
+   `visibilitychange`/`pagehide`/`AppState` para disparar la subida en el
+   primer instante posible, `getSession()` en vez de `getUser()` para
+   ahorrar un viaje de red) que reducen la ventana de la carrera contra
+   el sistema operativo, pero **ninguna mitigación solo-JS puede
+   garantizar cerrarla al 100%** — si el proceso muere antes de que la
+   petición alcance a salir, el cambio se pierde igual. Confirmado que la
+   sesión de Supabase SÍ sobrevive el force-quit (no pide iniciar sesión
+   de nuevo), lo que descarta un borrado total de `localStorage`: es
+   específicamente una carrera de timing, no un borrado de
+   almacenamiento. Ver `docs/01_project_blueprint_fase1.md` sección 1.6
+   para el detalle técnico completo. **Queda abierto** — si el usuario lo
+   sigue viendo fallar, ya no hay mucho más margen por el lado
+   solo-cliente; habría que considerar una app nativa real en vez de PWA
+   para ese caso específico.
 
 ## Sobre Obsidian y la base de datos real de la app
 

@@ -7,7 +7,7 @@ categorías/subcategorías) y `src/data/budgetConcepts.ts` (cómo se agrupan
 en el Presupuesto). Este archivo es un espejo legible de esos dos — si se
 edita el catálogo en código, esta nota se debe actualizar también.
 
-**12 categorías, 118 subcategorías, 10 tipos de ingreso, 15 conceptos de
+**13 categorías, 119 subcategorías, 10 tipos de ingreso, 15 conceptos de
 presupuesto.**
 
 ## Ingresos (10 subcategorías)
@@ -29,6 +29,7 @@ presupuesto.**
 9. **Inversiones** (8): Acciones, ETFs, FIBRAs, CETES, Bonos, Fondos, Criptomonedas, Otros.
 10. **Ahorros** (8): Fondo de emergencia, Vacaciones, Retiro, Metas, Otros ahorros, Metas a corto plazo, Metas a mediano/largo plazo, Enganche de casa.
 11. **Educación y desarrollo** (4): Colegiaturas e inscripción, Materiales y papelería, Cursos y certificaciones, Otros.
+12. **Transferencias** (1, agregada 2026-09-27): Entre mis cuentas — categoría propia para el tipo `'transfer'` (mover dinero entre cuentas propias, ver [[01-arquitectura]]), fuera de Presupuesto a propósito (ver nota \* abajo).
 
 \* **Ropa, Compras y Otros de Miscelánea están marcadas a propósito como
 "fuera de Presupuesto"** (`excludedFromBudget: true` en
@@ -73,4 +74,6 @@ organización encima.
 - **Inversiones** — toda "Inversiones".
 
 ### Sin concepto (a propósito)
-Ropa, Compras y Otros (Miscelánea) — ver la nota con \* arriba.
+Ropa, Compras y Otros (Miscelánea) — ver la nota con \* arriba. Igual toda
+"Transferencias" (`transfer_own`, `excludedFromBudget: true`) — mover
+dinero entre cuentas propias nunca es gasto ni ingreso real.

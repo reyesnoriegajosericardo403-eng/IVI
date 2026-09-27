@@ -42,6 +42,7 @@ cambiar la implementación sin tocar ninguna pantalla:
 |---|---|---|---|
 | Interpretación de lenguaje (voz/texto → movimiento) | `AIInterpreterProvider` | `localAIInterpreter` → usa `src/ai/localParser.ts` (reglas, sin IA) | `LLMAIInterpreterProvider` si el usuario conecta su propia clave (Claude/ChatGPT/Gemini/Grok) |
 | Copiloto conversacional | `CopilotProvider` | `localCopilotProvider` (reglas sobre datos reales) | `LLMCopilotProvider` |
+| Acciones sobre datos del chat de IA (**nuevo**) | `ActionAgentProvider` | `localActionAgentProvider` → `src/ai/chatIntentParser.ts` + `actionCatalog.ts` | `LLMActionAgentProvider` (BYOK) |
 | Voz a texto | `SpeechToTextProvider` | `webSpeechProvider` (Web Speech API del navegador — Chrome/Android, no Safari/iOS) | — (Fase 3: STT en la nube para iPhone) |
 | Precios de mercado | `MarketDataProvider` | `unavailableMarketDataProvider` (dice explícitamente "no disponible", nunca inventa) | Edge Function `market-data` (Yahoo Finance + CETES vía Banxico) |
 | Tipo de cambio | `ExchangeRateProvider` | `staticExchangeRateProvider` | — |
@@ -77,6 +78,20 @@ cacheada de esos dos archivos puede tumbar la instalación en Android sin
 avisar (ver [[05-bitacora-cambios]]). `CACHE_NAME` se sube de versión
 cada vez que cambian esos archivos, para forzar a que se borre la caché
 vieja.
+
+## Chat de IA con acciones + Apariencia (Vidrio líquido, fondo de foto)
+
+Dos sistemas grandes agregados después del corte inicial de esta nota —
+el detalle técnico completo (diagramas, pipeline de seguridad,
+mitigaciones de sync) vive en `docs/01_project_blueprint_fase1.md`
+(secciones 1.5-1.7), la fuente más actualizada del proyecto:
+
+- El chat de IA (`app/(tabs)/ia.tsx`) puede modificar datos reales
+  (cuentas, metas, deudas, presupuesto, transferencias) con un catálogo
+  cerrado de acciones + confirmación obligatoria (`HoldToConfirmButton`)
+  + revalidación contra datos reales.
+- `app/appearance.tsx` deja elegir paleta de acento y fondo (catálogo o
+  foto propia) para el estilo "Vidrio líquido" — sincronizado a Supabase.
 
 ## Estructura de carpetas (resumen)
 

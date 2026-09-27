@@ -13,7 +13,11 @@ sintaxis de Obsidian; en cualquier otro lector (GitHub, VS Code, etc.) se
 ven como texto normal, sin romper nada.
 
 **Qué SÍ es esto:** documentación del proyecto — arquitectura, catálogo de
-datos, decisiones, bitácora, pendientes.
+datos, decisiones, bitácora, pendientes. Para el estado más actualizado y
+detallado del proyecto completo (incluyendo deuda técnica y hoja de ruta
+de Fase 2), ver `docs/01_project_blueprint_fase1.md` en la raíz del
+repositorio — esta carpeta sigue siendo la memoria del "cómo" en formato
+más corto/temático.
 
 **Qué NO es esto:** la base de datos real de la app. Los datos financieros
 de cada persona (cuentas, movimientos, presupuestos) viven en Supabase,
