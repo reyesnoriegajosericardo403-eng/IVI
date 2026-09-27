@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '@/services/supabase/client';
+import { pushRemoteProfile } from '@/services/supabase/profileRepository';
 import { repositoryByTable } from '@/services/supabase/repositories';
 import { useAppStore } from '@/store/useAppStore';
 import type { SyncTable } from './types';
@@ -62,6 +63,32 @@ async function pushPendingChanges(userId: string): Promise<{ pushed: number; fai
   return { pushed: succeeded.length, failed };
 }
 
+// El perfil es una fila singleton (no una lista como el resto de tablas),
+// así que no pasa por `pendingSync`/`repositoryByTable` — pero SÍ necesita
+// el mismo trato de reintento automático: antes de esto, un cambio de
+// perfil (nombre, foto de fondo, paleta...) se subía una sola vez sin
+// reintentos vía `usePushProfileOnChange`, y si esa subida fallaba en
+// silencio, la próxima sesión traía de vuelta el perfil viejo de Supabase y
+// "borraba" el cambio (bug reportado: nombre y foto volvían a como estaban
+// antes tras cerrar la app). Ahora corre en cada ciclo de runSync() —igual
+// que pushPendingChanges— y solo limpia `profileDirty` si de verdad se
+// confirmó en el servidor.
+async function pushProfileIfDirty(userId: string): Promise<void> {
+  const { profile, profileDirty, markProfileSynced } = useAppStore.getState();
+  if (!profileDirty) return;
+  try {
+    await pushRemoteProfile(userId, profile);
+    // Puede haber cambiado de nuevo MIENTRAS se subía — solo se marca
+    // sincronizado si sigue siendo el mismo perfil que se acaba de subir,
+    // para no perder una edición hecha a mitad de la subida.
+    if (useAppStore.getState().profile === profile) markProfileSynced();
+  } catch {
+    // Se queda profileDirty=true — el próximo ciclo (60s, o al reabrir la
+    // app) lo vuelve a intentar. Nunca se descarta un cambio por un error
+    // de red, mismo criterio que pushPendingChanges.
+  }
+}
+
 // Trae los cambios del backend hechos desde otros dispositivos y los
 // fusiona localmente con "el más reciente gana" por updated_at.
 async function pullRemoteChanges(userId: string): Promise<number> {
@@ -98,6 +125,7 @@ export async function runSync(): Promise<SyncResult> {
     if (!userId) return { ranAsWorking: false, pushed: 0, pushFailed: 0, pulled: 0 };
 
     const { pushed, failed } = await pushPendingChanges(userId);
+    await pushProfileIfDirty(userId);
     const pulled = await pullRemoteChanges(userId);
 
     return { ranAsWorking: true, pushed, pushFailed: failed, pulled };

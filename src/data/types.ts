@@ -313,9 +313,12 @@ export interface UserProfile {
   backgroundMode?: 'none' | 'catalog' | 'custom';
   // id de BackgroundImage dentro de backgroundCatalog.ts cuando backgroundMode === 'catalog'.
   backgroundCatalogImageId?: string;
-  // URI local del dispositivo cuando backgroundMode === 'custom' — nunca
-  // se sincroniza a Supabase (la foto es privada de este dispositivo; solo
-  // sus ajustes sí viajan con el perfil).
+  // Foto propia cuando backgroundMode === 'custom' — un `data:` URI en
+  // base64 (ya reescalado a un tamaño manejable antes de guardarse). SÍ
+  // viaja con el resto del perfil a Supabase (spec 2026-09-27: debe
+  // sobrevivir borrar la app por completo y reinstalarla con la misma
+  // cuenta, no solo quedarse en este dispositivo) — sigue siendo privada,
+  // nunca un catálogo público, solo visible para su propia cuenta.
   backgroundCustomUri?: string;
   // Punto focal (0 a 1) para recortar la foto sin estirarla — por
   // dispositivo, porque un recorte vertical (celular) y uno horizontal

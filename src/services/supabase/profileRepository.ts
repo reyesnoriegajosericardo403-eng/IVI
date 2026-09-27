@@ -24,6 +24,7 @@ export async function fetchRemoteProfile(userId: string): Promise<UserProfile | 
     accentPaletteId: data.accent_palette_id ?? undefined,
     backgroundMode: data.background_mode ?? undefined,
     backgroundCatalogImageId: data.background_catalog_image_id ?? undefined,
+    backgroundCustomUri: data.background_custom_uri ?? undefined,
     backgroundFocalXMobile: data.background_focal_x_mobile ?? undefined,
     backgroundFocalYMobile: data.background_focal_y_mobile ?? undefined,
     backgroundFocalXDesktop: data.background_focal_x_desktop ?? undefined,
@@ -50,6 +51,12 @@ export async function pushRemoteProfile(userId: string, profile: UserProfile): P
       accent_palette_id: profile.accentPaletteId ?? null,
       background_mode: profile.backgroundMode ?? null,
       background_catalog_image_id: profile.backgroundCatalogImageId ?? null,
+      // Codificada como data: URI (base64) — no un archivo aparte en
+      // Storage — para reutilizar exactamente el mismo mecanismo de subida
+      // con reintentos que ya tiene el resto del perfil (spec: la foto debe
+      // sobrevivir borrar la app por completo y reinstalarla con la misma
+      // cuenta, no solo un reload de la misma instalación).
+      background_custom_uri: profile.backgroundCustomUri ?? null,
       background_focal_x_mobile: profile.backgroundFocalXMobile ?? null,
       background_focal_y_mobile: profile.backgroundFocalYMobile ?? null,
       background_focal_x_desktop: profile.backgroundFocalXDesktop ?? null,

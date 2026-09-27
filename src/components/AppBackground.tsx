@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { AccessibilityInfo, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Defs, Filter, FeGaussianBlur, Image as SvgImage, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Filter, FeGaussianBlur, LinearGradient, Rect, Stop } from 'react-native-svg';
 
+import { BackgroundPhotoLayer } from '@/components/BackgroundPhotoLayer';
 import { findBackgroundImage } from '@/data/backgroundCatalog';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAppStore } from '@/store/useAppStore';
@@ -90,78 +91,6 @@ function resolveBackgroundPhoto(
     if (image) return { reactSource: image.source };
   }
   return null;
-}
-
-// De 0/0.5/1 (la grilla 3x3 de "Mover imagen") a las palabras clave que
-// entiende `preserveAspectRatio` de SVG — "slice" es exactamente el
-// recorte tipo `resizeMode="cover"`, pero anclado a coordenadas de píxel
-// reales en vez de depender de que el CSS del navegador calcule bien un
-// `position:absolute` con porcentajes (lo que fallaba en el dispositivo).
-function focalKeyword(x: number, y: number): string {
-  const xKey = x < 0.34 ? 'xMin' : x > 0.66 ? 'xMax' : 'xMid';
-  const yKey = y < 0.34 ? 'YMin' : y > 0.66 ? 'YMax' : 'YMid';
-  return `${xKey}${yKey} slice`;
-}
-
-// La foto en sí, con su punto focal, oscurecimiento y desenfoque — dibujada
-// dentro de un <Svg> con el tamaño MEDIDO en píxeles (igual que
-// GradientLayer), nunca con `position:absolute` + porcentajes: eso es justo
-// lo que se comprimía a una franja en el PWA de un dispositivo real
-// (celular/iPad) en vez de cubrir toda la pantalla.
-function BackgroundPhotoLayer({
-  uri,
-  source,
-  width,
-  height,
-  focalX,
-  focalY,
-  darkness,
-  blurAmount,
-}: {
-  uri?: string;
-  source?: unknown;
-  width: number;
-  height: number;
-  focalX: number;
-  focalY: number;
-  darkness: number;
-  blurAmount: number;
-}) {
-  const imgSource = uri ? { uri } : (source as number);
-  const blurPx = Math.round(blurAmount * 12); // 0 a 12px — sutil, nunca al punto de perder la escena.
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        <Defs>
-          {blurPx > 0 && (
-            <Filter id="bgPhotoBlur" x="-15%" y="-15%" width="130%" height="130%">
-              <FeGaussianBlur stdDeviation={blurPx} edgeMode="duplicate" />
-            </Filter>
-          )}
-          <LinearGradient id="bgDarken" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#000000" stopOpacity={darkness * 0.75} />
-            <Stop offset="42%" stopColor="#000000" stopOpacity={darkness * 0.4} />
-            <Stop offset="70%" stopColor="#000000" stopOpacity={darkness * 0.55} />
-            <Stop offset="100%" stopColor="#000000" stopOpacity={darkness * 0.85} />
-          </LinearGradient>
-        </Defs>
-        <SvgImage
-          x="0"
-          y="0"
-          width={width}
-          height={height}
-          href={imgSource as never}
-          preserveAspectRatio={focalKeyword(focalX, focalY)}
-          filter={blurPx > 0 ? 'url(#bgPhotoBlur)' : undefined}
-        />
-        {/* Oscurecimiento graduado: más oscuro abajo (donde suele vivir la
-            barra de navegación) y arriba (encabezados), más claro al centro
-            — nunca un tinte plano parejo. */}
-        <Rect x="0" y="0" width={width} height={height} fill="url(#bgDarken)" />
-      </Svg>
-    </View>
-  );
 }
 
 // Se dibuja con SVG en todas las plataformas: react-native-web descarta la

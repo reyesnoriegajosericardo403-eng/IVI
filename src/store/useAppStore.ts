@@ -172,6 +172,24 @@ interface AppState {
   updateProfileDraft: (patch: Partial<UserProfile>) => void;
   setThemePreference: (pref: UserProfile['themePreference']) => void;
 
+  // `profileDirty` marca que el perfil local tiene cambios que todavía no
+  // se confirmaron en Supabase — persiste junto con el resto del estado,
+  // así que si el intento de subida se interrumpe (la app se cierra, el
+  // celular pierde señal) la marca sigue viva y el próximo runSync() la
+  // vuelve a intentar. Antes de esto, un cambio de perfil (nombre, foto de
+  // fondo...) se subía una sola vez sin reintentos ni confirmación — si esa
+  // subida fallaba en silencio, la próxima sesión traía de vuelta el perfil
+  // viejo de Supabase y "borraba" el cambio (bug reportado: el nombre y la
+  // foto volvían a como estaban antes tras cerrar la app).
+  profileDirty: boolean;
+  markProfileDirty: () => void;
+  markProfileSynced: () => void;
+  // Usado SOLO al adoptar el perfil remoto en el login (useProfileReconciliation) —
+  // a diferencia de completeOnboarding, no marca profileDirty porque el
+  // perfil que llega YA está sincronizado, re-subirlo sería un viaje
+  // redondo inútil.
+  adoptRemoteProfile: (profile: Partial<UserProfile>) => void;
+
   addTransaction: (draft: Draft<Transaction>) => void;
   updateTransaction: (id: string, patch: Partial<Draft<Transaction>>) => void;
   deleteTransaction: (id: string) => void;
@@ -324,6 +342,7 @@ export const useAppStore = create<AppState>()(
 
       return {
         profile: DEFAULT_PROFILE,
+        profileDirty: false,
         transactions: [],
         accounts: [],
         budgets: [],
@@ -400,12 +419,12 @@ export const useAppStore = create<AppState>()(
         setHasHydrated: (v) => set({ hasHydrated: v }),
 
         completeOnboarding: (profile) =>
-          set((s) => ({ profile: { ...s.profile, ...profile, onboardingComplete: true } })),
+          set((s) => ({ profile: { ...s.profile, ...profile, onboardingComplete: true }, profileDirty: true })),
 
-        updateProfileDraft: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
+        updateProfileDraft: (patch) => set((s) => ({ profile: { ...s.profile, ...patch }, profileDirty: true })),
 
         setThemePreference: (pref) =>
-          set((s) => ({ profile: { ...s.profile, themePreference: pref } })),
+          set((s) => ({ profile: { ...s.profile, themePreference: pref }, profileDirty: true })),
 
         setRemoteVisualStyles: (styles) => set({ remoteVisualStyles: styles }),
 
@@ -419,7 +438,14 @@ export const useAppStore = create<AppState>()(
               // permanente anterior y no se queda sin estilo.
               lastPermanentVisualStyle: isPermanent ? id : s.profile.lastPermanentVisualStyle,
             },
+            profileDirty: true,
           })),
+
+        markProfileDirty: () => set({ profileDirty: true }),
+        markProfileSynced: () => set({ profileDirty: false }),
+
+        adoptRemoteProfile: (profile) =>
+          set((s) => ({ profile: { ...s.profile, ...profile, onboardingComplete: true }, profileDirty: false })),
 
         addTransaction: (draft) => {
           const tx = withNewMeta(draft);
@@ -1030,6 +1056,7 @@ export const useAppStore = create<AppState>()(
         resetAll: () =>
           set({
             profile: DEFAULT_PROFILE,
+            profileDirty: false,
             transactions: [],
             accounts: [],
             budgets: [],

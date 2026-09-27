@@ -1,55 +1,100 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Image, Platform, StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import React, { useRef, useState } from 'react';
+import { PanResponder, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
+import { BackgroundPhotoLayer } from '@/components/BackgroundPhotoLayer';
 import { findAccentPalette } from '@/theme/accentPalettes';
 import { formatCurrency } from '@/utils/format';
+
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
 
 // Miniatura de "cómo se vería Inicio" con la selección TODAVÍA SIN APLICAR
 // (spec: "Ver cambios al instante en la vista previa" antes de tocar
 // Aplicar) — nunca lee useTheme(), solo los valores en borrador que le pasa
 // app/appearance.tsx, para que Cancelar de verdad no cambie nada.
+//
+// Usa el MISMO BackgroundPhotoLayer que pinta el fondo real de toda la app
+// (antes tenía su propio <Image resizeMode="cover"> aparte, que ni
+// siquiera respetaba el punto focal — así que "mover imagen" no se veía
+// reflejado aquí, una de las quejas reportadas). Cuando `interactive` está
+// activo, arrastrar sobre la propia vista previa mueve el punto focal
+// directamente — reemplaza la grilla 3x3 de "Mover imagen", que resultó
+// confusa (¿qué punto representa qué?) por manipulación directa sobre la
+// imagen real.
 export function AppearancePreview({
   accentPaletteId,
   photoUri,
   photoSource,
   darkness,
   blurAmount,
+  focalX = 0.5,
+  focalY = 0.5,
+  onFocalChange,
+  interactive = false,
 }: {
   accentPaletteId: string;
   photoUri?: string;
   photoSource?: unknown;
   darkness: number;
   blurAmount: number;
+  focalX?: number;
+  focalY?: number;
+  onFocalChange?: (x: number, y: number) => void;
+  interactive?: boolean;
 }) {
   const palette = findAccentPalette(accentPaletteId);
   const hasPhoto = !!(photoUri || photoSource);
-  const blurPx = Math.round(blurAmount * 10);
-  const imgStyle =
-    Platform.OS === 'web' && hasPhoto
-      ? ({ filter: blurPx > 0 ? `blur(${blurPx}px)` : undefined, transform: [{ scale: 1.08 }] } as object)
-      : undefined;
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  // El PanResponder se crea UNA sola vez (useRef) — se lee todo lo que
+  // cambia (foco actual, tamaño, callback) desde `latest` para no
+  // recrearlo en cada render, mismo patrón ya usado en BudgetTemplateList.tsx.
+  const latest = useRef({ focalX, focalY, size, onFocalChange, interactive });
+  latest.current = { focalX, focalY, size, onFocalChange, interactive };
+  const dragStart = useRef({ x: focalX, y: focalY });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => latest.current.interactive,
+      onMoveShouldSetPanResponder: () => latest.current.interactive,
+      onPanResponderGrant: () => {
+        dragStart.current = { x: latest.current.focalX, y: latest.current.focalY };
+      },
+      onPanResponderMove: (_, gesture) => {
+        const { width, height } = latest.current.size;
+        if (!width || !height) return;
+        const x = clamp01(dragStart.current.x + gesture.dx / width);
+        const y = clamp01(dragStart.current.y + gesture.dy / height);
+        latest.current.onFocalChange?.(x, y);
+      },
+    })
+  ).current;
+
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+  };
 
   return (
-    <View style={styles.frame}>
+    <View style={styles.frame} onLayout={onLayout}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: '#1B2029' }]} />
-      {hasPhoto && (
-        <Image source={photoUri ? { uri: photoUri } : (photoSource as number)} resizeMode="cover" style={[StyleSheet.absoluteFill, imgStyle]} />
-      )}
-      {hasPhoto && (
-        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-          <Defs>
-            <LinearGradient id="previewDarken" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#000000" stopOpacity={darkness * 0.7} />
-              <Stop offset="100%" stopColor="#000000" stopOpacity={darkness * 0.85} />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill="url(#previewDarken)" />
-        </Svg>
+      {hasPhoto && size.width > 0 && (
+        <BackgroundPhotoLayer
+          uri={photoUri}
+          source={photoSource}
+          width={size.width}
+          height={size.height}
+          focalX={focalX}
+          focalY={focalY}
+          darkness={darkness}
+          blurAmount={blurAmount}
+          filterIdSuffix="Preview"
+        />
       )}
 
-      <View style={styles.content}>
+      <View style={styles.content} pointerEvents="none">
         <Text style={styles.eyebrow}>PATRIMONIO NETO</Text>
         <Text style={styles.amount}>{formatCurrency(48250, 'MXN')}</Text>
 
@@ -69,6 +114,29 @@ export function AppearancePreview({
           <Text style={[styles.buttonText, { color: palette.accentText }]}>Registrar movimiento</Text>
         </View>
       </View>
+
+      {interactive && hasPhoto && (
+        <>
+          {/* Captura el arrastre en TODA la vista previa — no solo cerca del
+              marcador — para que mover la foto sea fácil de encontrar sin
+              tener que acertarle a un punto pequeño. */}
+          <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
+          <View
+            pointerEvents="none"
+            style={[
+              styles.focalMarker,
+              { left: focalX * size.width - 14, top: focalY * size.height - 14 },
+            ]}
+          >
+            <View style={styles.focalMarkerRing} />
+            <View style={styles.focalMarkerDot} />
+          </View>
+          <View pointerEvents="none" style={styles.focalHint}>
+            <Ionicons name="move-outline" size={12} color="#FEFCF8" />
+            <Text style={styles.focalHintText}>Arrastra para mover la foto</Text>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -86,4 +154,30 @@ const styles = StyleSheet.create({
   progressFill: { height: 5, borderRadius: 3 },
   button: { marginTop: 4, paddingVertical: 10, borderRadius: 999, alignItems: 'center' },
   buttonText: { fontWeight: '700', fontSize: 13 },
+  focalMarker: { position: 'absolute', width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  focalMarkerRing: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#FEFCF8',
+    shadowColor: '#000000',
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+  },
+  focalMarkerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FEFCF8' },
+  focalHint: {
+    position: 'absolute',
+    bottom: 10,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  focalHintText: { color: '#FEFCF8', fontSize: 11, fontWeight: '600' },
 });

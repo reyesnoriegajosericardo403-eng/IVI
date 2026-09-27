@@ -127,6 +127,102 @@ export default function Appearance() {
     setFocal(0.5, 0.5);
   };
 
+  const previewBlock = (
+    <View style={{ gap: spacing.sm }}>
+      <Text style={[typography.caption, { color: colors.textSecondary }]}>VISTA PREVIA</Text>
+      <AppearancePreview
+        accentPaletteId={paletteId}
+        photoUri={previewPhotoUri}
+        photoSource={previewPhotoSource}
+        darkness={darkness}
+        blurAmount={blurAmount}
+        focalX={focalX}
+        focalY={focalY}
+        onFocalChange={setFocal}
+        interactive={hasPhoto}
+      />
+    </View>
+  );
+
+  const paletteBlock = (
+    <View style={{ gap: spacing.sm }}>
+      <Text style={[typography.caption, { color: colors.textSecondary }]}>PALETA</Text>
+      <View style={styles.paletteGrid}>
+        {ACCENT_PALETTES.map((p) => {
+          const selected = p.id === paletteId;
+          return (
+            <Pressable
+              key={p.id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`Paleta ${p.name}`}
+              onPress={() => setPaletteId(p.id)}
+              style={[styles.paletteCard, { borderColor: selected ? p.accent : colors.surfaceBorder, borderRadius: radius.md, backgroundColor: colors.surfaceSolid }]}
+            >
+              <View style={styles.paletteSwatches}>
+                <View style={[styles.swatch, { backgroundColor: p.insightSurface }]} />
+                <View style={[styles.swatch, { backgroundColor: p.accent }]} />
+                <View style={[styles.swatch, { backgroundColor: p.accentText }]} />
+              </View>
+              <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '600', marginTop: 6 }]} numberOfLines={1}>
+                {p.name}
+              </Text>
+              {selected && <Ionicons name="checkmark-circle" size={16} color={p.accent} style={styles.paletteCheck} />}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+
+  const fondoBlock = (
+    <View style={{ gap: spacing.sm }}>
+      <Text style={[typography.caption, { color: colors.textSecondary }]}>FONDO</Text>
+      <GlassCard padded={false} style={{ gap: 0 }}>
+        <BackgroundOptionRow
+          icon="contrast-outline"
+          label="Sin foto"
+          description="Solo el fondo oscuro cálido de Vidrio líquido."
+          selected={mode === 'none'}
+          onPress={() => setMode('none')}
+          first
+        />
+        <BackgroundOptionRow
+          icon="images-outline"
+          label="Explorar colección"
+          description={catalogImage ? catalogImage.title : 'Cinco categorías, listas para cuando subamos las fotos.'}
+          selected={mode === 'catalog'}
+          onPress={() => setOpenCategory(BACKGROUND_CATEGORIES[0].id)}
+        />
+        <BackgroundOptionRow
+          icon="phone-portrait-outline"
+          label="Mis fotos"
+          description={customUri ? 'Foto privada de tu cuenta' : 'Sube una foto propia — nunca se hace pública.'}
+          selected={mode === 'custom'}
+          onPress={pickCustomPhoto}
+          trailing={uploading ? <ActivityIndicator size="small" color={colors.accentFrom} /> : undefined}
+        />
+      </GlassCard>
+      {uploadError && <Text style={{ color: colors.danger, fontSize: 12 }}>{uploadError}</Text>}
+    </View>
+  );
+
+  const ajustarFondoBlock = hasPhoto && (
+    <View style={{ gap: spacing.sm }}>
+      <Text style={[typography.caption, { color: colors.textSecondary }]}>AJUSTAR FONDO</Text>
+      <GlassCard style={{ gap: spacing.md }}>
+        <SimpleSlider label="Qué tan oscuro" value={darkness} onChange={setDarkness} />
+        <SimpleSlider label="Qué tan nítido" value={1 - blurAmount} onChange={(v) => setBlurAmount(1 - v)} />
+        <Text style={[typography.caption, { color: colors.textTertiary }]}>
+          Para mover la foto, arrastra directamente sobre la vista previa de arriba.
+        </Text>
+        <Pressable onPress={handleReset}>
+          <Text style={{ color: colors.accentFrom, fontWeight: '700', fontSize: 13 }}>Restablecer</Text>
+        </Pressable>
+      </GlassCard>
+    </View>
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, flexDirection: 'row', alignItems: 'center' }}>
@@ -136,88 +232,35 @@ export default function Appearance() {
         <Text style={[typography.title, { color: colors.textPrimary, flex: 1 }]}>Apariencia</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>VISTA PREVIA</Text>
-          <AppearancePreview accentPaletteId={paletteId} photoUri={previewPhotoUri} photoSource={previewPhotoSource} darkness={darkness} blurAmount={blurAmount} />
+      {isTablet ? (
+        // En pantallas anchas, la vista previa vive en una columna FIJA junto
+        // a los controles (spec: "la ficha de ajustar fondo esté al lado de
+        // la imagen porque al hacer cambios no se puede ver cómo está
+        // cambiando") — nunca se scrollea fuera de vista.
+        <View style={{ flex: 1, flexDirection: 'row', gap: spacing.lg, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View style={{ width: 340 }}>{previewBlock}</View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: spacing.lg, paddingBottom: 140 }}>
+            {paletteBlock}
+            {fondoBlock}
+            {ajustarFondoBlock}
+          </ScrollView>
         </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>PALETA</Text>
-          <View style={styles.paletteGrid}>
-            {ACCENT_PALETTES.map((p) => {
-              const selected = p.id === paletteId;
-              return (
-                <Pressable
-                  key={p.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`Paleta ${p.name}`}
-                  onPress={() => setPaletteId(p.id)}
-                  style={[styles.paletteCard, { borderColor: selected ? p.accent : colors.surfaceBorder, borderRadius: radius.md, backgroundColor: colors.surfaceSolid }]}
-                >
-                  <View style={styles.paletteSwatches}>
-                    <View style={[styles.swatch, { backgroundColor: p.insightSurface }]} />
-                    <View style={[styles.swatch, { backgroundColor: p.accent }]} />
-                    <View style={[styles.swatch, { backgroundColor: p.accentText }]} />
-                  </View>
-                  <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '600', marginTop: 6 }]} numberOfLines={1}>
-                    {p.name}
-                  </Text>
-                  {selected && <Ionicons name="checkmark-circle" size={16} color={p.accent} style={styles.paletteCheck} />}
-                </Pressable>
-              );
-            })}
+      ) : (
+        // En celular no cabe una columna aparte — en su lugar, la vista
+        // previa queda FIJA arriba (stickyHeaderIndices) mientras el resto
+        // se desplaza debajo, así nunca desaparece de la pantalla al ajustar
+        // los controles.
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 140 }} stickyHeaderIndices={[0]}>
+          <View style={{ backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md }}>
+            {previewBlock}
           </View>
-        </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>FONDO</Text>
-          <GlassCard padded={false} style={{ gap: 0 }}>
-            <BackgroundOptionRow
-              icon="contrast-outline"
-              label="Sin foto"
-              description="Solo el fondo oscuro cálido de Vidrio líquido."
-              selected={mode === 'none'}
-              onPress={() => setMode('none')}
-              first
-            />
-            <BackgroundOptionRow
-              icon="images-outline"
-              label="Explorar colección"
-              description={catalogImage ? catalogImage.title : 'Cinco categorías, listas para cuando subamos las fotos.'}
-              selected={mode === 'catalog'}
-              onPress={() => setOpenCategory(BACKGROUND_CATEGORIES[0].id)}
-            />
-            <BackgroundOptionRow
-              icon="phone-portrait-outline"
-              label="Mis fotos"
-              description={customUri ? 'Foto privada de tu dispositivo' : 'Sube una foto propia — nunca se hace pública.'}
-              selected={mode === 'custom'}
-              onPress={pickCustomPhoto}
-              trailing={uploading ? <ActivityIndicator size="small" color={colors.accentFrom} /> : undefined}
-            />
-          </GlassCard>
-          {uploadError && <Text style={{ color: colors.danger, fontSize: 12 }}>{uploadError}</Text>}
-        </View>
-
-        {hasPhoto && (
-          <View style={{ gap: spacing.sm }}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>AJUSTAR FONDO</Text>
-            <GlassCard style={{ gap: spacing.md }}>
-              <SimpleSlider label="Qué tan oscuro" value={darkness} onChange={setDarkness} />
-              <SimpleSlider label="Qué tan nítido" value={1 - blurAmount} onChange={(v) => setBlurAmount(1 - v)} />
-              <View>
-                <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>Mover imagen</Text>
-                <FocalGrid x={focalX} y={focalY} onChange={setFocal} />
-              </View>
-              <Pressable onPress={handleReset}>
-                <Text style={{ color: colors.accentFrom, fontWeight: '700', fontSize: 13 }}>Restablecer</Text>
-              </Pressable>
-            </GlassCard>
+          <View style={{ paddingHorizontal: spacing.lg, gap: spacing.lg }}>
+            {paletteBlock}
+            {fondoBlock}
+            {ajustarFondoBlock}
           </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      )}
 
       <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.divider }]}>
         <Pressable onPress={() => router.back()} style={[styles.secondaryBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}>
@@ -348,36 +391,6 @@ function SimpleSlider({ label, value, onChange }: { label: string; value: number
   );
 }
 
-// 3x3: forma simple y siempre-válida de "mover imagen" sin arrastrar sobre
-// la foto misma (spec: "Mover imagen", lenguaje simple, sin parámetros
-// técnicos).
-function FocalGrid({ x, y, onChange }: { x: number; y: number; onChange: (x: number, y: number) => void }) {
-  const { colors, radius } = useTheme();
-  const points = [0, 0.5, 1];
-  return (
-    <View style={styles.focalGrid}>
-      {points.map((py) =>
-        points.map((px) => {
-          const selected = Math.abs(px - x) < 0.01 && Math.abs(py - y) < 0.01;
-          return (
-            <Pressable
-              key={`${px}-${py}`}
-              accessibilityLabel={`Encuadre ${py === 0 ? 'arriba' : py === 1 ? 'abajo' : 'centro'} ${px === 0 ? 'izquierda' : px === 1 ? 'derecha' : 'centro'}`}
-              onPress={() => onChange(px, py)}
-              style={[
-                styles.focalCell,
-                { borderRadius: radius.sm, borderColor: selected ? colors.accentFrom : colors.surfaceBorder, backgroundColor: selected ? colors.accentSoft : 'transparent' },
-              ]}
-            >
-              {selected && <View style={[styles.focalDot, { backgroundColor: colors.accentFrom }]} />}
-            </Pressable>
-          );
-        })
-      )}
-    </View>
-  );
-}
-
 function CategoryPickerModal({
   categoryId,
   onClose,
@@ -471,9 +484,6 @@ const styles = StyleSheet.create({
   sliderTrack: { height: 6, borderRadius: 3, justifyContent: 'center' },
   sliderFill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
   sliderThumb: { position: 'absolute', width: 16, height: 16, borderRadius: 8, marginLeft: -8 },
-  focalGrid: { flexDirection: 'row', flexWrap: 'wrap', width: 96, gap: 4 },
-  focalCell: { width: 28, height: 28, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  focalDot: { width: 6, height: 6, borderRadius: 3 },
   backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   sheet: { width: '100%', maxWidth: 480, maxHeight: '80%', padding: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center' },

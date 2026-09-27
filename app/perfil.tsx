@@ -10,6 +10,7 @@ import type { UserProfile } from '@/data/types';
 import { translateAuthError } from '@/services/auth/errorMessages';
 import { updateEmail } from '@/services/auth/actions';
 import { useAuthSession } from '@/services/auth/useAuthSession';
+import { runSync } from '@/services/sync/SyncEngine';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -29,11 +30,14 @@ const SEX_OPTIONS: Array<{ value: NonNullable<UserProfile['sex']>; label: string
 export default function Perfil() {
   const { colors, typography, spacing, radius } = useTheme();
   const profile = useAppStore((s) => s.profile);
+  const profileDirty = useAppStore((s) => s.profileDirty);
   const updateProfileDraft = useAppStore((s) => s.updateProfileDraft);
   const { userId, email } = useAuthSession();
 
   const [name, setName] = useState(profile.name ?? '');
   const [ageDropdownOpen, setAgeDropdownOpen] = useState(false);
+  const [savingNow, setSavingNow] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
 
   const [editingRecoveryEmail, setEditingRecoveryEmail] = useState(false);
   const [recoveryEmailInput, setRecoveryEmailInput] = useState('');
@@ -48,6 +52,32 @@ export default function Perfil() {
     if (trimmed && trimmed !== profile.name) updateProfileDraft({ name: trimmed });
     else if (!trimmed) setName(profile.name);
   };
+
+  // Cada campo de esta pantalla ya se guarda solo al tocarlo
+  // (updateProfileDraft marca profileDirty, y runSync lo sube con
+  // reintentos cada 60s) — este botón es la confirmación EXPLÍCITA que
+  // pidió el usuario tras el bug donde un cambio de nombre se perdía en
+  // silencio: fuerza el intento de subida de inmediato y muestra si de
+  // verdad se confirmó en el servidor, en vez de asumirlo.
+  const handleSaveNow = async () => {
+    commitName();
+    setSavingNow(true);
+    setJustSaved(false);
+    if (userId) await runSync();
+    setSavingNow(false);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2500);
+  };
+
+  const saveStatusLabel = !userId
+    ? 'Se guarda en este dispositivo'
+    : savingNow
+      ? 'Guardando...'
+      : justSaved
+        ? 'Guardado en tu cuenta'
+        : profileDirty
+          ? 'Cambios pendientes de subir'
+          : 'Guardado en tu cuenta';
 
   const handleSaveRecoveryEmail = async () => {
     const value = recoveryEmailInput.trim();
@@ -76,7 +106,7 @@ export default function Perfil() {
         <Text style={[typography.title, { color: colors.textPrimary }]}>Perfil</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120, gap: spacing.lg }}>
         <GlassCard style={{ alignItems: 'center', gap: spacing.sm }}>
           <View style={[styles.avatar, { backgroundColor: avatarColor, borderRadius: 40 }]}>
             <Text style={styles.avatarInitial}>{initial}</Text>
@@ -236,6 +266,17 @@ export default function Perfil() {
           </View>
         )}
       </ScrollView>
+
+      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.divider }]}>
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>{saveStatusLabel}</Text>
+        <Pressable
+          onPress={handleSaveNow}
+          disabled={savingNow}
+          style={[styles.saveBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, opacity: savingNow ? 0.6 : 1 }]}
+        >
+          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{savingNow ? 'Guardando...' : 'Guardar cambios'}</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -254,4 +295,14 @@ const styles = StyleSheet.create({
   dropdownHeader: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14 },
   dropdownList: { borderWidth: 1, maxHeight: 220 },
   dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 16,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  saveBtn: { paddingVertical: 14, alignItems: 'center' },
 });
