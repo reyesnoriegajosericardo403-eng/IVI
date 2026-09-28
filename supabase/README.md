@@ -41,3 +41,30 @@ npx supabase functions deploy ai-relay
 ```
 
 Sin desplegar esta función, la app sigue funcionando normal: en nativo tu IA funciona igual, y en web usa el copiloto local basado en reglas hasta que la despliegues.
+
+## Función `push-notify` (notificaciones al celular)
+
+Envía avisos push reales a la PWA instalada (Android con Chrome; iPhone con iOS 16.4+ y VALU agregada a la pantalla de inicio). Requiere la migración `0020_push_notifications.sql`.
+
+1. **Secretos** (Supabase → Edge Functions → Secrets): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:tu@correo`), `CRON_SECRET` (cualquier texto largo y aleatorio). Las llaves VAPID se generan una sola vez; si las cambias, cada teléfono tiene que volver a activar los avisos.
+2. **Desplegar** (sin verificación de JWT, porque `config` y `cron` no traen sesión; las acciones de usuario validan el token por dentro):
+   ```bash
+   npx supabase functions deploy push-notify --no-verify-jwt
+   ```
+3. **Programar los recordatorios** (SQL Editor, una sola vez; cambia `<project-ref>` y `<CRON_SECRET>`):
+   ```sql
+   create extension if not exists pg_cron;
+   create extension if not exists pg_net;
+   select cron.schedule(
+     'valu-push-hourly',
+     '5 * * * *',
+     $$ select net.http_post(
+          url := 'https://<project-ref>.supabase.co/functions/v1/push-notify',
+          headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '<CRON_SECRET>'),
+          body := '{"action":"cron"}'::jsonb
+        ) $$
+   );
+   ```
+   Corre cada hora (minuto 5). Cada aviso tiene una llave única en `notification_log`, así que aunque el cron corra de más nunca llega duplicado. Para quitarlo: `select cron.unschedule('valu-push-hourly');`.
+
+Qué avisa hoy: pagos de deudas (3 días antes, 1 día antes y el día; entre 9:00 y 21:59 hora local) y un recordatorio diario opcional para registrar gastos (solo si ese día no hay movimientos). Nunca incluye montos.

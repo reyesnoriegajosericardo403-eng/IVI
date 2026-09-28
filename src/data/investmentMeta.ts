@@ -9,6 +9,7 @@ export const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
   fund: 'Fondo',
   crypto: 'Cripto',
   cash: 'Liquidez',
+  savings: 'Ahorro con rendimiento',
   other: 'Otro',
 };
 
@@ -28,6 +29,7 @@ export const ASSET_CLASS_GROUP: Record<AssetClass, RiskGroup> = {
   cetes: 'fixed',
   bond: 'fixed',
   cash: 'fixed',
+  savings: 'fixed',
   stock: 'variable',
   etf: 'variable',
   fibra: 'variable',
@@ -47,9 +49,27 @@ export const RISK_GROUP_LABELS: Record<RiskGroup, string> = {
 // "cuando se venda una acción se debe quedar el liquidez").
 export const LIQUIDITY_TICKER = 'LIQUIDEZ';
 
+// La liquidez vive por institución y producto (el efectivo disponible de
+// GBM Trading USA no es el mismo que el de Actinver). Sin institución =
+// la liquidez que existía antes del catálogo, que queda en "Otras".
 export function findLiquidityPosition(
   investments: InvestmentPosition[],
-  currency: InvestmentPosition['currency']
+  currency: InvestmentPosition['currency'],
+  scope: { broker?: string; product?: string } = {}
 ): InvestmentPosition | undefined {
-  return investments.find((i) => i.assetClass === 'cash' && i.ticker === LIQUIDITY_TICKER && i.currency === currency);
+  return investments.find(
+    (i) =>
+      i.assetClass === 'cash' &&
+      i.ticker === LIQUIDITY_TICKER &&
+      i.currency === currency &&
+      (i.broker ?? undefined) === (scope.broker ?? undefined) &&
+      (i.product ?? undefined) === (scope.product ?? undefined)
+  );
+}
+
+// Solo estos tipos tienen precio de mercado que consultar; pedir cotización
+// de "LIQUIDEZ", CETES o una Cajita solo gasta cuota del proveedor.
+const MARKET_PRICED: AssetClass[] = ['stock', 'etf', 'fibra', 'crypto'];
+export function isMarketPriced(i: Pick<InvestmentPosition, 'assetClass'>): boolean {
+  return MARKET_PRICED.includes(i.assetClass);
 }

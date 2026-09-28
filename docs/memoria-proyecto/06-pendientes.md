@@ -2,6 +2,23 @@
 
 Ver también: [[README|Índice]]
 
+## Pendiente de despliegue (2026-09-28) — notificaciones push e Inversiones por institución
+
+El código ya está en la rama, pero necesita 4 pasos en Supabase que no se pueden hacer desde la
+sesión de Claude (no hay credenciales del proyecto): (1) correr las migraciones `0020` y `0021` en
+el SQL Editor; (2) poner los secretos `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` y
+`CRON_SECRET` en Edge Functions → Secrets; (3) `npx supabase functions deploy push-notify
+--no-verify-jwt`; (4) programar el cron horario (SQL en `supabase/README.md`). Hasta el paso 1, lo
+nuevo de Inversiones funciona local pero no sincroniza las posiciones nuevas; hasta el 4, los avisos
+de prueba funcionan pero los recordatorios automáticos no salen. **Falta probar en un iPhone y un
+Android reales** — el cifrado, el service worker y el cron se probaron con herramientas
+(implementación de referencia, Chrome DevTools, base de datos simulada), no en hardware.
+
+La auditoría (docs/02) cambia así: #54/#55 ya mueven el efectivo por producto (sigue sin ser una
+`Account` del usuario, es "efectivo disponible" dentro de la institución, como en las apps de
+bolsa); #58 "Crear recordatorio" queda parcialmente cubierto (recordatorios automáticos de deudas y
+diario; los recordatorios personalizados y #59-#65 siguen pendientes para P3).
+
 ## Abierto (2026-09-28) — Hallazgos concretos de la auditoría de las 65 operaciones de Fase 2
 
 Ver detalle completo y evidencia en [[../02_fase2_auditoria_operaciones|docs/02_fase2_auditoria_operaciones.md]].

@@ -9,7 +9,7 @@
 // atorados con un manifest/ícono viejo cacheado (spec: auditoría de "no
 // funcionó la función de integrarlo a la pantalla" en Android — un
 // manifest o ícono viejo en caché puede tumbar la instalación).
-const CACHE_NAME = 'valu-shell-v2';
+const CACHE_NAME = 'valu-shell-v3';
 const APP_SHELL = ['/', '/index.html', '/manifest.json'];
 
 // El manifest y los íconos son justo lo que Android revisa para decidir
@@ -92,6 +92,45 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached);
       return cached || networkFetch;
+    })
+  );
+});
+
+// Notificaciones push (Web Push). iOS exige mostrar SIEMPRE una
+// notificación visible por cada push recibido — si no, revoca el permiso —
+// así que aunque el contenido venga dañado se muestra un aviso genérico.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  const title = data.title || 'VALU';
+  const options = {
+    body: data.body || 'Tienes un aviso nuevo en VALU.',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: data.tag || undefined,
+    renotify: Boolean(data.tag),
+    data: { url: typeof data.url === 'string' && data.url.startsWith('/') ? data.url : '/' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Al tocar el aviso: si VALU ya está abierta, la trae al frente y navega;
+// si no, la abre directo en la pantalla del aviso.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          return client.focus().then((focused) => (focused && 'navigate' in focused ? focused.navigate(target) : focused));
+        }
+      }
+      return self.clients.openWindow(target);
     })
   );
 });

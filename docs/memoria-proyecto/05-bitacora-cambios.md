@@ -8,6 +8,24 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-09-28 (tarde) — Notificaciones push reales + Inversiones por institución
+
+- **Notificaciones al celular (Web Push)**: migración `0020_push_notifications.sql`, función
+  `push-notify` (registrar dispositivo, aviso de prueba y cron horario de recordatorios), handlers
+  `push`/`notificationclick` en `public/sw.js`, pantalla `app/notificaciones.tsx` (Ajustes →
+  Notificaciones). Recordatorios: pagos de deudas (3 días, 1 día y el día) y recordatorio diario
+  opcional si no registraste nada. Cifrado RFC 8291 + VAPID hecho solo con WebCrypto y verificado
+  contra la implementación de referencia; idempotencia con `notification_log` (probado: segunda
+  corrida del cron = 0 duplicados). Nunca incluye montos. Primer adaptador real del contrato
+  `NotificationProvider` (docs/03 §7). En iPhone requiere iOS 16.4+ y VALU instalada en inicio.
+- **Inversiones rediseñadas**: tarjetas de instituciones (GBM, Nu, Actinver Trade —antes
+  Bursanet—, Cetesdirecto, Mercado Pago, Hey, Klar, Kuspit, Bitso) → productos → tabla de activos
+  estilo app. Cuatro modelos de cálculo (bolsa con comisión + IVA, rendimiento diario, plazo fijo,
+  CETES con ISR 2026). Liquidez por producto. Ver [[07-instituciones-inversion]].
+- **Bugs reales corregidos de paso**: la Liquidez nunca sincronizaba (check de `asset_class` sin
+  `'cash'`, migración 0021); la actualización de precios pedía cotización de "LIQUIDEZ"/CETES y por
+  eso consultaba al proveedor aun con el mercado cerrado.
+
 ## 2026-09-28 — Arranque formal de Fase 2: auditoría de 65 operaciones + contratos v1
 
 Se recibió un plan revisado de Fase 2 (JSON de instrucciones + xlsx `Inventario_65`, elaborado por

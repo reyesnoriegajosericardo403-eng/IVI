@@ -90,6 +90,27 @@ export interface ExchangeRateProvider {
   getRate(from: Currency, to: Currency): Promise<ExchangeRateInfo>;
 }
 
+// Avisos al teléfono (contrato de docs/03_fase2_contratos_v1.md §7). Hoy la
+// única implementación es Web Push para la PWA instalada; una app nativa
+// futura registraría aquí su propia implementación (expo-notifications)
+// sin tocar la pantalla de Notificaciones.
+export type NotificationSupport =
+  | { supported: true }
+  | { supported: false; reason: 'native_pending' | 'no_backend' | 'unsupported_browser' | 'ios_needs_install' | 'signed_out' };
+
+export type NotificationPermission = 'granted' | 'denied' | 'default';
+
+export interface NotificationProvider {
+  name: string;
+  getSupport(isSignedIn: boolean): NotificationSupport;
+  getPermission(): NotificationPermission;
+  isSubscribed(): Promise<boolean>;
+  // Debe llamarse desde un toque del usuario (iOS lo exige para pedir permiso).
+  enable(): Promise<{ ok: true } | { ok: false; error: string }>;
+  disable(): Promise<void>;
+  sendTest(): Promise<{ ok: true; delivered: number } | { ok: false; error: string }>;
+}
+
 export interface SpeechToTextProvider {
   name: string;
   isAvailable(): boolean;

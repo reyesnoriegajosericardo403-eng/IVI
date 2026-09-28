@@ -181,6 +181,13 @@ export function investmentToRow(userId: string, i: InvestmentPosition) {
     amount_invested: i.amountInvested,
     purchase_date: i.purchaseDate,
     broker: i.broker ?? null,
+    // Columnas de la migración 0021: solo se mandan si tienen valor, para
+    // que las posiciones de siempre sigan sincronizando aunque esa migración
+    // todavía no se haya corrido en el proyecto de Supabase.
+    ...(i.product !== undefined ? { product: i.product } : {}),
+    ...(i.annualRate !== undefined ? { annual_rate: i.annualRate } : {}),
+    ...(i.termDays !== undefined ? { term_days: i.termDays } : {}),
+    ...(i.maturityDate !== undefined ? { maturity_date: i.maturityDate } : {}),
     fees: i.fees ?? null,
     dividends_received: i.dividendsReceived ?? null,
     realized_pnl: i.realizedPnL ?? null,
@@ -203,6 +210,10 @@ export function investmentFromRow(row: any): InvestmentPosition {
     amountInvested: Number(row.amount_invested),
     purchaseDate: row.purchase_date,
     broker: row.broker ?? undefined,
+    product: row.product ?? undefined,
+    annualRate: row.annual_rate != null ? Number(row.annual_rate) : undefined,
+    termDays: row.term_days != null ? Number(row.term_days) : undefined,
+    maturityDate: row.maturity_date ?? undefined,
     fees: row.fees != null ? Number(row.fees) : undefined,
     dividendsReceived: row.dividends_received != null ? Number(row.dividends_received) : undefined,
     realizedPnL: row.realized_pnl != null ? Number(row.realized_pnl) : undefined,

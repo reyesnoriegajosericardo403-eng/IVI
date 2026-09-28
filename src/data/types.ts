@@ -231,7 +231,7 @@ export interface Goal extends SyncMeta {
   isDemo?: boolean;
 }
 
-export type AssetClass = 'stock' | 'etf' | 'fibra' | 'cetes' | 'bond' | 'fund' | 'crypto' | 'cash' | 'other';
+export type AssetClass = 'stock' | 'etf' | 'fibra' | 'cetes' | 'bond' | 'fund' | 'crypto' | 'cash' | 'savings' | 'other';
 
 export interface InvestmentPosition extends SyncMeta {
   ticker: string;
@@ -242,7 +242,16 @@ export interface InvestmentPosition extends SyncMeta {
   currency: Currency;
   amountInvested: number;
   purchaseDate: string; // fecha financiera de compra
+  // Institución del catálogo (src/data/institutions.ts), p.ej. "gbm".
+  // Sin valor = "Otras inversiones" (todo lo registrado antes del catálogo).
   broker?: string;
+  // Producto dentro de la institución, p.ej. "gbm_trading_usa".
+  product?: string;
+  // Tasa anual (%) antes de impuestos para ahorro, plazo y CETES — la que
+  // el usuario ve en su app, no la de referencia del catálogo.
+  annualRate?: number;
+  termDays?: number;
+  maturityDate?: string;
   fees?: number;
   dividendsReceived?: number;
   // Ganancia o pérdida ya realizada al vender parte de la posición —

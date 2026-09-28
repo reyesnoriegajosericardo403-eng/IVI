@@ -32,6 +32,7 @@ Esta carpeta nunca reemplaza eso ni lo toca — ver [[06-pendientes#Sobre Obsidi
 - [[04-migraciones-supabase|Migraciones de Supabase]] — historial de la base de datos real y su estado actual.
 - [[05-bitacora-cambios|Bitácora de cambios]] — qué se construyó, en orden, y por qué.
 - [[06-pendientes|Pendientes y decisiones abiertas]] — lo que falta resolver o confirmar.
+- [[07-instituciones-inversion|Instituciones de inversión]] — catálogo GBM/Nu/Cetesdirecto…, modelos de cálculo y cómo mantener las tasas al día.
 
 ## Datos rápidos del proyecto
 

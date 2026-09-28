@@ -107,6 +107,22 @@ export default function Settings() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>NOTIFICACIONES</Text>
+          <Pressable accessibilityLabel="Notificaciones" onPress={() => router.push('/notificaciones')}>
+            <GlassCard style={styles.row}>
+              <Ionicons name="notifications-outline" size={18} color={colors.accentFrom} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Text style={[typography.body, { color: colors.textPrimary }]}>Avisos en tu celular</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                  Pagos por vencer y recordatorio diario, aunque VALU esté cerrada
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </GlassCard>
+          </Pressable>
+        </View>
+
+        <View style={{ gap: spacing.sm }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>COPILOTO IA</Text>
           <Pressable onPress={() => router.push('/ai-settings')}>
             <GlassCard style={styles.row}>
