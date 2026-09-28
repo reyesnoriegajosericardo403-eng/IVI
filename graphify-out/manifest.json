@@ -30,10 +30,10 @@
     "semantic_hash": "84c567d4b6a416d3e287326f6030524d"
   },
   "app/(tabs)/inversiones.tsx": {
-    "mtime": 1790217904.8573909,
-    "seen": 1790552568.2128417,
-    "ast_hash": "1ce012e87eb361917c1a7ddbf8c23398",
-    "semantic_hash": "1ce012e87eb361917c1a7ddbf8c23398"
+    "mtime": 1790588892.546279,
+    "seen": 1790589505.0175033,
+    "ast_hash": "ed11c88787ef39e5399abf9beff9abf8",
+    "semantic_hash": ""
   },
   "app/(tabs)/metas.tsx": {
     "mtime": 1790217904.8573909,
@@ -144,10 +144,10 @@
     "semantic_hash": "ece83012bef76d767af03cc577fe25d8"
   },
   "app/settings.tsx": {
-    "mtime": 1790548090.8682706,
-    "seen": 1790552568.2128808,
-    "ast_hash": "8dc1acbed6a0375c34ad4e4803eebb0e",
-    "semantic_hash": "8dc1acbed6a0375c34ad4e4803eebb0e"
+    "mtime": 1790588284.0062928,
+    "seen": 1790589505.017543,
+    "ast_hash": "2b42404940ae3aca293227ab2c6e592b",
+    "semantic_hash": ""
   },
   "app/terminos.tsx": {
     "mtime": 1790217904.8573909,
@@ -192,10 +192,10 @@
     "semantic_hash": "b4acbcf40ca6d4123b19c4e1b18bb3cc"
   },
   "public/sw.js": {
-    "mtime": 1790217904.8670824,
-    "seen": 1790552568.212893,
-    "ast_hash": "f13441a9754f861362c026aa597ee728",
-    "semantic_hash": "f13441a9754f861362c026aa597ee728"
+    "mtime": 1790588193.1618247,
+    "seen": 1790589505.0175555,
+    "ast_hash": "08b6ff64b0a3f6091dad4fe66b18b045",
+    "semantic_hash": ""
   },
   "src/ai/actionCatalog.ts": {
     "mtime": 1790548090.8741658,
@@ -558,10 +558,10 @@
     "semantic_hash": "166a53e657cf1dc482e3de6925464a9a"
   },
   "src/data/investmentMeta.ts": {
-    "mtime": 1790217904.8717573,
-    "seen": 1790552568.21299,
-    "ast_hash": "619ef0c31c9ef1f679384534a9b6d308",
-    "semantic_hash": "619ef0c31c9ef1f679384534a9b6d308"
+    "mtime": 1790588495.173882,
+    "seen": 1790589505.0176516,
+    "ast_hash": "5fc1a2c004382a39a02de1a57d0f4ad0",
+    "semantic_hash": ""
   },
   "src/data/onboardingSurvey.ts": {
     "mtime": 1790217904.8717573,
@@ -576,10 +576,10 @@
     "semantic_hash": "e1deb1bff6ae70cd00c2d5f9945bed66"
   },
   "src/data/types.ts": {
-    "mtime": 1790548090.8762705,
-    "seen": 1790552568.2129943,
-    "ast_hash": "5cf3517e25f6c291564d6f077c88749e",
-    "semantic_hash": "5cf3517e25f6c291564d6f077c88749e"
+    "mtime": 1790588495.173759,
+    "seen": 1790589505.017655,
+    "ast_hash": "93f62d2375dc3f8c5b5d1d089d2c3899",
+    "semantic_hash": ""
   },
   "src/hooks/useBreakpoint.ts": {
     "mtime": 1790217904.8717573,
@@ -726,10 +726,10 @@
     "semantic_hash": "ef3310b99576ce7b1ff0f8b5a578aa78"
   },
   "src/providers/types.ts": {
-    "mtime": 1790548090.8762705,
-    "seen": 1790552568.2130253,
-    "ast_hash": "9395688867636d37960a35de02507ff0",
-    "semantic_hash": "9395688867636d37960a35de02507ff0"
+    "mtime": 1790588200.2622948,
+    "seen": 1790589505.017687,
+    "ast_hash": "b978d572f80d6f9ec5d7e89ccade1910",
+    "semantic_hash": ""
   },
   "src/services/auth/actions.ts": {
     "mtime": 1790217904.8736975,
@@ -762,10 +762,10 @@
     "semantic_hash": "58d7c5c17668a1655a6813550d7ae1e9"
   },
   "src/services/market/marketDataRefresh.ts": {
-    "mtime": 1790217904.874036,
-    "seen": 1790552568.2130325,
-    "ast_hash": "e57877589c08eafe340e56932e8af751",
-    "semantic_hash": "e57877589c08eafe340e56932e8af751"
+    "mtime": 1790588516.194713,
+    "seen": 1790589505.0176952,
+    "ast_hash": "a0df9d7e47a918e800e4dbe7db5507b6",
+    "semantic_hash": ""
   },
   "src/services/market/useMarketDataRefresh.ts": {
     "mtime": 1790217904.8744462,
@@ -786,10 +786,10 @@
     "semantic_hash": "aee9bb21c4adc09a48c9695834d89098"
   },
   "src/services/supabase/mappers.ts": {
-    "mtime": 1790548090.8762705,
-    "seen": 1790552568.213037,
-    "ast_hash": "64ab764949e989b1d20824a6cd58e854",
-    "semantic_hash": "64ab764949e989b1d20824a6cd58e854"
+    "mtime": 1790588556.87791,
+    "seen": 1790589505.0177014,
+    "ast_hash": "1ed138c2c1d39f9e2eb9223eb208e43d",
+    "semantic_hash": ""
   },
   "src/services/supabase/profileRepository.ts": {
     "mtime": 1790548090.8762705,
@@ -1182,21 +1182,21 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/05-bitacora-cambios.md": {
-    "mtime": 1790582102.4532554,
-    "seen": 1790582159.932644,
-    "ast_hash": "589547632781ed638ba2f3f3ca4d5809",
+    "mtime": 1790589415.210267,
+    "seen": 1790589505.0177963,
+    "ast_hash": "39ff5f1b18fb820396f9c723f54320f3",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/06-pendientes.md": {
-    "mtime": 1790582112.3012552,
-    "seen": 1790582159.9326448,
-    "ast_hash": "3dba2d658c50eceee0fddd48cf083057",
+    "mtime": 1790589426.7315536,
+    "seen": 1790589505.0177975,
+    "ast_hash": "ee2baacd42cc68748c06bbe2c3a3d10b",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/README.md": {
-    "mtime": 1790548481.2002802,
-    "seen": 1790552691.1168296,
-    "ast_hash": "789f7cd6c4c89c5ffd29826ce30ca281",
+    "mtime": 1790589433.8887153,
+    "seen": 1790589505.0177994,
+    "ast_hash": "3d2d4bb5f5373ccc0faae77966a7b30e",
     "semantic_hash": ""
   },
   "public/index.html": {
@@ -1206,9 +1206,9 @@
     "semantic_hash": ""
   },
   "supabase/README.md": {
-    "mtime": 1790217904.8757467,
-    "seen": 1790552691.1168323,
-    "ast_hash": "d89f579b9cfd205335428560530ec15f",
+    "mtime": 1790588360.102291,
+    "seen": 1790589505.017802,
+    "ast_hash": "4204b4e8b8841a1b88a0a4141c14e4f9",
     "semantic_hash": ""
   },
   "public/icons/apple-touch-icon.png": {
@@ -1239,6 +1239,120 @@
     "mtime": 1790582068.773256,
     "seen": 1790582159.932638,
     "ast_hash": "7a2a062e1caca6ac1df177d98c749347",
+    "semantic_hash": ""
+  },
+  "app/institucion/[id]/[product].tsx": {
+    "mtime": 1790589313.6946046,
+    "seen": 1790589505.0175278,
+    "ast_hash": "46fd09d2e2f676c0d437062e3a2f38cf",
+    "semantic_hash": ""
+  },
+  "app/institucion/[id]/index.tsx": {
+    "mtime": 1790588915.6022785,
+    "seen": 1790589505.01753,
+    "ast_hash": "57efb90a42c07c16d43698d569afc987",
+    "semantic_hash": ""
+  },
+  "app/notificaciones.tsx": {
+    "mtime": 1790588276.950293,
+    "seen": 1790589505.0175316,
+    "ast_hash": "0c01380809a2f1d8ca980fe43684bd59",
+    "semantic_hash": ""
+  },
+  "src/components/investments/FormBits.tsx": {
+    "mtime": 1790588700.6222832,
+    "seen": 1790589505.0176353,
+    "ast_hash": "f2bcd42d4c0af139857cdc35d6cffe69",
+    "semantic_hash": ""
+  },
+  "src/components/investments/HoldingsTable.tsx": {
+    "mtime": 1790588732.7150424,
+    "seen": 1790589505.0176365,
+    "ast_hash": "ca8a6479ef878436a944edf27218c946",
+    "semantic_hash": ""
+  },
+  "src/components/investments/InstitutionCard.tsx": {
+    "mtime": 1790588710.8822832,
+    "seen": 1790589505.0176377,
+    "ast_hash": "ae28462ad741196542153d31a344b121",
+    "semantic_hash": ""
+  },
+  "src/components/investments/InvestmentForms.tsx": {
+    "mtime": 1790589206.6832948,
+    "seen": 1790589505.017639,
+    "ast_hash": "4255c03c3c5e48290446adc07133def5",
+    "semantic_hash": ""
+  },
+  "src/components/investments/ProductInfo.tsx": {
+    "mtime": 1790588744.8502824,
+    "seen": 1790589505.0176396,
+    "ast_hash": "db813eb9af483d3730ab3df77040fc67",
+    "semantic_hash": ""
+  },
+  "src/data/institutions.ts": {
+    "mtime": 1790588495.173551,
+    "seen": 1790589505.0176501,
+    "ast_hash": "c879b5a0d9f9d63ca18d5ed235fd0279",
+    "semantic_hash": ""
+  },
+  "src/providers/notifications/webPushNotificationProvider.ts": {
+    "mtime": 1790588220.8622942,
+    "seen": 1790589505.0176847,
+    "ast_hash": "0afa34ec43b6a9f96947cba96567e22f",
+    "semantic_hash": ""
+  },
+  "src/services/investments/usePortfolio.ts": {
+    "mtime": 1790588859.3662796,
+    "seen": 1790589505.0176942,
+    "ast_hash": "f3938ffddcce38067cba5d20f546436f",
+    "semantic_hash": ""
+  },
+  "src/services/notifications/notificationSettings.ts": {
+    "mtime": 1790588229.9942942,
+    "seen": 1790589505.0176976,
+    "ast_hash": "67b333c86ec0bc4912369538e4b9ff19",
+    "semantic_hash": ""
+  },
+  "src/store/investmentActions.ts": {
+    "mtime": 1790588770.2302818,
+    "seen": 1790589505.0177183,
+    "ast_hash": "cc96610decdbf34b3c48ac6eba0f3dad",
+    "semantic_hash": ""
+  },
+  "src/utils/investmentModels.ts": {
+    "mtime": 1790588659.455893,
+    "seen": 1790589505.0177455,
+    "ast_hash": "adf800d48a6dbdf72c1d30e186220cae",
+    "semantic_hash": ""
+  },
+  "supabase/functions/_shared/webpush.ts": {
+    "mtime": 1790588337.3780315,
+    "seen": 1790589505.0177488,
+    "ast_hash": "2dc9aed8d529f526b230bffb5bb09900",
+    "semantic_hash": ""
+  },
+  "supabase/functions/push-notify/index.ts": {
+    "mtime": 1790588172.0025108,
+    "seen": 1790589505.017753,
+    "ast_hash": "792790e6596189e6d725d6205e8084df",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/0020_push_notifications.sql": {
+    "mtime": 1790588109.7302969,
+    "seen": 1790589505.0177772,
+    "ast_hash": "1790e5733341b3c5ed15b57975f4c2d7",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/0021_investment_institutions.sql": {
+    "mtime": 1790588536.534287,
+    "seen": 1790589505.0177782,
+    "ast_hash": "a87fef998a21555e2b0756b0d58171b8",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/07-instituciones-inversion.md": {
+    "mtime": 1790589408.394267,
+    "seen": 1790589505.0177984,
+    "ast_hash": "7909025c10b404f39cbdd753de38175c",
     "semantic_hash": ""
   }
 }
