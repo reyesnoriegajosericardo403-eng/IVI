@@ -846,10 +846,10 @@
     "semantic_hash": "a2250edd173c88eafb7442e36f60f6b9"
   },
   "src/store/useAppStore.ts": {
-    "mtime": 1790581990.261258,
-    "seen": 1790582159.932578,
-    "ast_hash": "492e16f97ba3990f17a6d7baa89ae5f4",
-    "semantic_hash": ""
+    "mtime": 1790548090.8762705,
+    "seen": 1790552568.2130482,
+    "ast_hash": "37029c32adfb7b1b465e599965cd2d02",
+    "semantic_hash": "37029c32adfb7b1b465e599965cd2d02"
   },
   "src/theme/ThemeProvider.tsx": {
     "mtime": 1790548090.8762705,
@@ -1152,9 +1152,9 @@
     "semantic_hash": ""
   },
   "docs/01_project_blueprint_fase1.md": {
-    "mtime": 1790582089.3132558,
-    "seen": 1790582159.932635,
-    "ast_hash": "a8ade46dd17c924e84fc3cbbed1800ce",
+    "mtime": 1790548340.7602766,
+    "seen": 1790552691.1168215,
+    "ast_hash": "005ea40debf3d6c93d05b22eadfafc80",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/01-arquitectura.md": {
@@ -1182,15 +1182,15 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/05-bitacora-cambios.md": {
-    "mtime": 1790582102.4532554,
-    "seen": 1790582159.932644,
-    "ast_hash": "589547632781ed638ba2f3f3ca4d5809",
+    "mtime": 1790548456.7922795,
+    "seen": 1790552691.1168272,
+    "ast_hash": "bb20c5b24bf15d3decb8ab411458a985",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/06-pendientes.md": {
-    "mtime": 1790582112.3012552,
-    "seen": 1790582159.9326448,
-    "ast_hash": "3dba2d658c50eceee0fddd48cf083057",
+    "mtime": 1790548409.9802783,
+    "seen": 1790552691.1168284,
+    "ast_hash": "2cf6232e0cd9d4ae3b9160492c355501",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/README.md": {
@@ -1233,12 +1233,6 @@
     "mtime": 1790581877.0252604,
     "seen": 1790581891.9650304,
     "ast_hash": "09fa6775c408c46888b48849155d8094",
-    "semantic_hash": ""
-  },
-  "docs/03_fase2_contratos_v1.md": {
-    "mtime": 1790582068.773256,
-    "seen": 1790582159.932638,
-    "ast_hash": "7a2a062e1caca6ac1df177d98c749347",
     "semantic_hash": ""
   }
 }
