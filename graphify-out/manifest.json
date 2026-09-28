@@ -1120,5 +1120,113 @@
     "seen": 1790552583.837253,
     "ast_hash": "b9915d19f23c2414b5c1c1c06e83a0c4",
     "semantic_hash": "b9915d19f23c2414b5c1c1c06e83a0c4"
+  },
+  "AGENTS.md": {
+    "mtime": 1790217904.8555365,
+    "seen": 1790552691.116815,
+    "ast_hash": "963888ec05f17b13375386f058dd621e",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1790552551.5149953,
+    "seen": 1790552691.1168172,
+    "ast_hash": "03e3d38ba74cf8886d3d8fc322d9da8a",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1790217904.8555365,
+    "seen": 1790552691.1168184,
+    "ast_hash": "80a5070c38f147a4a32233aa1d4a77b4",
+    "semantic_hash": ""
+  },
+  "diagnostico-organizacional/README.md": {
+    "mtime": 1790217904.860452,
+    "seen": 1790552691.1168194,
+    "ast_hash": "893c9dd91298d41b6d669467e88c62d8",
+    "semantic_hash": ""
+  },
+  "diagnostico-organizacional/index.html": {
+    "mtime": 1790217904.8633564,
+    "seen": 1790552691.1168206,
+    "ast_hash": "0356c92858878446d9556e77dd5b294c",
+    "semantic_hash": ""
+  },
+  "docs/01_project_blueprint_fase1.md": {
+    "mtime": 1790548340.7602766,
+    "seen": 1790552691.1168215,
+    "ast_hash": "005ea40debf3d6c93d05b22eadfafc80",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/01-arquitectura.md": {
+    "mtime": 1790548476.14828,
+    "seen": 1790552691.1168225,
+    "ast_hash": "9ded7202d6f09e1b0cee3c0529bba384",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/02-catalogo-categorias.md": {
+    "mtime": 1790548424.4562788,
+    "seen": 1790552691.1168234,
+    "ast_hash": "278f93110e27521a7f1969ec49adf25e",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/03-motor-clasificacion.md": {
+    "mtime": 1790217904.8643372,
+    "seen": 1790552691.1168249,
+    "ast_hash": "c6bc3f07646f41919ba8e37f305af9d7",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/04-migraciones-supabase.md": {
+    "mtime": 1790548367.6282773,
+    "seen": 1790552691.1168258,
+    "ast_hash": "ce9579e550902279e9c63722a6fab711",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/05-bitacora-cambios.md": {
+    "mtime": 1790548456.7922795,
+    "seen": 1790552691.1168272,
+    "ast_hash": "bb20c5b24bf15d3decb8ab411458a985",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/06-pendientes.md": {
+    "mtime": 1790548409.9802783,
+    "seen": 1790552691.1168284,
+    "ast_hash": "2cf6232e0cd9d4ae3b9160492c355501",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/README.md": {
+    "mtime": 1790548481.2002802,
+    "seen": 1790552691.1168296,
+    "ast_hash": "789f7cd6c4c89c5ffd29826ce30ca281",
+    "semantic_hash": ""
+  },
+  "public/index.html": {
+    "mtime": 1790217904.8670824,
+    "seen": 1790552691.116831,
+    "ast_hash": "2ef423c2f95742b9c7e6a4e42a379402",
+    "semantic_hash": ""
+  },
+  "supabase/README.md": {
+    "mtime": 1790217904.8757467,
+    "seen": 1790552691.1168323,
+    "ast_hash": "d89f579b9cfd205335428560530ec15f",
+    "semantic_hash": ""
+  },
+  "public/icons/apple-touch-icon.png": {
+    "mtime": 1790217904.8669899,
+    "seen": 1790552691.1168334,
+    "ast_hash": "81a37b8765e16ba1b214be6512a1b110",
+    "semantic_hash": ""
+  },
+  "public/icons/icon-192.png": {
+    "mtime": 1790217904.8670824,
+    "seen": 1790552691.116835,
+    "ast_hash": "2932d6f5e74a491dfd5779d2f72ca97a",
+    "semantic_hash": ""
+  },
+  "public/icons/icon-512.png": {
+    "mtime": 1790217904.8670824,
+    "seen": 1790552691.116836,
+    "ast_hash": "6495d6d7112e8cc1dd52a618c5cd3c7c",
+    "semantic_hash": ""
   }
 }
