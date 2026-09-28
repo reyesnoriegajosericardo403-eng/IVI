@@ -8,6 +8,32 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-09-28 — Arranque formal de Fase 2: auditoría de 65 operaciones + contratos v1
+
+Se recibió un plan revisado de Fase 2 (JSON de instrucciones + xlsx `Inventario_65`, elaborado por
+una sesión externa que explícitamente no había revisado el repositorio) con una regla de evidencia
+clara: auditar antes de afirmar. Se ejecutó la Semana 1-2 (P0) completa:
+
+- **`docs/02_fase2_auditoria_operaciones.md`**: las 65 operaciones candidatas verificadas una por
+  una contra el código real (store, pantallas, migraciones), no contra el inventario recibido.
+  Resultado: 16 ya en el catálogo de chat, 24 implementadas en UI/datos pero sin exponer al chat
+  (el trabajo de mayor retorno de P2 — más que duplica la cobertura del chat sin tocar el esquema),
+  17 sin implementar del todo, 8 necesitan tabla/columna nueva. Documenta también divergencias
+  reales encontradas (código muerto en `unassignPeriod`/`removeBudgetAssignment`, el bug conceptual
+  de "Liquidez" sintética en vez de cuentas reales para compra/venta de inversiones, el ajuste de
+  saldo de cuenta que sobrescribe en vez de generar un asiento).
+- **`docs/03_fase2_contratos_v1.md`**: contratos versionados para interpretación con aclaraciones,
+  plan multi-operación (`ActionPlan`), cálculo de efectos agregados, confirmación e idempotencia, y
+  separación previsto/real (para P3). Formaliza que el principio "ningún canal externo escribe
+  directo a la base de datos" ya se cumple hoy para el chat, con evidencia línea por línea.
+- **Primer guardia de idempotencia real implementado**: `aiApplyAction` (`useAppStore.ts`) ahora
+  rechaza cualquier propuesta cuyo `status` no sea `'proposed'` antes de tocar el store — cierra un
+  hueco real (sin ninguna protección a nivel de ejecutor, solo a nivel de UI) sin cambiar ningún
+  comportamiento del camino feliz. Verificado con `npx tsc --noEmit` limpio.
+- **Decisión de arquitectura fijada por escrito** (ya no es una decisión abierta): pgvector sobre
+  Supabase, relaciones de Postgres + Graphify en vez de Neo4j, compartición de correcciones opt-in
+  en vez de federated learning completo (pospuesto a una Fase 3 futura).
+
 ## 2026-09-27 — Transferencias entre cuentas + endurecimiento de sync + limpieza de estilos
 
 - **Motor local: transferencias entre cuentas propias** (cierra la tarea

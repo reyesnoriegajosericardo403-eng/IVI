@@ -914,6 +914,13 @@ export const useAppStore = create<AppState>()(
           }));
         },
         aiApplyAction: (action) => {
+          // Contrato de idempotencia (docs/03_fase2_contratos_v1.md, §5): esta es
+          // la única puerta de escritura real para acciones de IA — debe negarse
+          // a aplicar una propuesta que ya no está en 'proposed', sin importar
+          // cuántas veces o desde dónde se le llame con el mismo objeto.
+          if (action.status !== 'proposed') {
+            return { ok: false, error: 'Esta acción ya fue procesada.' };
+          }
           const state = get();
           switch (action.type) {
             case 'add_transaction': {

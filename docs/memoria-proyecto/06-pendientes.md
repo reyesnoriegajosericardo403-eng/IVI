@@ -2,6 +2,25 @@
 
 Ver también: [[README|Índice]]
 
+## Abierto (2026-09-28) — Hallazgos concretos de la auditoría de las 65 operaciones de Fase 2
+
+Ver detalle completo y evidencia en [[../02_fase2_auditoria_operaciones|docs/02_fase2_auditoria_operaciones.md]].
+Tres hallazgos que valen una decisión de producto antes de tocarlos en P2/P3:
+
+- **Ajuste de saldo de cuenta sobrescribe en vez de generar un asiento** (operación #15): el flujo
+  desde Patrimonio pone `balance` directo y solo dispara `logAudit`, nunca una transacción — el
+  único camino con asiento trazable real hoy es un `add_transaction` genérico. Contradice la propia
+  precondición del inventario ("no sobrescribir saldo"). Decidir si se corrige en P2 o se documenta
+  como comportamiento intencional.
+- **Compra/venta de inversiones no toca cuentas reales**: el dinero sale/entra de una posición
+  sintética "Liquidez" dentro de `investments`, nunca de una `Account` del usuario. Es una decisión
+  de diseño previa, no un bug de esta auditoría — pero como el inventario asume "cuenta origen/
+  destino" reales, hay que decidir explícitamente si se corrige en P3 o se deja así.
+- **Código muerto real encontrado**: `unassignPeriod` y `removeBudgetAssignment`
+  (`useAppStore.ts`) están escritas pero ninguna pantalla las invoca. Igual, no existe función para
+  restaurar una cuenta archivada (`deletedAt` sin `restore`). Candidatos a cerrar en P2 al conectar
+  presupuestos/cuentas al catálogo de chat, o a borrar si de plano no se van a usar.
+
 ## Resuelto (2026-09-27) — Motor de intenciones financieras por voz/chat (transferencias, deudas, metas)
 
 Un segundo JSON del usuario (catálogo v9, 2026-09-02) pedía que el

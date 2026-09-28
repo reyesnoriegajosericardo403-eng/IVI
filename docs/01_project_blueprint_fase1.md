@@ -667,6 +667,27 @@ dejarlo limitado a un solo movimiento/ajuste de saldo. La infraestructura
 de validación/seguridad ya existe y es la misma — es trabajo de
 integración, no de diseño nuevo.
 
+### 5.3bis Fase 2 ya arrancó formalmente (28 sep 2026) — reemplaza el "Paso 2" de arriba
+
+El "Paso 2" de la sección anterior (elegir entre Roadmap A/B) ya no describe la realidad: se recibió
+un plan revisado con instrucciones ejecutables (JSON de arquitecto senior + xlsx `Inventario_65` con
+65 operaciones candidatas, 18 semanas en 6 fases P0-P5) y arrancó el trabajo real:
+
+- **`docs/02_fase2_auditoria_operaciones.md`** — las 65 operaciones candidatas auditadas una por una
+  contra el código real (no contra el inventario recibido, que se armó sin ver el repo): 16 en chat,
+  24 en UI/datos sin exponer al chat, 17 sin implementar, 8 necesitan esquema nuevo.
+- **`docs/03_fase2_contratos_v1.md`** — contratos versionados para plan multi-operación, datos
+  faltantes, confirmación, idempotencia (con un primer guardia real ya en `aiApplyAction`,
+  `useAppStore.ts`) y separación previsto/real.
+- **Decisión de arquitectura ya tomada** (documentada en `docs/03`, no queda abierta como antes):
+  pgvector sobre Supabase en vez de Weaviate, relaciones de Postgres + Graphify (grafo de
+  conocimiento del propio código, `graphify-out/`) en vez de Neo4j, y una futura compartición de
+  correcciones opt-in en vez de federated learning completo — federated learning real queda
+  pospuesto a una Fase 3 explícita, condicionada a una base de usuarios activa real.
+- Progreso por fase: **P0 (semanas 1-2) cerrado** con estos dos documentos. P1-P5 (golden set,
+  planificador multi-acción, nuevas entidades de datos, ayuda contextual, beta en hardware real) sin
+  empezar todavía — el cronograma completo vive en el xlsx recibido, sheet `Cronograma`.
+
 ### 5.3 Otros dos hilos abiertos, fuera del roadmap original
 
 Dos piezas de trabajo real ocurrieron entre el corte original de este
