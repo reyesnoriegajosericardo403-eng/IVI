@@ -2,17 +2,24 @@
 
 Ver también: [[README|Índice]]
 
-## Pendiente de despliegue (2026-09-28) — notificaciones push e Inversiones por institución
+## Pendiente de despliegue (2026-10-02) — notificaciones push e Inversiones por institución
 
-El código ya está en la rama, pero necesita 4 pasos en Supabase que no se pueden hacer desde la
-sesión de Claude (no hay credenciales del proyecto): (1) correr las migraciones `0020` y `0021` en
-el SQL Editor; (2) poner los secretos `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` y
-`CRON_SECRET` en Edge Functions → Secrets; (3) `npx supabase functions deploy push-notify
---no-verify-jwt`; (4) programar el cron horario (SQL en `supabase/README.md`). Hasta el paso 1, lo
-nuevo de Inversiones funciona local pero no sincroniza las posiciones nuevas; hasta el 4, los avisos
-de prueba funcionan pero los recordatorios automáticos no salen. **Falta probar en un iPhone y un
-Android reales** — el cifrado, el service worker y el cron se probaron con herramientas
-(implementación de referencia, Chrome DevTools, base de datos simulada), no en hardware.
+El código ya está en la rama. Necesita 4 pasos en Supabase (ver progreso abajo):
+
+### Estado del despliegue de notificaciones push
+
+| Paso | Descripción | Estado | Nota |
+|---|---|---|---|
+| 1️⃣ | Ejecutar migraciones 0020 + 0021 en SQL Editor | ✅ Hecho | Crea 3 tablas nuevas para push; agrega columnas a inversiones |
+| 2️⃣ | Pegar 4 secretos en Edge Functions → Secrets | ✅ Hecho | VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, CRON_SECRET |
+| 3️⃣ | Deploy: `npx supabase functions deploy push-notify --no-verify-jwt` | ⏳ Pendiente | Requiere terminal + Node.js (no disponible en iPad; esperar Mac) |
+| 4️⃣ | Programar cron horario en SQL Editor | ⏳ Pendiente | SQL de `supabase/README.md` (se puede hacer desde web/iPad) |
+
+**Funcionalidad actual:**
+- Hasta paso 1: inversiones nuevas no sincronizan, avisos de prueba no salen
+- Hasta paso 4: recordatorios automáticos no se disparan
+
+**Todavía falta:** probar en iPhone y Android reales (cifrado RFC 8291, service worker y cron probados con herramientas, no en hardware).
 
 La auditoría (docs/02) cambia así: #54/#55 ya mueven el efectivo por producto (sigue sin ser una
 `Account` del usuario, es "efectivo disponible" dentro de la institución, como en las apps de
