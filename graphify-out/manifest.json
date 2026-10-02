@@ -1128,9 +1128,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1790552551.5149953,
-    "seen": 1790552691.1168172,
-    "ast_hash": "03e3d38ba74cf8886d3d8fc322d9da8a",
+    "mtime": 1790978783.010311,
+    "seen": 1790978797.1442084,
+    "ast_hash": "60edd6bdb2de5a0802f64b642e21a2ba",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1182,15 +1182,15 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/05-bitacora-cambios.md": {
-    "mtime": 1790589415.210267,
-    "seen": 1790589505.0177963,
-    "ast_hash": "39ff5f1b18fb820396f9c723f54320f3",
+    "mtime": 1790978788.9783108,
+    "seen": 1790978797.144231,
+    "ast_hash": "166c2de3ddc30416e3246c10f35ffb02",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/06-pendientes.md": {
-    "mtime": 1790975683.6443872,
-    "seen": 1790975695.1692297,
-    "ast_hash": "440c8602275b8915a381ea53492f8fc6",
+    "mtime": 1790978450.8744528,
+    "seen": 1790978797.1442332,
+    "ast_hash": "f080f564bd7d11a7447378336b9196b6",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/README.md": {
@@ -1353,6 +1353,18 @@
     "mtime": 1790589408.394267,
     "seen": 1790589505.0177984,
     "ast_hash": "7909025c10b404f39cbdd753de38175c",
+    "semantic_hash": ""
+  },
+  "scripts/graphify-explorer/build.py": {
+    "mtime": 1790978463.0731018,
+    "seen": 1790978797.143732,
+    "ast_hash": "ee3c4b8381da140e4bfc8b8af48cd4e0",
+    "semantic_hash": ""
+  },
+  "scripts/graphify-explorer/template.html": {
+    "mtime": 1790978762.3105025,
+    "seen": 1790978797.1442404,
+    "ast_hash": "e41d3a86dfbf51d6c616cdd753b6462b",
     "semantic_hash": ""
   }
 }

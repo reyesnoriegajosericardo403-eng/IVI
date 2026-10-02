@@ -8,6 +8,23 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-02 — Despliegue de push en Supabase (avance) + explorador ordenado del grafo
+
+- **Supabase (hecho desde el iPad, sin terminal)**: migraciones `0020` y `0021` corridas, los 4
+  secretos de Edge Functions puestos y el cron `valu-push-hourly` programado. **Falta solo
+  desplegar la función `push-notify`** (necesita terminal/Mac): hasta entonces «Activar avisos» no
+  funciona y el cron le pega a una función que aún no existe. Detalle y demás pendientes en
+  [[06-pendientes]] (ahora es una checklist con etiquetas `requiere: Mac/iPhone/Android/…`).
+- **Explorador del grafo** (`graphify-out/explorer.html`, se genera con
+  `python3 scripts/graphify-explorer/build.py` después de `graphify update .`): reemplaza la «maraña»
+  de `graph.html` por un mapa en capas (pantallas → piezas visuales → lógica → datos → backend → web →
+  documentación). Búsqueda con palabras normales en español (con glosario español↔inglés: «avisos»
+  encuentra `push-notify`), y al elegir algo el mapa pasa a un diagrama **lo usan → elegido → usa a**
+  con cables ordenados y, a la derecha, un **resumen en texto** (qué es, qué contiene, de qué depende,
+  quién lo usa, qué documentos lo mencionan, qué pendientes tiene) con botón «Copiar» para pegarlo en
+  otro chat. Pestaña «Pendientes» leída de [[06-pendientes]]. `graph.html` de graphify se sigue
+  regenerando solo; el explorador es complementario.
+
 ## 2026-09-28 (tarde) — Notificaciones push reales + Inversiones por institución
 
 - **Notificaciones al celular (Web Push)**: migración `0020_push_notifications.sql`, función

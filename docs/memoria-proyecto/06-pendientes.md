@@ -2,24 +2,48 @@
 
 Ver también: [[README|Índice]]
 
-## Pendiente de despliegue (2026-10-02) — notificaciones push e Inversiones por institución
+## Checklist de pendientes (2026-10-02)
 
-El código ya está en la rama. Necesita 4 pasos en Supabase (ver progreso abajo):
+Esta lista la lee el **explorador del grafo** (`graphify-out/explorer.html`, pestaña «Pendientes») y
+cada punto se liga a sus archivos en el mapa. Formato de cada línea:
+`- [ ] **Título** — detalle · requiere: Mac, iPhone · archivos: ruta1, ruta2` (`[x]` = hecho). Al
+cerrar un pendiente solo hay que cambiar `[ ]` por `[x]` y regenerar el mapa
+(`python3 scripts/graphify-explorer/build.py`). Etiquetas de `requiere` usadas: **Mac**, **iPhone**,
+**Android**, **Supabase web** (se hace desde el navegador/iPad), **Tu decisión**, **Claude**.
 
-### Estado del despliegue de notificaciones push
+### Notificaciones push — despliegue en Supabase
 
-| Paso | Descripción | Estado | Nota |
-|---|---|---|---|
-| 1️⃣ | Ejecutar migraciones 0020 + 0021 en SQL Editor | ✅ Hecho | Crea 3 tablas nuevas para push; agrega columnas a inversiones |
-| 2️⃣ | Pegar 4 secretos en Edge Functions → Secrets | ✅ Hecho | VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, CRON_SECRET |
-| 3️⃣ | Deploy: `npx supabase functions deploy push-notify --no-verify-jwt` | ⏳ Pendiente | Requiere terminal + Node.js (no disponible en iPad; esperar Mac) |
-| 4️⃣ | Programar cron horario en SQL Editor | ⏳ Pendiente | SQL de `supabase/README.md` (se puede hacer desde web/iPad) |
+- [x] **Migraciones 0020 y 0021 corridas** — SQL Editor, hecho el 2026-10-02. Crea `push_subscriptions`, `notification_settings`, `notification_log` y agrega `product`, `annual_rate`, `term_days`, `maturity_date` a `investments` (además de corregir el check de `asset_class`). · requiere: Supabase web · archivos: supabase/migrations/0020_push_notifications.sql, supabase/migrations/0021_investment_institutions.sql
+- [x] **Secretos de Edge Functions puestos** — `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` y `CRON_SECRET` (2026-10-02). Si algún día se cambian las llaves VAPID, cada teléfono tiene que volver a activar los avisos. · requiere: Supabase web · archivos: supabase/functions/push-notify/index.ts, supabase/functions/_shared/webpush.ts
+- [x] **Cron horario programado** — `valu-push-hourly` (minuto 5 de cada hora), `select cron.schedule` devolvió `1` el 2026-10-02. El `CRON_SECRET` quedó escrito dentro del cron: si se rota el secreto hay que `cron.unschedule('valu-push-hourly')` y programarlo de nuevo. · requiere: Supabase web · archivos: supabase/README.md
+- [ ] **Desplegar la función push-notify** — correr `npx supabase functions deploy push-notify --no-verify-jwt` (antes `npx supabase login` y `npx supabase link --project-ref utgwmwlqepevyzgoaato`). Mientras no se haga: el botón «Activar avisos» de la app no funciona (la app le pide la llave pública a esta función) y el cron de cada hora le pega a una función que aún no existe, así que no se envía nada. · requiere: Mac · archivos: supabase/functions/push-notify/index.ts, supabase/functions/_shared/webpush.ts
+- [ ] **Alternativa para desplegar sin Mac (por evaluar)** — un workflow manual de GitHub Actions que corra el mismo `supabase functions deploy` usando un token de acceso de Supabase guardado como secreto del repositorio; así se podría desplegar desde el iPad. No está construido: hay que decidir si se quiere y crear el token. · requiere: Tu decisión · archivos: supabase/README.md
+- [ ] **Confirmar si `ai-relay` ya está desplegada** — sin ella la IA propia (Claude/ChatGPT/Gemini/Grok) en la versión web cae al copiloto local; en iPhone/iPad nativo no hace falta. Se despliega con `npx supabase functions deploy ai-relay`. · requiere: Mac · archivos: supabase/functions/ai-relay/index.ts
+- [ ] **Probar los avisos en un iPhone real** — iOS 16.4 o superior, VALU agregada a la pantalla de inicio; Ajustes → Notificaciones → Activar → «Enviar prueba». Cifrado, service worker y cron solo se probaron con herramientas, no en hardware. Depende de desplegar push-notify. · requiere: iPhone · archivos: app/notificaciones.tsx, public/sw.js, src/services/notifications/
+- [ ] **Probar los avisos en un Android real** — Chrome, mismo flujo que en iPhone. Depende de desplegar push-notify. · requiere: Android · archivos: app/notificaciones.tsx, public/sw.js
+- [ ] **Probar instalación y micrófono en Android real** — el service worker de «red primero» para el manifest y el permiso explícito del micrófono se verificaron solo en Chromium de escritorio. Si falla, anotar el mensaje exacto. · requiere: Android · archivos: public/sw.js, src/ai/
 
-**Funcionalidad actual:**
-- Hasta paso 1: inversiones nuevas no sincronizan, avisos de prueba no salen
-- Hasta paso 4: recordatorios automáticos no se disparan
+### Inversiones por institución
 
-**Todavía falta:** probar en iPhone y Android reales (cifrado RFC 8291, service worker y cron probados con herramientas, no en hardware).
+- [ ] **Confirmar datos del catálogo en las fuentes oficiales** — comisiones de Kuspit, tope de Mercado Pago, niveles de Bitso y mínimo por operación de GBM (la investigación solo pudo leer extractos de búsqueda). Las tasas de ahorro cambian cada pocas semanas: revisar `asOf` de cada producto. · requiere: Claude · archivos: src/data/institutions.ts, docs/memoria-proyecto/07-instituciones-inversion.md
+- [ ] **Decidir si la Liquidez se vuelve una cuenta real** — hoy comprar/vender mueve el «efectivo disponible» del producto, no una `Account` del usuario (auditoría #54/#55). · requiere: Tu decisión · archivos: src/store/investmentActions.ts, src/utils/investmentModels.ts
+
+### Decisiones y deuda de producto abiertas
+
+- [ ] **Ajuste de saldo de cuenta: ¿asiento o sobrescribir?** — hoy desde Patrimonio se pone `balance` directo y solo se audita (operación #15 de la auditoría). Decidir si se corrige en P2. · requiere: Tu decisión · archivos: src/store/useAppStore.ts
+- [ ] **Código muerto detectado** — `unassignPeriod` y `removeBudgetAssignment` no las llama ninguna pantalla; tampoco existe «restaurar cuenta archivada». Conectarlas o borrarlas. · requiere: Tu decisión · archivos: src/store/useAppStore.ts
+- [ ] **Conectar la captura rápida al catálogo de acciones** — `capture.tsx` / `localParser.ts` solo entienden un movimiento; transferencias, deudas y metas viven en el chat de IA (`actionCatalog.ts`). · requiere: Claude · archivos: app/capture.tsx, src/ai/localParser.ts, src/ai/actionCatalog.ts
+- [ ] **Sincronizar la memoria de correcciones (mapeo personal)** — vive solo en el dispositivo; no viaja a otro teléfono ni sobrevive a reinstalar. Requiere tabla + repositorio + motor de sync. · requiere: Claude · archivos: src/services/sync/
+- [ ] **Columnas en Supabase para `dayOfMonth`, `dayOfWeek` y `oneTimeDate` del presupuesto** — hoy solo se guardan local. · requiere: Claude, Supabase web · archivos: src/services/sync/, supabase/migrations/
+- [ ] **Pérdida de datos al forzar el cierre en iOS (mitigado, no resuelto)** — las 3 defensas reducen la carrera pero ninguna solución solo-JS la cierra al 100%. Si sigue pasando, considerar app nativa. · requiere: iPhone · archivos: src/services/sync/
+
+### Hoja de ruta de Fase 2
+
+- [ ] **P1 · Golden set de 1,000 casos de prueba + ampliar 858→3,003 claves** — siguiente fase planeada (semana 3). · requiere: Claude · archivos: src/ai/localParser.ts
+- [ ] **P2 · Planificador multi-acción + ejecutor seguro con confirmación e idempotencia** — contratos en `docs/03_fase2_contratos_v1.md`. · requiere: Claude · archivos: src/ai/actionCatalog.ts, src/store/useAppStore.ts
+- [ ] **P3 · Nuevas entidades (previsto, rangos, recurrencia, recordatorios personalizados)** — cubre #58 parcial y #59-#65 de la auditoría. · requiere: Claude
+- [ ] **P4 · Ayuda contextual + auditoría de privacidad** · requiere: Claude
+- [ ] **P5 · Beta en hardware real y decisión de tiendas** · requiere: iPhone, Android
 
 La auditoría (docs/02) cambia así: #54/#55 ya mueven el efectivo por producto (sigue sin ser una
 `Account` del usuario, es "efectivo disponible" dentro de la institución, como en las apps de

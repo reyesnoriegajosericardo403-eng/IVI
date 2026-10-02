@@ -1,60 +1,60 @@
 # Graph Report - IVI  (2026-10-02)
 
 ## Corpus Check
-- 221 files · ~171,593 words
+- 222 files · ~176,525 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 6 file(s) not represented in the graph (top: (none) 4, .example 1, .css 1)
 
 ## Summary
-- 1634 nodes · 5093 edges · 109 communities (76 shown, 33 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 128 edges (avg confidence: 0.91)
+- 1652 nodes · 5114 edges · 109 communities (76 shown, 33 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 129 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0281a26e`
+- Built from commit: `5d9cbad0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - localParser.ts
-- ChatActionCard.tsx
+- HoldToConfirmButton.tsx
 - onboarding.tsx
 - providers/types.ts
-- ConceptBudgetForm.tsx
+- investmentModels.ts
 - repositories.ts
-- settings.tsx
+- useAppStore
 - (tabs)/index.tsx
-- movimientos.tsx
-- SyncEngine.ts
-- react-native
+- capture.tsx
+- app/_layout.tsx
+- appearance.tsx
 - app.js
 - dependencies
 - push-notify/index.ts
-- NetWorthTrendChart.tsx
+- inversiones.tsx
 - expo
 - actionCatalog.ts
 - useAppStore.ts
 - package.json
 - finance.ts
-- patrimonio.tsx
-- perfil.tsx
-- GlassCard
-- ai-settings.tsx
-- @expo/vector-icons
+- react-native
+- BudgetTemplateList.tsx
+- useTheme
+- investmentActions.ts
+- [id]/index.tsx
 - data/types.ts
 - 0014_budget_templates.sql
 - VALU Finance AI
-- useTheme
-- capture.tsx
+- MonthBudgetBreakdown.tsx
+- expo-router
 - 0001_core_profiles_accounts_transactions.sql
 - [product].tsx
-- ChatComposer.tsx
-- appearance.tsx
+- usePressToTalk.ts
+- ThemeProvider.tsx
 - Selector Interactivo de Técnicas de Diagnóstico Organizacional
 - market-data/index.ts
 - ledger.ts
 - CLAUDE.md
-- Fase 2 — Auditoría real de las 65 operaciones candidatas (P0, Semana 1)
+- Transaction
 - manifest.json
 - 0005_audit_log.sql
 - Bitácora de cambios
@@ -67,10 +67,10 @@
 - scripts
 - 0004_net_worth_snapshots.sql
 - diagnostico-organizacional/vercel.json
-- ia.tsx
+- @expo/vector-icons
 - public.survey_responses
 - 0015_ui_themes.sql
-- 3. Deuda Técnica y Parches
+- 1. Estado Actual y Componentes Activos (The Core)
 - budget_assignments_range_idx
 - sw.js
 - delete-account/index.ts
@@ -89,24 +89,24 @@
 - public.profiles
 - public.profiles
 - NotificationProvider
-- staticExchangeRateProvider.ts
-- useAppStore
+- build.py
+- chatIntentParser.ts
 - Fase 2 P0-S2 — Contratos versionados del motor local
 - @react-native-async-storage/async-storage
-- ThemeProvider.tsx
+- accounts.ts
 - ChatSidebar.tsx
 - surveyRepository.ts
 - Migraciones de Supabase
 - Instituciones de inversión y modelos de cálculo
-- financialInsights.ts
-- client.ts
 - presupuesto.tsx
+- client.ts
+- Presupuesto
 - notificaciones.tsx
 - Memoria del proyecto VALU Finance AI
-- 1. Estado Actual y Componentes Activos (The Core)
-- ResolvedAction
+- AiOrb.tsx
+- CategoryIcon.tsx
 - Pendientes y decisiones abiertas
-- webSpeech.ts
+- BudgetTemplate
 - 0020_push_notifications.sql
 - devDependencies
 - AGENTS.md
@@ -129,13 +129,13 @@
 ## Surprising Connections (you probably didn't know these)
 - `4.3 Seguridad del sistema de escritura por IA (resumen operativo)` --references--> `HoldToConfirmButton()`  [INFERRED]
   docs/01_project_blueprint_fase1.md → src/components/HoldToConfirmButton.tsx
-- `5. Contrato de confirmación y ejecución idempotente` --references--> `HoldToConfirmButton()`  [INFERRED]
-  docs/03_fase2_contratos_v1.md → src/components/HoldToConfirmButton.tsx
 - `3.3 Código temporal / soluciones rápidas pendientes de refactor` --references--> `SyncMeta`  [INFERRED]
   docs/01_project_blueprint_fase1.md → src/data/types.ts
-- `Presupuestos (16 operaciones)` --references--> `Transaction`  [INFERRED]
-  docs/02_fase2_auditoria_operaciones.md → src/data/types.ts
 - `Abierto (2026-09-28) — Hallazgos concretos de la auditoría de las 65 operaciones de Fase 2` --references--> `Account`  [INFERRED]
+  docs/memoria-proyecto/06-pendientes.md → src/data/types.ts
+- `Hoja de ruta de Fase 2` --references--> `Account`  [INFERRED]
+  docs/memoria-proyecto/06-pendientes.md → src/data/types.ts
+- `Inversiones por institución` --references--> `Account`  [INFERRED]
   docs/memoria-proyecto/06-pendientes.md → src/data/types.ts
 
 ## Import Cycles
@@ -145,47 +145,47 @@
 
 ### Community 0 - "localParser.ts"
 Cohesion: 0.07
-Nodes (48): 1.5 Mecánica de interacción del usuario — dos vías de entrada SEPARADAS, Movimientos (11 operaciones), Coincidencia por límite de palabra (bug corregido 2026-09-02), Corrección difusa (typos de dictado/tecleo), Desambiguación de "gas", Extracción del monto (`extractAmount`), Memoria de correcciones (mapeo personal), Motor de clasificación (registro por voz/texto) (+40 more)
+Nodes (40): Coincidencia por límite de palabra (bug corregido 2026-09-02), Corrección difusa (typos de dictado/tecleo), Desambiguación de "gas", Extracción del monto (`extractAmount`), Memoria de correcciones (mapeo personal), Motor de clasificación (registro por voz/texto), Pipeline (orden en que se resuelve una frase), Qué se evaluó y NO se implementó (y por qué) (+32 more)
 
-### Community 1 - "ChatActionCard.tsx"
-Cohesion: 0.21
-Nodes (11): 2.1 Rediseños completos por rechazo explícito del usuario, Chat de IA con acciones + Apariencia (Vidrio líquido, fondo de foto), Chat de IA con acciones sobre datos + rediseño visual, ChatActionCard(), styles, AnimatedCircle, HoldState, HoldToConfirmButton() (+3 more)
+### Community 1 - "HoldToConfirmButton.tsx"
+Cohesion: 0.15
+Nodes (13): 2.1 Rediseños completos por rechazo explícito del usuario, 2.2 Decisiones de arquitectura evaluadas y rechazadas (ADRs negativos), 2.3 Trabajo pausado deliberadamente (no fallido — diferido con razón documentada), 2. El Cementerio de Ideas y Decisiones (Lessons Learned & ADRs), 5. Contrato de confirmación y ejecución idempotente, Chat de IA con acciones + Apariencia (Vidrio líquido, fondo de foto), Chat de IA con acciones sobre datos + rediseño visual, AnimatedCircle (+5 more)
 
 ### Community 2 - "onboarding.tsx"
-Cohesion: 0.08
-Nodes (50): GROUP_COLOR_KEY, GROUP_ICON, GROUPS, Scope, styles, AGE_OPTIONS, BANK_ACCOUNT_TYPES, CURRENCIES (+42 more)
+Cohesion: 0.06
+Nodes (69): BudgetTemplateEdit(), GROUP_COLOR_KEY, GROUP_ICON, GROUPS, PendingSave, Scope, styles, AGE_OPTIONS (+61 more)
 
 ### Community 3 - "providers/types.ts"
-Cohesion: 0.11
-Nodes (28): 1.4 Capa de proveedores intercambiables (`src/providers/`), 7. Interfaces de adaptadores — cuáles ya existen y cuáles son solo contrato todavía, Capa de proveedores intercambiables (`src/providers/`), answerQuestion(), ParsedCapture, TransactionType, buildActionContextSummary(), buildFinancialContextSummary() (+20 more)
+Cohesion: 0.06
+Nodes (59): AiSettings(), PROVIDERS, Status, styles, 1.4 Capa de proveedores intercambiables (`src/providers/`), 7. Interfaces de adaptadores — cuáles ya existen y cuáles son solo contrato todavía, Capa de proveedores intercambiables (`src/providers/`), answerQuestion() (+51 more)
 
-### Community 4 - "ConceptBudgetForm.tsx"
-Cohesion: 0.18
-Nodes (21): PendingSave, CalendarPicker(), CalendarPickerProps, styles, BudgetFormInitial, ConceptBudgetForm(), styles, DateFieldProps (+13 more)
+### Community 4 - "investmentModels.ts"
+Cohesion: 0.12
+Nodes (30): ALL_INSTITUTIONS, CommissionTier, EQUITY_CLASSES, findInstitution(), findProduct(), FISCAL_MX_2026, Institution, INSTITUTIONS (+22 more)
 
 ### Community 5 - "repositories.ts"
 Cohesion: 0.07
 Nodes (37): Repository, accountFromRow(), accountToRow(), auditLogFromRow(), auditLogToRow(), budgetAssignmentFromRow(), budgetAssignmentToRow(), budgetFromRow() (+29 more)
 
-### Community 6 - "settings.tsx"
-Cohesion: 0.22
-Nodes (12): Privacidad(), styles, CURRENCIES, Settings(), styles, THEME_OPTIONS, getLLMProviderConfig(), signOut() (+4 more)
+### Community 6 - "useAppStore"
+Cohesion: 0.23
+Nodes (13): Privacidad(), styles, CURRENCIES, Settings(), styles, THEME_OPTIONS, signOut(), deleteAccountPermanently() (+5 more)
 
 ### Community 7 - "(tabs)/index.tsx"
-Cohesion: 0.16
-Nodes (27): BudgetTemplateEdit(), Dashboard(), GROUP_LABELS, Scope, styles, budgetConceptsByGroup(), isActive(), selectActiveAccounts() (+19 more)
+Cohesion: 0.05
+Nodes (85): SaludFinanciera(), STATUS_ICON, STATUS_TO_BAR, Dashboard(), GROUP_LABELS, Scope, styles, Draft (+77 more)
 
-### Community 8 - "movimientos.tsx"
-Cohesion: 0.21
-Nodes (18): Capture(), groupByDay(), Movimientos(), styles, NewTransaction(), DonutChart(), DonutChartProps, DonutSlice (+10 more)
+### Community 8 - "capture.tsx"
+Cohesion: 0.13
+Nodes (25): Capture(), noSelectStyle, QUICK_CATEGORIES, Stage, styles, styles, TransactionDetail(), NewTransaction() (+17 more)
 
-### Community 9 - "SyncEngine.ts"
-Cohesion: 0.23
-Nodes (17): 1.6 Motor de sincronización (`src/services/sync/SyncEngine.ts`), 3.1 ✅ Resuelto — fuga de sincronización de una sola vía en 4 tablas de presupuesto, buildProfileRow(), pushRemoteProfile(), pushRemoteProfileKeepalive(), repositoryByTable, ALL_TABLES, getSessionCreds() (+9 more)
+### Community 9 - "app/_layout.tsx"
+Cohesion: 0.15
+Nodes (24): Index(), RootLayout(), RootStack(), TRANSPARENT_NAVIGATION_THEME, 1.6 Motor de sincronización (`src/services/sync/SyncEngine.ts`), 3.1 ✅ Resuelto — fuga de sincronización de una sola vía en 4 tablas de presupuesto, useProfileReconciliation(), usePushProfileOnChange() (+16 more)
 
-### Community 10 - "react-native"
-Cohesion: 0.17
-Nodes (20): react-native, AccountCard(), AccountCardVisual(), styles, AccountDropdown(), MenuItem, MiniSwitch(), styles (+12 more)
+### Community 10 - "appearance.tsx"
+Cohesion: 0.14
+Nodes (20): Appearance(), BackgroundMode, BackgroundOptionRow(), blobUriToPersistentDataUri(), CategoryPickerModal(), SimpleSlider(), styles, expo-image-picker (+12 more)
 
 ### Community 11 - "app.js"
 Cohesion: 0.13
@@ -199,53 +199,53 @@ Nodes (30): dependencies, expo, expo-clipboard, expo-constants, expo-crypto, exp
 Cohesion: 0.10
 Nodes (32): RFC-8291, RFC-8292, claimOnce(), CORS_HEADERS, daysBetween(), DEBT_OFFSETS, deliver(), Env (+24 more)
 
-### Community 14 - "NetWorthTrendChart.tsx"
-Cohesion: 0.23
-Nodes (16): AssetsLiabilitiesTrendChart(), BarTrend(), BarTrendProps, pickLabelIndices(), ChartKind, ChartOptionsDropdown(), ChartPeriod, PERIOD_LABELS (+8 more)
+### Community 14 - "inversiones.tsx"
+Cohesion: 0.19
+Nodes (17): Inversiones(), styles, ASSET_CLASS_GROUP, ASSET_CLASS_LABELS, ASSET_CLASSES, isMarketPriced(), LIQUIDITY_TICKER, MARKET_PRICED (+9 more)
 
 ### Community 15 - "expo"
 Cohesion: 0.07
 Nodes (27): backgroundColor, backgroundImage, foregroundImage, monochromeImage, adaptiveIcon, package, predictiveBackGestureEnabled, typedRoutes (+19 more)
 
 ### Community 16 - "actionCatalog.ts"
-Cohesion: 0.09
-Nodes (53): Razones históricas de por qué se pausó originalmente (2026-09-02), ACCOUNT_TYPE_SYNONYMS, ACCOUNT_TYPES, AddAccountCandidate, AddGoalCandidate, AddLiabilityCandidate, AddTransactionCandidate, BUDGET_CONCEPT_SYNONYMS (+45 more)
+Cohesion: 0.10
+Nodes (45): Razones históricas de por qué se pausó originalmente (2026-09-02), ACCOUNT_TYPE_SYNONYMS, ACCOUNT_TYPES, AddAccountCandidate, AddGoalCandidate, AddLiabilityCandidate, AddTransactionCandidate, BUDGET_CONCEPT_SYNONYMS (+37 more)
 
 ### Community 17 - "useAppStore.ts"
-Cohesion: 0.13
-Nodes (27): AddAccountArgs, AddGoalArgs, AddLiabilityArgs, AddTransactionArgs, AIActionStatus, ChatConversation, ChatMessage, ContributeToGoalArgs (+19 more)
+Cohesion: 0.12
+Nodes (32): AddAccountArgs, AddGoalArgs, AddLiabilityArgs, AddTransactionArgs, AIActionStatus, ChatConversation, ChatMessage, ContributeToGoalArgs (+24 more)
 
 ### Community 18 - "package.json"
-Cohesion: 0.09
-Nodes (22): main, name, private, version, expo, expo-clipboard, expo-constants, expo-crypto (+14 more)
+Cohesion: 0.08
+Nodes (24): main, name, private, version, expo, expo-clipboard, expo-constants, expo-font (+16 more)
 
 ### Community 19 - "finance.ts"
 Cohesion: 0.12
-Nodes (27): findSubcategoryAnyCategory(), buildBudgetLines(), buildLinesFromTemplateLines(), CategorySpendSlice, countsForBudget(), FinancialHealth, HealthFactor, incomeByConcept() (+19 more)
+Nodes (23): findSubcategoryAnyCategory(), rangesOverlap(), buildLinesFromTemplateLines(), CategorySpendSlice, FinancialHealth, findOverlappingAssignments(), HealthFactor, HealthFactorStatus (+15 more)
 
-### Community 20 - "patrimonio.tsx"
-Cohesion: 0.14
-Nodes (18): Draft, LIABILITY_TYPES, LiabilityForm(), Patrimonio(), SectionHeader(), styles, react-native-svg, AccountCardStack() (+10 more)
+### Community 20 - "react-native"
+Cohesion: 0.27
+Nodes (10): react-native, react-native-svg, AppBackground(), GradientLayer(), resolveBackgroundPhoto(), styles, BackgroundPhotoLayer(), focalKeyword() (+2 more)
 
-### Community 21 - "perfil.tsx"
-Cohesion: 0.18
-Nodes (11): AGE_OPTIONS, Perfil(), SEX_OPTIONS, styles, ALL_ACCOUNT_TYPES, Draft, styles, ACCOUNT_COLOR_SWATCHES (+3 more)
-
-### Community 22 - "GlassCard"
-Cohesion: 0.18
-Nodes (15): Instalar(), Step(), Draft, GoalCard(), GoalEditForm(), Metas(), milestoneMessage(), pacingMessage() (+7 more)
-
-### Community 23 - "ai-settings.tsx"
+### Community 21 - "BudgetTemplateList.tsx"
 Cohesion: 0.15
-Nodes (23): AiSettings(), PROVIDERS, Status, styles, createClaudeClient(), createGeminiClient(), createGrokClient(), createOpenAIClient() (+15 more)
+Nodes (17): Bucket, BUCKET_LABELS, BUCKET_ORDER, BudgetTemplateList(), styles, TemplateDragHandle(), BUDGET_TEMPLATE_ICON_CHOICES, DEFAULT_TEMPLATE_ICON (+9 more)
 
-### Community 24 - "@expo/vector-icons"
+### Community 22 - "useTheme"
+Cohesion: 0.11
+Nodes (37): Instalar(), Step(), Draft, GoalCard(), GoalEditForm(), Metas(), milestoneMessage(), pacingMessage() (+29 more)
+
+### Community 23 - "investmentActions.ts"
+Cohesion: 0.22
+Nodes (17): InstitutionProduct, findLiquidityPosition(), AssetClass, active(), adjustProductCash(), buyAsset(), BuyInput, CetesInput (+9 more)
+
+### Community 24 - "[id]/index.tsx"
 Cohesion: 0.21
-Nodes (14): InstitutionScreen(), styles, @expo/vector-icons, InstitutionCard(), InstitutionMonogram(), styles, formatAsOf(), InfoLine() (+6 more)
+Nodes (14): InstitutionScreen(), styles, InstitutionCard(), InstitutionMonogram(), styles, formatAsOf(), InfoLine(), MONTHS (+6 more)
 
 ### Community 25 - "data/types.ts"
-Cohesion: 0.16
-Nodes (29): Section, 1.3 Esquema de datos — jerarquía y clasificación exacta, ActionValidationContext, CopilotContext, Rule, rules, SUGGESTED_QUESTIONS, Account (+21 more)
+Cohesion: 0.20
+Nodes (19): 1.3 Esquema de datos — jerarquía y clasificación exacta, ActionValidationContext, CopilotContext, Rule, rules, SUGGESTED_QUESTIONS, Account, AuditAction (+11 more)
 
 ### Community 26 - "0014_budget_templates.sql"
 Cohesion: 0.18
@@ -255,29 +255,29 @@ Nodes (21): budget_assignments_period_idx, budget_assignments_set_timestamps, bu
 Cohesion: 0.15
 Nodes (12): Arquitectura (resumen), Cómo conectar tu propio Supabase (para activar la nube), Cómo correrlo en desarrollo (si tuvieras Node.js instalado), Cómo probarlo ahora mismo (sin computadora, desde el navegador), Estado actual, Incluido en la Fase 1 (producto), Incluido en la Fase 2 (arquitectura), Incluido en la Fase 3 adelantada (IA propia del usuario — BYOK) (+4 more)
 
-### Community 28 - "useTheme"
-Cohesion: 0.16
-Nodes (21): TabsLayout(), AppTabBar(), HIT_SLOP, MORE_TABS, MoreMenu(), PRIMARY_TABS, styles, SWIPE_ORDER (+13 more)
+### Community 28 - "MonthBudgetBreakdown.tsx"
+Cohesion: 0.18
+Nodes (15): 4. Contrato de cálculo y presentación de efectos, bucketOf(), Bucket, BUCKET_LABELS, BUCKET_ORDER, bucketOf(), Segment, styles (+7 more)
 
-### Community 29 - "capture.tsx"
-Cohesion: 0.07
-Nodes (50): Auth(), Mode, styles, noSelectStyle, QUICK_CATEGORIES, Stage, styles, ForgotPassword() (+42 more)
+### Community 29 - "expo-router"
+Cohesion: 0.14
+Nodes (26): Auth(), Mode, styles, ForgotPassword(), styles, AGE_OPTIONS, Perfil(), SEX_OPTIONS (+18 more)
 
 ### Community 30 - "0001_core_profiles_accounts_transactions.sql"
 Cohesion: 0.18
 Nodes (15): public.handle_new_user, accounts_set_timestamps, accounts_updated_at_idx, accounts_user_id_idx, on_auth_user_created, profiles_set_timestamps, public.accounts, public.profiles (+7 more)
 
 ### Community 31 - "[product].tsx"
-Cohesion: 0.06
-Nodes (100): money(), Panel, ProductScreen(), shortDate(), styles, trimNumber(), Inversiones(), styles (+92 more)
+Cohesion: 0.18
+Nodes (35): money(), Panel, ProductScreen(), shortDate(), styles, trimNumber(), ChipRow(), Field() (+27 more)
 
-### Community 32 - "ChatComposer.tsx"
-Cohesion: 0.28
-Nodes (7): expo-haptics, ChatComposer(), styles, PressToTalkStatus, usePressToTalk(), UsePressToTalkResult, providers
+### Community 32 - "usePressToTalk.ts"
+Cohesion: 0.50
+Nodes (3): PressToTalkStatus, UsePressToTalkResult, providers
 
-### Community 33 - "appearance.tsx"
-Cohesion: 0.06
-Nodes (55): Appearance(), BackgroundMode, BackgroundOptionRow(), blobUriToPersistentDataUri(), CategoryPickerModal(), SimpleSlider(), styles, 1.7 Apariencia — Vidrio líquido, paletas y fondo de foto (`app/appearance.tsx`) (+47 more)
+### Community 33 - "ThemeProvider.tsx"
+Cohesion: 0.05
+Nodes (67): TabsLayout(), AccountDropdown(), MenuItem, MiniSwitch(), styles, AppTabBar(), HIT_SLOP, MORE_TABS (+59 more)
 
 ### Community 34 - "Selector Interactivo de Técnicas de Diagnóstico Organizacional"
 Cohesion: 0.20
@@ -291,9 +291,9 @@ Nodes (14): banxicoDateToISO(), CachedQuote, CETES_SERIES, CetesRatesResult, COR
 Cohesion: 0.29
 Nodes (6): AccountDelta, accountDeltasForTransaction(), INFLOW_TYPES, mergeDeltas(), OUTFLOW_TYPES, reverseDeltas()
 
-### Community 38 - "Fase 2 — Auditoría real de las 65 operaciones candidatas (P0, Semana 1)"
-Cohesion: 0.18
-Nodes (13): Avisos (8 operaciones), Catálogo de chat confirmado (única fuente de verdad para "¿está en el chat?"), Condición de la puerta P0 (según `Fases`: *"100% del inventario identificado y divergencias resueltas"*), Cuentas (8 operaciones), De dónde sale el "65", Deudas (9 operaciones), Divergencias resueltas frente al inventario original, Fase 2 — Auditoría real de las 65 operaciones candidatas (P0, Semana 1) (+5 more)
+### Community 38 - "Transaction"
+Cohesion: 0.15
+Nodes (16): Section, Avisos (8 operaciones), Catálogo de chat confirmado (única fuente de verdad para "¿está en el chat?"), Condición de la puerta P0 (según `Fases`: *"100% del inventario identificado y divergencias resueltas"*), Cuentas (8 operaciones), De dónde sale el "65", Deudas (9 operaciones), Divergencias resueltas frente al inventario original (+8 more)
 
 ### Community 39 - "manifest.json"
 Cohesion: 0.15
@@ -304,8 +304,8 @@ Cohesion: 0.24
 Nodes (9): public.audit_balance_change, accounts_audit_balance, audit_log_entity_idx, audit_log_set_timestamps, audit_log_user_id_idx, liabilities_audit_balance, public.audit_log, auth.users (+1 more)
 
 ### Community 41 - "Bitácora de cambios"
-Cohesion: 0.13
-Nodes (15): 2026-09-02 — Motor de clasificación más inteligente + memoria de correcciones, 2026-09-27 (antes) — Apariencia: Vidrio líquido, paletas y fondo de foto, 2026-09-27 — Transferencias entre cuentas + endurecimiento de sync + limpieza de estilos, 2026-09-28 — Arranque formal de Fase 2: auditoría de 65 operaciones + contratos v1, Autenticación real, Bitácora de cambios, Captura por voz: de mock a real, Cuentas y tarjetas (+7 more)
+Cohesion: 0.12
+Nodes (16): 2026-09-02 — Motor de clasificación más inteligente + memoria de correcciones, 2026-09-27 (antes) — Apariencia: Vidrio líquido, paletas y fondo de foto, 2026-09-27 — Transferencias entre cuentas + endurecimiento de sync + limpieza de estilos, 2026-09-28 — Arranque formal de Fase 2: auditoría de 65 operaciones + contratos v1, 2026-10-02 — Despliegue de push en Supabase (avance) + explorador ordenado del grafo, Autenticación real, Bitácora de cambios, Captura por voz: de mock a real (+8 more)
 
 ### Community 42 - "0002_budgets_goals.sql"
 Cohesion: 0.33
@@ -325,7 +325,7 @@ Nodes (9): Arquitectura, Autenticación, Cada registro es trazable y nunca se pi
 
 ### Community 46 - "budgetPeriods.ts"
 Cohesion: 0.15
-Nodes (18): comparePeriodKeys(), DateRange, isDateInPeriodKey(), isEndingSoon(), makePeriodKey(), MONTH_NAMES, MONTH_SHORT, pad() (+10 more)
+Nodes (18): comparePeriodKeys(), DateRange, isDateInPeriodKey(), isEndingSoon(), makePeriodKey(), makeRangeKey(), MONTH_NAMES, MONTH_SHORT (+10 more)
 
 ### Community 47 - "ai-relay/index.ts"
 Cohesion: 0.29
@@ -343,9 +343,9 @@ Nodes (5): net_worth_snapshots_set_timestamps, net_worth_snapshots_user_date_idx
 Cohesion: 0.50
 Nodes (3): cleanUrls, headers, trailingSlash
 
-### Community 52 - "ia.tsx"
-Cohesion: 0.15
-Nodes (19): AnimatedDot, AnimatedLinearGradient, ChatBackground(), EmptyHero(), ENGINE_LABELS, FadeInRow(), Ia(), MessageBody() (+11 more)
+### Community 52 - "@expo/vector-icons"
+Cohesion: 0.16
+Nodes (24): AnimatedDot, AnimatedLinearGradient, ChatBackground(), EmptyHero(), ENGINE_LABELS, FadeInRow(), Ia(), MessageBody() (+16 more)
 
 ### Community 53 - "public.survey_responses"
 Cohesion: 0.67
@@ -355,41 +355,41 @@ Nodes (3): public.survey_responses, auth.users, survey_responses_user_id_idx
 Cohesion: 0.50
 Nodes (3): public.ui_themes, public.set_sync_timestamps, ui_themes_set_timestamps
 
-### Community 55 - "3. Deuda Técnica y Parches"
-Cohesion: 0.11
-Nodes (18): 2.2 Decisiones de arquitectura evaluadas y rechazadas (ADRs negativos), 2.3 Trabajo pausado deliberadamente (no fallido — diferido con razón documentada), 2. El Cementerio de Ideas y Decisiones (Lessons Learned & ADRs), 3.2 La conexión de IA — qué es bug real y qué es diseño esperado, 3.3 Código temporal / soluciones rápidas pendientes de refactor, 3.4 Tareas abiertas en el backlog (estado real, no aspiracional), 3.5 Validación pendiente en hardware real, 3. Deuda Técnica y Parches (+10 more)
+### Community 55 - "1. Estado Actual y Componentes Activos (The Core)"
+Cohesion: 0.10
+Nodes (19): 1.1 Stack técnico verificado, 1.2 Inventario de pantallas activas (`app/`), 1.7 Apariencia — Vidrio líquido, paletas y fondo de foto (`app/appearance.tsx`), 1. Estado Actual y Componentes Activos (The Core), 3.2 La conexión de IA — qué es bug real y qué es diseño esperado, 3.3 Código temporal / soluciones rápidas pendientes de refactor, 3.4 Tareas abiertas en el backlog (estado real, no aspiracional), 3.5 Validación pendiente en hardware real (+11 more)
 
 ### Community 61 - "Cómo se agrupan los gastos en el Presupuesto"
 Cohesion: 0.25
 Nodes (8): Ahorro — ahorro e inversión, Catálogo de categorías, Cómo se agrupan los gastos en el Presupuesto, Deseos — gustos, salidas y estilo de vida, Gastos — 11 categorías, Ingresos (10 subcategorías), Necesidades — gastos indispensables para vivir, Sin concepto (a propósito)
 
-### Community 84 - "staticExchangeRateProvider.ts"
-Cohesion: 0.38
-Nodes (5): ExchangeRateInfo, getUsdMxnRate(), REFERENCE_USD_MXN_RATE, staticExchangeRateProvider, ExchangeRateInfo
+### Community 84 - "build.py"
+Cohesion: 0.19
+Nodes (12): collections, datetime, json, os, pathlib, re, kind_of(), layer_of() (+4 more)
 
-### Community 85 - "useAppStore"
-Cohesion: 0.13
-Nodes (26): Index(), RootLayout(), RootStack(), TRANSPARENT_NAVIGATION_THEME, SaludFinanciera(), STATUS_ICON, STATUS_TO_BAR, expo-splash-screen (+18 more)
+### Community 85 - "chatIntentParser.ts"
+Cohesion: 0.28
+Nodes (12): 1.5 Mecánica de interacción del usuario — dos vías de entrada SEPARADAS, resolveDeleteAccount(), resolveDeleteLiability(), ADD_VERBS, captureNameAfter(), DELETE_VERBS, detectChatIntent(), hasAnyWord() (+4 more)
 
 ### Community 86 - "Fase 2 P0-S2 — Contratos versionados del motor local"
-Cohesion: 0.20
-Nodes (10): 1. Contrato de interpretación (`interpretMessage` → v2), 2. Contrato de datos faltantes, 3. Contrato de plan multi-operación (`ActionPlan`), 4. Contrato de cálculo y presentación de efectos, 5. Contrato de confirmación y ejecución idempotente, 6. Contrato previsto vs. real, 8. Compatibilidad hacia atrás, Condición de la puerta P0 (+2 more)
+Cohesion: 0.19
+Nodes (11): 0. El principio de arquitectura ya está vigente — con una precisión, 1. Contrato de interpretación (`interpretMessage` → v2), 2. Contrato de datos faltantes, 3. Contrato de plan multi-operación (`ActionPlan`), 6. Contrato previsto vs. real, 8. Compatibilidad hacia atrás, Condición de la puerta P0, Fase 2 P0-S2 — Contratos versionados del motor local (+3 more)
 
 ### Community 87 - "@react-native-async-storage/async-storage"
 Cohesion: 0.33
 Nodes (4): expo-secure-store, @react-native-async-storage/async-storage, localStorage, secureSessionStorage
 
-### Community 88 - "ThemeProvider.tsx"
-Cohesion: 0.12
-Nodes (19): react, normalize(), CUSTOM_OPTIONS, PropagateChoice, styles, styles, styles, SubcategoryAddDropdown() (+11 more)
+### Community 88 - "accounts.ts"
+Cohesion: 0.32
+Nodes (12): findBudgetConceptForCategory(), findIncomeConceptForCategory(), matchesCategory(), accountsForCategory(), activeAccounts(), allowedExpenseAccounts(), expenseBudgetForCategory(), normalizeAccountName() (+4 more)
 
 ### Community 89 - "ChatSidebar.tsx"
-Cohesion: 0.31
-Nodes (9): ChatSidebar(), dateGroup(), GROUP_ORDER, MobileDrawer(), normalize(), styles, CHAT_PALETTE, chatGlass() (+1 more)
+Cohesion: 0.36
+Nodes (7): ChatSidebar(), dateGroup(), GROUP_ORDER, MobileDrawer(), normalize(), styles, useBreakpoint()
 
 ### Community 90 - "surveyRepository.ts"
-Cohesion: 0.60
-Nodes (3): submitSurveyResponse(), SurveyAnswers, generateId()
+Cohesion: 0.38
+Nodes (5): expo-crypto, submitSurveyResponse(), SurveyAnswers, withNewMeta(), generateId()
 
 ### Community 91 - "Migraciones de Supabase"
 Cohesion: 0.40
@@ -399,17 +399,17 @@ Nodes (5): Cómo correr una migración nueva (recordatorio para explicarle a la 
 Cohesion: 0.40
 Nodes (5): Cómo mantener el catálogo "siempre actualizado", Instituciones de inversión y modelos de cálculo, Instituciones del catálogo (revisado septiembre 2026), Migración 0021, Modelos de cálculo
 
-### Community 93 - "financialInsights.ts"
-Cohesion: 0.40
-Nodes (4): FinancialInsight, InsightInputs, InsightTone, PRIORITY_WEIGHT
+### Community 93 - "presupuesto.tsx"
+Cohesion: 0.36
+Nodes (8): styles, BudgetActionPanel(), CategoryRow, CollapsibleRow(), styles, templateIcon(), rangeLabel(), computeBudgetStatus()
 
 ### Community 94 - "client.ts"
 Cohesion: 0.14
-Nodes (13): registerMarketDataProvider(), RawCetesRates, RawQuote, relayMarketDataProvider, getRegistration(), setMarketDataProvider(), CetesRates, MarketQuote (+5 more)
+Nodes (12): registerMarketDataProvider(), RawCetesRates, RawQuote, relayMarketDataProvider, getRegistration(), setMarketDataProvider(), NotificationPermission, AuthState (+4 more)
 
-### Community 95 - "presupuesto.tsx"
-Cohesion: 0.09
-Nodes (53): monthEndIso(), monthStartIso(), Presupuesto(), styles, BudgetActionPanel(), CategoryRow, CollapsibleRow(), styles (+45 more)
+### Community 95 - "Presupuesto"
+Cohesion: 0.19
+Nodes (25): monthEndIso(), monthStartIso(), Presupuesto(), BudgetCalendar(), BudgetTemplateLegend(), styles, CalendarPickerProps, styles (+17 more)
 
 ### Community 96 - "notificaciones.tsx"
 Cohesion: 0.24
@@ -419,21 +419,21 @@ Nodes (12): Notificaciones(), REMINDER_HOURS, styles, ToggleRow(), UNSUPPORTED_C
 Cohesion: 0.50
 Nodes (4): Cómo usar esta memoria en una conversación nueva de Claude, Datos rápidos del proyecto, Memoria del proyecto VALU Finance AI, Índice
 
-### Community 98 - "1. Estado Actual y Componentes Activos (The Core)"
-Cohesion: 0.67
-Nodes (3): 1.1 Stack técnico verificado, 1.2 Inventario de pantallas activas (`app/`), 1. Estado Actual y Componentes Activos (The Core)
+### Community 98 - "AiOrb.tsx"
+Cohesion: 0.33
+Nodes (6): assets_icon, AiOrb(), AnimatedSvgCircle, logoSource, styles, CHAT_PALETTE
 
-### Community 99 - "ResolvedAction"
-Cohesion: 0.67
-Nodes (3): 0. El principio de arquitectura ya está vigente — con una precisión, ResolveOk, ResolvedAction
+### Community 99 - "CategoryIcon.tsx"
+Cohesion: 0.47
+Nodes (4): CategoryIconProps, styles, CATEGORY_ICONS, IoniconName
 
 ### Community 100 - "Pendientes y decisiones abiertas"
-Cohesion: 0.18
-Nodes (11): Abierto (2026-09-28) — Hallazgos concretos de la auditoría de las 65 operaciones de Fase 2, Auditoría de Android — pendiente de confirmar en un dispositivo real, Campos de fecha del presupuesto — solo locales, Estado del despliegue de notificaciones push, Memoria de correcciones — solo en este dispositivo, Mitigado, no resuelto (2026-09-27) — pérdida de datos al forzar el cierre de la app en iOS, Pendiente de despliegue (2026-10-02) — notificaciones push e Inversiones por institución, Pendientes y decisiones abiertas (+3 more)
+Cohesion: 0.14
+Nodes (14): Abierto (2026-09-28) — Hallazgos concretos de la auditoría de las 65 operaciones de Fase 2, Auditoría de Android — pendiente de confirmar en un dispositivo real, Campos de fecha del presupuesto — solo locales, Checklist de pendientes (2026-10-02), Decisiones y deuda de producto abiertas, Hoja de ruta de Fase 2, Inversiones por institución, Memoria de correcciones — solo en este dispositivo (+6 more)
 
-### Community 101 - "webSpeech.ts"
-Cohesion: 0.39
-Nodes (6): isWebSpeechAvailable(), SPEECH_ERROR_MESSAGES, speechErrorMessage(), StartListeningOptions, startWebSpeechListening(), webSpeechProvider
+### Community 101 - "BudgetTemplate"
+Cohesion: 0.67
+Nodes (4): BudgetAssignment, BudgetTemplate, ResolvedPeriodBudget, UpcomingAssignmentSummary
 
 ### Community 102 - "0020_push_notifications.sql"
 Cohesion: 0.43
@@ -448,24 +448,24 @@ Cohesion: 0.33
 Nodes (5): Cómo aplicarlas (cuando tengas tu proyecto Supabase), Función `ai-relay` (necesaria solo para usar tu propia IA desde la versión web), Función `push-notify` (notificaciones al celular), Migraciones de VALU Finance AI, Principios aplicados (spec 69-88)
 
 ## Knowledge Gaps
-- **481 isolated node(s):** `name`, `slug`, `scheme`, `version`, `orientation` (+476 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 563 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **485 isolated node(s):** `name`, `slug`, `scheme`, `version`, `orientation` (+480 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 574 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useTheme()` connect `useTheme` to `ChatActionCard.tsx`, `onboarding.tsx`, `ConceptBudgetForm.tsx`, `settings.tsx`, `(tabs)/index.tsx`, `movimientos.tsx`, `react-native`, `NetWorthTrendChart.tsx`, `patrimonio.tsx`, `perfil.tsx`, `GlassCard`, `ai-settings.tsx`, `@expo/vector-icons`, `capture.tsx`, `[product].tsx`, `appearance.tsx`, `ia.tsx`, `useAppStore`, `ThemeProvider.tsx`, `ChatSidebar.tsx`, `presupuesto.tsx`, `notificaciones.tsx`?**
-  _High betweenness centrality (0.072) - this node is a cross-community bridge._
-- **Why does `react-native` connect `react-native` to `ChatActionCard.tsx`, `onboarding.tsx`, `ConceptBudgetForm.tsx`, `settings.tsx`, `(tabs)/index.tsx`, `movimientos.tsx`, `SyncEngine.ts`, `NetWorthTrendChart.tsx`, `package.json`, `patrimonio.tsx`, `perfil.tsx`, `GlassCard`, `ai-settings.tsx`, `@expo/vector-icons`, `useTheme`, `capture.tsx`, `[product].tsx`, `ChatComposer.tsx`, `appearance.tsx`, `ia.tsx`, `useAppStore`, `@react-native-async-storage/async-storage`, `ThemeProvider.tsx`, `ChatSidebar.tsx`, `surveyRepository.ts`, `client.ts`, `presupuesto.tsx`, `notificaciones.tsx`, `webSpeech.ts`?**
-  _High betweenness centrality (0.048) - this node is a cross-community bridge._
-- **Why does `react` connect `ThemeProvider.tsx` to `ChatActionCard.tsx`, `onboarding.tsx`, `ConceptBudgetForm.tsx`, `settings.tsx`, `(tabs)/index.tsx`, `movimientos.tsx`, `SyncEngine.ts`, `react-native`, `NetWorthTrendChart.tsx`, `package.json`, `patrimonio.tsx`, `perfil.tsx`, `GlassCard`, `ai-settings.tsx`, `@expo/vector-icons`, `useTheme`, `capture.tsx`, `[product].tsx`, `ChatComposer.tsx`, `appearance.tsx`, `ia.tsx`, `useAppStore`, `ChatSidebar.tsx`, `presupuesto.tsx`, `notificaciones.tsx`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+- **Why does `useTheme()` connect `useTheme` to `HoldToConfirmButton.tsx`, `onboarding.tsx`, `providers/types.ts`, `useAppStore`, `(tabs)/index.tsx`, `capture.tsx`, `app/_layout.tsx`, `appearance.tsx`, `inversiones.tsx`, `react-native`, `BudgetTemplateList.tsx`, `[id]/index.tsx`, `MonthBudgetBreakdown.tsx`, `expo-router`, `[product].tsx`, `ThemeProvider.tsx`, `@expo/vector-icons`, `ChatSidebar.tsx`, `presupuesto.tsx`, `Presupuesto`, `notificaciones.tsx`, `CategoryIcon.tsx`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+- **Why does `react-native` connect `react-native` to `HoldToConfirmButton.tsx`, `onboarding.tsx`, `providers/types.ts`, `useAppStore`, `(tabs)/index.tsx`, `capture.tsx`, `app/_layout.tsx`, `appearance.tsx`, `inversiones.tsx`, `package.json`, `BudgetTemplateList.tsx`, `useTheme`, `[id]/index.tsx`, `MonthBudgetBreakdown.tsx`, `expo-router`, `[product].tsx`, `ThemeProvider.tsx`, `@expo/vector-icons`, `@react-native-async-storage/async-storage`, `ChatSidebar.tsx`, `surveyRepository.ts`, `presupuesto.tsx`, `client.ts`, `Presupuesto`, `notificaciones.tsx`, `AiOrb.tsx`, `CategoryIcon.tsx`?**
+  _High betweenness centrality (0.055) - this node is a cross-community bridge._
+- **Why does `react` connect `useTheme` to `HoldToConfirmButton.tsx`, `onboarding.tsx`, `providers/types.ts`, `investmentModels.ts`, `useAppStore`, `(tabs)/index.tsx`, `capture.tsx`, `app/_layout.tsx`, `appearance.tsx`, `inversiones.tsx`, `package.json`, `react-native`, `BudgetTemplateList.tsx`, `[id]/index.tsx`, `MonthBudgetBreakdown.tsx`, `expo-router`, `[product].tsx`, `usePressToTalk.ts`, `ThemeProvider.tsx`, `@expo/vector-icons`, `ChatSidebar.tsx`, `presupuesto.tsx`, `client.ts`, `Presupuesto`, `notificaciones.tsx`, `AiOrb.tsx`, `CategoryIcon.tsx`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `scheme` to the rest of the system?**
-  _481 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _485 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `localParser.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06547619047619048 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07073170731707316 - nodes in this community are weakly interconnected._
 - **Should `onboarding.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.08045977011494253 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06233062330623306 - nodes in this community are weakly interconnected._
 - **Should `providers/types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10821256038647344 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05543345543345543 - nodes in this community are weakly interconnected._
