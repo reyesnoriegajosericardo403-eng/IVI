@@ -1128,9 +1128,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1790978783.010311,
-    "seen": 1790978797.1442084,
-    "ast_hash": "60edd6bdb2de5a0802f64b642e21a2ba",
+    "mtime": 1790980808.3305519,
+    "seen": 1790980814.7283635,
+    "ast_hash": "a404732fb11e748698538b997a06ada9",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1182,9 +1182,9 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/05-bitacora-cambios.md": {
-    "mtime": 1790978788.9783108,
-    "seen": 1790978797.144231,
-    "ast_hash": "166c2de3ddc30416e3246c10f35ffb02",
+    "mtime": 1790980808.3297708,
+    "seen": 1790980814.728399,
+    "ast_hash": "10fae4d7df3bbd6b0e997385a95f89ac",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/06-pendientes.md": {
@@ -1362,9 +1362,9 @@
     "semantic_hash": ""
   },
   "scripts/graphify-explorer/template.html": {
-    "mtime": 1790978762.3105025,
-    "seen": 1790978797.1442404,
-    "ast_hash": "e41d3a86dfbf51d6c616cdd753b6462b",
+    "mtime": 1790980791.3177824,
+    "seen": 1790980814.7284245,
+    "ast_hash": "839ff79b1a9d16e447961b1a866167fa",
     "semantic_hash": ""
   }
 }

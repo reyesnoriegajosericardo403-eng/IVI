@@ -17,13 +17,22 @@ Claude Code.
   [[06-pendientes]] (ahora es una checklist con etiquetas `requiere: Mac/iPhone/Android/…`).
 - **Explorador del grafo** (`graphify-out/explorer.html`, se genera con
   `python3 scripts/graphify-explorer/build.py` después de `graphify update .`): reemplaza la «maraña»
-  de `graph.html` por un mapa en capas (pantallas → piezas visuales → lógica → datos → backend → web →
-  documentación). Búsqueda con palabras normales en español (con glosario español↔inglés: «avisos»
-  encuentra `push-notify`), y al elegir algo el mapa pasa a un diagrama **lo usan → elegido → usa a**
-  con cables ordenados y, a la derecha, un **resumen en texto** (qué es, qué contiene, de qué depende,
-  quién lo usa, qué documentos lo mencionan, qué pendientes tiene) con botón «Copiar» para pegarlo en
-  otro chat. Pestaña «Pendientes» leída de [[06-pendientes]]. `graph.html` de graphify se sigue
-  regenerando solo; el explorador es complementario.
+  de `graph.html` por dos vistas del mismo grafo que comparten búsqueda, selección y resumen:
+  - **Red** (por defecto): grafo tipo Obsidian en canvas, con zoom/arrastre/pellizco. Cada punto es un
+    archivo (tamaño = conexiones), agrupado en círculos por carpeta y en franjas por capa
+    (pantallas → piezas visuales → lógica → datos → backend → web → documentación). Las líneas entre
+    las mismas dos carpetas se juntan en «cables» (enrutado por el centro de cada carpeta) y se
+    iluminan al pasar el cursor o tocar un punto (azul = usa a, verde = lo usan, ámbar = ambos; aro
+    rosa = pendientes). «Capas» = ordenado; «Libre» = fuerzas como Obsidian, con nodos arrastrables;
+    «Funciones» = muestra también funciones/componentes/secciones como satélites de cada archivo;
+    «Cables» y «Nombres» ajustan la densidad; la leyenda de capas también filtra.
+  - **Fichas**: recuadros por carpeta y capa y, al elegir algo, diagrama lo usan → elegido → usa a.
+  - Búsqueda con palabras normales en español (glosario español↔inglés: «avisos» encuentra
+    `push-notify`); mientras se escribe se marcan en la red los archivos que coinciden. A la derecha,
+    un **resumen en texto** (qué es, qué contiene, de qué depende, quién lo usa, qué documentos lo
+    mencionan, qué pendientes tiene) con botón «Copiar» para pegarlo en otro chat. Pestaña
+    «Pendientes» leída de [[06-pendientes]]. `graph.html` de graphify se sigue regenerando solo; el
+    explorador es complementario.
 
 ## 2026-09-28 (tarde) — Notificaciones push reales + Inversiones por institución
 
