@@ -429,17 +429,61 @@ const BASE_CATEGORIES: CategoryDef[] = [
   },
 ];
 
-// Catálogo base + la ampliación de palabras clave (src/data/keywordExpansion.ts).
+// Catálogo base + el NÚCLEO de palabras clave (src/data/keywordPacks/index.ts). El resto del vocabulario
+// (los paquetes ampliados) entra después, en segundo plano, con `installKeywordPacks`.
 // Las propias de cada subcategoría van primero; las ampliadas, después, sin duplicar.
 export const DEFAULT_CATEGORIES: CategoryDef[] = BASE_CATEGORIES.map((category) => ({
   ...category,
   subcategories: category.subcategories.map((sub) => {
     const extra = EXTRA_KEYWORDS[sub.id];
-    if (!extra) return sub;
+    if (!extra) return { ...sub, keywords: [...sub.keywords] };
     const seen = new Set(sub.keywords.map((k) => k.toLowerCase()));
     return { ...sub, keywords: [...sub.keywords, ...extra.filter((k) => !seen.has(k.toLowerCase()))] };
   }),
 }));
+
+// Sube cada vez que cambia el vocabulario en memoria; el motor (localParser) lo mira para saber si debe
+// reconstruir su índice.
+let catalogRevision = 0;
+let installedCatalogVersion = 'core';
+export const getCatalogRevision = (): number => catalogRevision;
+export const getInstalledCatalogVersion = (): string => installedCatalogVersion;
+
+// Suma paquetes de palabras clave al catálogo YA cargado, sin duplicar. Seguro entre versiones: un id de
+// subcategoría que esta versión de la app no conoce se IGNORA (un paquete más nuevo que la app no la rompe).
+// Idempotente: instalar dos veces la misma versión no cambia nada. Devuelve cuántas palabras entraron.
+export function installKeywordPacks(packs: Array<Record<string, string[]>>, version: string): { added: number; ignored: number } {
+  if (version === installedCatalogVersion) return { added: 0, ignored: 0 };
+  const subs = new Map<string, SubcategoryDef>();
+  for (const c of DEFAULT_CATEGORIES) for (const s of c.subcategories) subs.set(s.id, s);
+  const seen = new Map<string, Set<string>>();
+  let added = 0;
+  let ignored = 0;
+  for (const pack of packs) {
+    for (const [subId, keywords] of Object.entries(pack)) {
+      const sub = subs.get(subId);
+      if (!sub) {
+        ignored += keywords.length;
+        continue;
+      }
+      let have = seen.get(subId);
+      if (!have) {
+        have = new Set(sub.keywords.map((k) => k.toLowerCase()));
+        seen.set(subId, have);
+      }
+      for (const k of keywords) {
+        const key = k.toLowerCase();
+        if (have.has(key)) continue;
+        have.add(key);
+        sub.keywords.push(k);
+        added++;
+      }
+    }
+  }
+  installedCatalogVersion = version;
+  catalogRevision++;
+  return { added, ignored };
+}
 
 export function findCategory(categoryId: string): CategoryDef | undefined {
   return DEFAULT_CATEGORIES.find((c) => c.id === categoryId);

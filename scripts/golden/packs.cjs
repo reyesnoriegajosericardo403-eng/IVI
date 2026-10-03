@@ -19,7 +19,7 @@ const cmd = process.argv[2];
 const dry = process.argv.includes('--dry');
 const includeBase = process.argv.includes('--include-base');
 
-const packFiles = fs.readdirSync(DIR).filter((f) => f.endsWith('.ts') && f !== 'index.ts').sort();
+const packFiles = fs.readdirSync(DIR).filter((f) => f.endsWith('.ts') && f !== 'index.ts' && f !== 'extended.ts').sort();
 // protegidas.ts: frases desempatadoras que parecen redundantes aisladas; nunca se podan
 const NEVER_PRUNE = new Set(['protegidas.ts']);
 const subToCat = new Map(); for (const c of D) for (const s of c.subcategories) subToCat.set(s.id, c.id);

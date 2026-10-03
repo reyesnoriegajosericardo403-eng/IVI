@@ -5,7 +5,7 @@ import React, { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { warmUpLocalParser } from '@/ai/localParser';
+import { loadExtendedCatalog } from '@/data/catalogLoader';
 import { AppBackground } from '@/components/AppBackground';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { useRemoteVisualStyles } from '@/services/themes/remoteThemes';
@@ -61,10 +61,10 @@ function RootStack() {
     registerMarketDataProvider();
   }, []);
 
-  // Prepara el catálogo del motor local en segundo plano (en trozos) unos segundos después de abrir la app,
-  // para que el primer movimiento dictado no espere.
+  // Trae el vocabulario ampliado del motor local en segundo plano unos segundos después de abrir la app
+  // (src/data/catalogLoader.ts), para que el primer movimiento dictado no espere.
   useEffect(() => {
-    const t = setTimeout(() => void warmUpLocalParser(), 4000);
+    const t = setTimeout(() => void loadExtendedCatalog(), 2500);
     return () => clearTimeout(t);
   }, []);
 

@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { applyCustomMapping, detectAccountAdjustment, splitCaptureSegments, warmUpLocalParser, type ParsedCapture } from '@/ai/localParser';
+import { loadExtendedCatalog, whenCatalogReady } from '@/data/catalogLoader';
+import { applyCustomMapping, detectAccountAdjustment, splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { ValuMark } from '@/components/ValuMark';
 import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
@@ -89,10 +90,10 @@ export default function Capture() {
     };
   }, []);
 
-  // El motor local tiene un catálogo grande: se prepara en trozos mientras la persona habla, para que
-  // el primer movimiento no espere (y la pantalla no se congela).
+  // El motor local tiene un catálogo grande: el vocabulario ampliado se trae y se prepara en segundo plano
+  // mientras la persona habla, para que el primer movimiento no espere (y la pantalla no se congela).
   useEffect(() => {
-    void warmUpLocalParser();
+    void loadExtendedCatalog();
   }, []);
 
   // El efectivo siempre debe poder elegirse — no solo cuando alguien
@@ -227,6 +228,8 @@ export default function Capture() {
     return new Promise((resolve) => {
       setTimeout(async () => {
         const segments = splitCaptureSegments(raw);
+        // Casi siempre ya está listo; si no, se espera un poco y se sigue con lo que haya (nunca se bloquea).
+        await whenCatalogReady();
         const rawResults = await Promise.all(segments.map((seg) => providers.ai.parseCaptureText(seg)));
         // Lo que la persona ya corrigió antes gana sobre cualquier
         // adivinanza del catálogo o del proveedor de IA conectado (spec:

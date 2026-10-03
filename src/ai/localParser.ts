@@ -1,4 +1,4 @@
-import { DEFAULT_CATEGORIES } from '@/data/categories';
+import { DEFAULT_CATEGORIES, getCatalogRevision } from '@/data/categories';
 import type { Currency, TransactionType } from '@/data/types';
 
 // Intérprete local de lenguaje natural — Fase 1.
@@ -285,6 +285,7 @@ const RELATION_ONLY_RE = /^((a|para|de|con|por) )?((mi|mis|el|la|los|las) )?(mam
 // Palabras de relleno: no sirven para localizar una frase del catálogo (aparecen en miles).
 const PHRASE_STOP_WORDS = new Set(['del', 'los', 'las', 'con', 'por', 'para', 'mis', 'sus', 'una', 'uno', 'que', 'como', 'pero', 'sin', 'sobre', 'entre', 'hacia', 'desde', 'este', 'esta', 'esto', 'ese', 'esa']);
 let keywordIndex: KeywordIndex | null = null;
+let keywordIndexRevision = -1; // revisión del catálogo con la que se armó `keywordIndex`
 let keywordIndexWarmUp: Promise<void> | null = null;
 const INDEX_CHUNK = 1500;
 
@@ -351,28 +352,42 @@ function* buildKeywordIndexSteps(): Generator<void, KeywordIndex, void> {
 }
 
 function getKeywordIndex(): KeywordIndex {
-  if (keywordIndex) return keywordIndex;
+  const revision = getCatalogRevision();
+  // Si el catálogo cambió (llegó el vocabulario ampliado) el índice viejo se sigue usando mientras no haya
+  // otro: nunca se deja a la persona sin motor por esperar la reconstrucción.
+  if (keywordIndex && (keywordIndexRevision === revision || keywordIndexWarmUp)) return keywordIndex;
   // si alguien lo pide antes de que termine el calentamiento, se arma completo y de una vez
   const steps = buildKeywordIndexSteps();
   let r = steps.next();
   while (!r.done) r = steps.next();
   keywordIndex = r.value;
+  keywordIndexRevision = revision;
   return keywordIndex;
 }
 
 // Prepara el índice en segundo plano, en trozos, sin congelar la pantalla. Llamarlo cuando se abre la
 // captura: para cuando la persona termina de hablar ya está listo. Es seguro llamarlo varias veces.
 export function warmUpLocalParser(): Promise<void> {
-  if (keywordIndex) return Promise.resolve();
+  const revision = getCatalogRevision();
+  if (keywordIndex && keywordIndexRevision === revision) return Promise.resolve();
   if (keywordIndexWarmUp) return keywordIndexWarmUp;
   keywordIndexWarmUp = new Promise<void>((resolve) => {
     const steps = buildKeywordIndexSteps();
+    const finish = () => {
+      keywordIndexWarmUp = null;
+      resolve();
+    };
     const run = () => {
-      if (keywordIndex) return resolve(); // alguien lo armó mientras tanto
+      if (keywordIndex && keywordIndexRevision === revision) return finish(); // alguien lo armó mientras tanto
+      if (getCatalogRevision() !== revision) {
+        // llegó más vocabulario a media construcción: se descarta este avance y se empieza con el nuevo
+        return finish();
+      }
       const r = steps.next();
       if (r.done) {
         keywordIndex = r.value;
-        return resolve();
+        keywordIndexRevision = revision;
+        return finish();
       }
       setTimeout(run, 0);
     };
@@ -384,6 +399,7 @@ export function warmUpLocalParser(): Promise<void> {
 // Solo para pruebas/auditorías: obliga a reconstruir el índice después de cambiar el catálogo en memoria.
 export function __resetKeywordIndexForAudit(): void {
   keywordIndex = null;
+  keywordIndexRevision = -1;
   keywordIndexWarmUp = null;
 }
 

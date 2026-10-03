@@ -15,3 +15,11 @@ Module._extensions['.ts'] = function (module, filename) {
   });
   module._compile(out.outputText, filename);
 };
+
+// Las pruebas miden el catálogo COMPLETO (núcleo + ampliado), igual que la app cuando ya terminó de cargar.
+// Para medir solo el núcleo (lo que ve la persona los primeros segundos): CATALOG=core.
+if (process.env.CATALOG !== 'core') {
+  const { installKeywordPacks } = require('@/data/categories');
+  const { EXTENDED_PACKS, CATALOG_VERSION } = require('@/data/keywordPacks/extended');
+  installKeywordPacks(EXTENDED_PACKS, CATALOG_VERSION);
+}

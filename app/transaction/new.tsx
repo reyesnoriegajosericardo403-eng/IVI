@@ -8,6 +8,7 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory, isExcludedFromBudgetByDefault } from '@/data/categories';
 import type { Currency, TransactionType } from '@/data/types';
+import { useCatalogRevision } from '@/data/useCatalog';
 import { selectActiveAccounts, selectActiveBudgets } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -116,6 +117,7 @@ export default function NewTransaction() {
     return DEFAULT_CATEGORIES.filter((c) => c.id !== 'income' && c.id !== 'savings');
   }, [type]);
 
+  const catalogRevision = useCatalogRevision();
   const searchEntries = useMemo<SearchEntry[]>(() => {
     const out: SearchEntry[] = [];
     for (const c of categoriesForType) {
@@ -130,7 +132,7 @@ export default function NewTransaction() {
       }
     }
     return out;
-  }, [categoriesForType]);
+  }, [categoriesForType, catalogRevision]);
 
   const queryNorm = normalize(query.trim());
   const suggestions = queryNorm.length === 0 ? [] : searchEntries.filter((e) => e.searchText.includes(queryNorm)).slice(0, 8);
