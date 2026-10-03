@@ -1,0 +1,28 @@
+Casos evaluados: 106 (sealed2) — pasan completos: 99 (93.4%)
+
+| Suite | Casos | Pasan | % |
+|---|---:|---:|---:|
+| fresco_4 | 106 | 99 | 93.4% |
+
+--- FALLAS ---
+[fresco_4-1391] «recarga de la tarjeta del metro 100»
+    esperado: categoryId=transport subcategoryId=trans_public
+    obtenido: categoryId=debt subcategoryId=debt_interest
+[fresco_4-1397] «seguro del auto anual 7200»
+    esperado: subcategoryId=trans_car_insurance
+    obtenido: subcategoryId=trans_maintenance
+[fresco_4-1415] «recibo del gas estacionario 650»
+    esperado: categoryId=housing subcategoryId=house_gas missing=
+    obtenido: categoryId=null subcategoryId=null missing=["category"]
+[fresco_4-1442] «icloud 50 gb 17»
+    esperado: amount=17
+    obtenido: amount=50
+[fresco_4-1450] «pagué mi deuda de nu 2300»
+    esperado: subcategoryId=debt_creditcard
+    obtenido: subcategoryId=debt_personal
+[fresco_4-1461] «intereses del mes 120»
+    esperado: categoryId=income subcategoryId=inc_interest type=income
+    obtenido: categoryId=debt subcategoryId=debt_interest type=expense
+[fresco_4-1468] «cuota anual de la tarjeta platinum 2500»
+    esperado: categoryId=taxes_fees subcategoryId=fee_bank
+    obtenido: categoryId=debt subcategoryId=debt_creditcard

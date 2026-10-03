@@ -1477,8 +1477,8 @@
     "type": "expense",
     "amount": 8690,
     "currency": "MXN",
-    "categoryId": "housing",
-    "subcategoryId": "house_maintenance",
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_property",
     "missing": []
    }
   },
@@ -5679,7 +5679,13 @@
     "currency": "MXN",
     "categoryId": "health",
     "subcategoryId": "health_doctor",
-    "missing": []
+    "missing": [],
+    "altSubcategoryIds": [
+     "health_hospital"
+    ],
+    "altCategoryIds": [
+     "health"
+    ]
    }
   },
   {
@@ -8629,7 +8635,13 @@
     "currency": "MXN",
     "categoryId": "education",
     "subcategoryId": "edu_courses",
-    "missing": []
+    "missing": [],
+    "altSubcategoryIds": [
+     "edu_exams"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
    }
   },
   {
@@ -13216,7 +13228,689 @@
    }
   },
   {
-   "id": "fresco_1-0988",
+   "id": "conceptos-0988",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "dividimos la cuenta entre los tres 900",
+   "expect": {
+    "concepts": [
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0989",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "pagué mi parte de la renta con mis roomies 3500",
+   "expect": {
+    "concepts": [
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0990",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "mi mitad de la luz 380",
+   "expect": {
+    "concepts": [
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0991",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "cooperamos para el regalo y me tocaron 150",
+   "expect": {
+    "concepts": [
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0992",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "hicimos una vaquita para la pizza 90 cada quien",
+   "expect": {
+    "concepts": [
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0993",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "me depositó mi roomie su parte de la luz 400",
+   "expect": {
+    "concepts": [
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0994",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "me debe mi roomie 400 de la luz",
+   "expect": {
+    "concepts": [
+     "owed_to_me",
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0995",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "mi amigo me debe 500",
+   "expect": {
+    "concepts": [
+     "owed_to_me"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0996",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "todavía no me paga lo del uber 120",
+   "expect": {
+    "concepts": [
+     "owed_to_me"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0997",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "le presté 1000 a mi hermano",
+   "expect": {
+    "concepts": [
+     "owed_to_me"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0998",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "les presté lana para la renta",
+   "expect": {
+    "concepts": [
+     "owed_to_me"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-0999",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "pagué por todos en el restaurante 2300",
+   "expect": {
+    "concepts": [
+     "owed_to_me"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1000",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "le debo 300 a mi hermano",
+   "expect": {
+    "concepts": [
+     "i_owe"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1001",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "me prestó mi mamá 2000",
+   "expect": {
+    "concepts": [
+     "i_owe"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1002",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "tengo que pagarle a mi roomie lo del internet 250",
+   "expect": {
+    "concepts": [
+     "i_owe",
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1003",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "pedí prestado 1500 para la renta",
+   "expect": {
+    "concepts": [
+     "i_owe"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1004",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "ya quedamos a mano con mi roomie",
+   "expect": {
+    "concepts": [
+     "settlement",
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1005",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "le pagué lo que le debía a mi amigo 600",
+   "expect": {
+    "concepts": [
+     "settlement"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1006",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "saldamos cuentas con mis compañeros de cuarto",
+   "expect": {
+    "concepts": [
+     "settlement",
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1007",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "me pagó lo que me debía 800",
+   "expect": {
+    "concepts": [
+     "settlement"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1008",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "netflix mensual 219",
+   "expect": {
+    "concepts": [
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1009",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "suscripción de spotify 129",
+   "expect": {
+    "concepts": [
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1010",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "cada quincena le doy 500 a mi mamá",
+   "expect": {
+    "concepts": [
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1011",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "pago de renta todos los meses 6000",
+   "expect": {
+    "concepts": [
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1012",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "mensualidad del gimnasio 599",
+   "expect": {
+    "concepts": [
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1013",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "cada 2 semanas le pago a la señora de la limpieza 600",
+   "expect": {
+    "concepts": [
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1014",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "cargo domiciliado de la tarjeta 450",
+   "expect": {
+    "concepts": [
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1015",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "compré un refri a 12 meses sin intereses 8999",
+   "expect": {
+    "concepts": [
+     "installments"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1016",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "a 18 msi la laptop 22000",
+   "expect": {
+    "concepts": [
+     "installments"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1017",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "lo compré a plazos 3500",
+   "expect": {
+    "concepts": [
+     "installments"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1018",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "la tele en mensualidades 1200",
+   "expect": {
+    "concepts": [
+     "installments",
+     "recurring"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1019",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "pagué kueski pay 450",
+   "expect": {
+    "concepts": [
+     "installments"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1020",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "pedí factura de la gasolina 700",
+   "expect": {
+    "concepts": [
+     "tax_deductible"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1021",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "gasto deducible consulta del doctor 900",
+   "expect": {
+    "concepts": [
+     "tax_deductible"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1022",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "para mi declaración anual la colegiatura 4800",
+   "expect": {
+    "concepts": [
+     "tax_deductible"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1023",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "me dieron la factura del restaurante 1200",
+   "expect": {
+    "concepts": [
+     "tax_deductible"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1024",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "viáticos del viaje 2500 me lo reembolsan",
+   "expect": {
+    "concepts": [
+     "reimbursable"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1025",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "pagué de mi bolsa la comida del cliente 800",
+   "expect": {
+    "concepts": [
+     "reimbursable"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1026",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "lo paga la empresa el hotel 3200",
+   "expect": {
+    "concepts": [
+     "reimbursable"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1027",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "adelanté los gastos del viaje 4000",
+   "expect": {
+    "concepts": [
+     "reimbursable"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1028",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "compré 200 dólares para el viaje",
+   "expect": {
+    "concepts": [
+     "foreign_currency"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1029",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "pagué 50 euros de entrada",
+   "expect": {
+    "concepts": [
+     "foreign_currency"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1030",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "compra internacional de amazon 35 usd",
+   "expect": {
+    "concepts": [
+     "foreign_currency"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1031",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "cambié dólares en la casa de cambio 5000",
+   "expect": {
+    "concepts": [
+     "foreign_currency"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1032",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "voy a pagar la renta el próximo mes 6000",
+   "expect": {
+    "concepts": [
+     "planned"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1033",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "recuérdame pagar la luz",
+   "expect": {
+    "concepts": [
+     "planned"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1034",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "tengo que pagar el predial 1800",
+   "expect": {
+    "concepts": [
+     "planned"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1035",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "me toca pagar la tarjeta la próxima quincena 3000",
+   "expect": {
+    "concepts": [
+     "planned"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1036",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "cuando me paguen voy a depositar 1000",
+   "expect": {
+    "concepts": [
+     "planned"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1037",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "pagué el súper 500",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1038",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "tacos 120",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1039",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "café con mi novia 90",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1040",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "cena con mi esposa 1450",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1041",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "compré 3 cafés 150",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1042",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "gasolina 700",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1043",
+   "suite": "conceptos",
+   "split": "holdout",
+   "text": "me cobraron intereses 380",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1044",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "uber al aeropuerto 280",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1045",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "pagué el predial 1800",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1046",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "consulta del dentista 600",
+   "expect": {
+    "concepts": []
+   }
+  },
+  {
+   "id": "conceptos-1047",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "dividimos la cuenta y le debo 300 a mi amigo",
+   "expect": {
+    "concepts": [
+     "shared_split",
+     "i_owe"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1048",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "me debe mi pareja la mitad del hotel 1800 y me lo regresa el viernes",
+   "expect": {
+    "concepts": [
+     "owed_to_me",
+     "shared_split"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1049",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "compré un celular a 12 meses 9000 y pedí factura",
+   "expect": {
+    "concepts": [
+     "installments",
+     "tax_deductible"
+    ]
+   }
+  },
+  {
+   "id": "conceptos-1050",
+   "suite": "conceptos",
+   "split": "dev",
+   "text": "netflix mensual en dólares 15",
+   "expect": {
+    "concepts": [
+     "recurring",
+     "foreign_currency"
+    ]
+   }
+  },
+  {
+   "id": "fresco_1-1051",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "oye pagué 189 pesos de la luz del depa",
@@ -13229,7 +13923,7 @@
    }
   },
   {
-   "id": "fresco_1-0989",
+   "id": "fresco_1-1052",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "ahorita saqué 450 de gasolina para la camioneta",
@@ -13242,7 +13936,7 @@
    }
   },
   {
-   "id": "fresco_1-0990",
+   "id": "fresco_1-1053",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "me cobraron 219 por la suscripción de netflix",
@@ -13255,7 +13949,7 @@
    }
   },
   {
-   "id": "fresco_1-0991",
+   "id": "fresco_1-1054",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "fuimos a cenar tacos al pastor y fueron 340",
@@ -13268,7 +13962,7 @@
    }
   },
   {
-   "id": "fresco_1-0992",
+   "id": "fresco_1-1055",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré unas croquetas para el perro 560",
@@ -13281,7 +13975,7 @@
    }
   },
   {
-   "id": "fresco_1-0993",
+   "id": "fresco_1-1056",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la colegiatura de mi hija 4800",
@@ -13294,7 +13988,7 @@
    }
   },
   {
-   "id": "fresco_1-0994",
+   "id": "fresco_1-1057",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "metro y camión hoy 22 pesos",
@@ -13307,7 +14001,7 @@
    }
   },
   {
-   "id": "fresco_1-0995",
+   "id": "fresco_1-1058",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "le puse 300 de saldo a mi celular",
@@ -13320,7 +14014,7 @@
    }
   },
   {
-   "id": "fresco_1-0996",
+   "id": "fresco_1-1059",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué el recibo del agua 312",
@@ -13333,7 +14027,7 @@
    }
   },
   {
-   "id": "fresco_1-0997",
+   "id": "fresco_1-1060",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "un uber al aeropuerto 280",
@@ -13346,7 +14040,7 @@
    }
   },
   {
-   "id": "fresco_1-0998",
+   "id": "fresco_1-1061",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré medicinas en la farmacia 415",
@@ -13359,7 +14053,7 @@
    }
   },
   {
-   "id": "fresco_1-0999",
+   "id": "fresco_1-1062",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "fui al dentista y me cobró 1200 por la limpieza",
@@ -13372,7 +14066,7 @@
    }
   },
   {
-   "id": "fresco_1-1000",
+   "id": "fresco_1-1063",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "regalo para el cumpleaños de mi sobrino 350",
@@ -13385,7 +14079,7 @@
    }
   },
   {
-   "id": "fresco_1-1001",
+   "id": "fresco_1-1064",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "mi mensualidad del gimnasio 599",
@@ -13398,7 +14092,7 @@
    }
   },
   {
-   "id": "fresco_1-1002",
+   "id": "fresco_1-1065",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "5 mil pesos de renta del cuarto",
@@ -13411,7 +14105,7 @@
    }
   },
   {
-   "id": "fresco_1-1003",
+   "id": "fresco_1-1066",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "despensa en walmart 1850",
@@ -13424,7 +14118,7 @@
    }
   },
   {
-   "id": "fresco_1-1004",
+   "id": "fresco_1-1067",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré un pastel para la fiesta 380",
@@ -13437,20 +14131,20 @@
    }
   },
   {
-   "id": "fresco_1-1005",
+   "id": "fresco_1-1068",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la tenencia del carro 1400",
    "expect": {
     "amount": 1400,
-    "categoryId": "transport",
-    "subcategoryId": "trans_maintenance",
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_vehicle",
     "missing": [],
     "type": "expense"
    }
   },
   {
-   "id": "fresco_1-1006",
+   "id": "fresco_1-1069",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "gasté 90 pesos en el estacionamiento del centro",
@@ -13463,7 +14157,7 @@
    }
   },
   {
-   "id": "fresco_1-1007",
+   "id": "fresco_1-1070",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "cine con mi novia 250",
@@ -13476,7 +14170,7 @@
    }
   },
   {
-   "id": "fresco_1-1008",
+   "id": "fresco_1-1071",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "comimos en vips 620",
@@ -13489,7 +14183,7 @@
    }
   },
   {
-   "id": "fresco_1-1009",
+   "id": "fresco_1-1072",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué el seguro del coche 5400",
@@ -13502,7 +14196,7 @@
    }
   },
   {
-   "id": "fresco_1-1010",
+   "id": "fresco_1-1073",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré lentes nuevos 2300",
@@ -13515,7 +14209,7 @@
    }
   },
   {
-   "id": "fresco_1-1011",
+   "id": "fresco_1-1074",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "abono a mi tarjeta de crédito 3000",
@@ -13528,7 +14222,7 @@
    }
   },
   {
-   "id": "fresco_1-1012",
+   "id": "fresco_1-1075",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué mi parte de la renta 3500",
@@ -13541,7 +14235,7 @@
    }
   },
   {
-   "id": "fresco_1-1013",
+   "id": "fresco_1-1076",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "hice mercado en el tianguis 280",
@@ -13554,7 +14248,7 @@
    }
   },
   {
-   "id": "fresco_1-1014",
+   "id": "fresco_1-1077",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré una playera en zara 399",
@@ -13567,7 +14261,7 @@
    }
   },
   {
-   "id": "fresco_1-1015",
+   "id": "fresco_1-1078",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "mandé a arreglar mi celular 800",
@@ -13580,7 +14274,7 @@
    }
   },
   {
-   "id": "fresco_1-1016",
+   "id": "fresco_1-1079",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pago de la tarjeta de coppel 650",
@@ -13599,7 +14293,7 @@
    }
   },
   {
-   "id": "fresco_1-1017",
+   "id": "fresco_1-1080",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "me cayó el aguinaldo 18000",
@@ -13612,7 +14306,7 @@
    }
   },
   {
-   "id": "fresco_1-1018",
+   "id": "fresco_1-1081",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "me depositaron la quincena 7200",
@@ -13625,7 +14319,7 @@
    }
   },
   {
-   "id": "fresco_1-1019",
+   "id": "fresco_1-1082",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "guardé 500 pesos en mi alcancía",
@@ -13638,7 +14332,7 @@
    }
   },
   {
-   "id": "fresco_1-1020",
+   "id": "fresco_1-1083",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "invertí 3000 en cetes",
@@ -13651,7 +14345,7 @@
    }
   },
   {
-   "id": "fresco_1-1021",
+   "id": "fresco_1-1084",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré 2 boletos para el concierto de natanael cano 2600",
@@ -13664,7 +14358,7 @@
    }
   },
   {
-   "id": "fresco_1-1022",
+   "id": "fresco_1-1085",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué 700 por el servicio del carro",
@@ -13677,7 +14371,7 @@
    }
   },
   {
-   "id": "fresco_1-1023",
+   "id": "fresco_1-1086",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "uber eats 230",
@@ -13690,7 +14384,7 @@
    }
   },
   {
-   "id": "fresco_1-1024",
+   "id": "fresco_1-1087",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "rappi 185",
@@ -13703,7 +14397,7 @@
    }
   },
   {
-   "id": "fresco_1-1025",
+   "id": "fresco_1-1088",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "les di 500 a mis papás",
@@ -13716,7 +14410,7 @@
    }
   },
   {
-   "id": "fresco_1-1026",
+   "id": "fresco_1-1089",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la terapia 900",
@@ -13729,7 +14423,7 @@
    }
   },
   {
-   "id": "fresco_1-1027",
+   "id": "fresco_1-1090",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré vitaminas 320",
@@ -13742,7 +14436,7 @@
    }
   },
   {
-   "id": "fresco_1-1028",
+   "id": "fresco_1-1091",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "curso de excel en udemy 299",
@@ -13755,7 +14449,7 @@
    }
   },
   {
-   "id": "fresco_1-1029",
+   "id": "fresco_1-1092",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "cambié las llantas del coche 4200",
@@ -13768,7 +14462,7 @@
    }
   },
   {
-   "id": "fresco_1-1030",
+   "id": "fresco_1-1093",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "boletos de avión a cancún 5600",
@@ -13781,7 +14475,7 @@
    }
   },
   {
-   "id": "fresco_1-1031",
+   "id": "fresco_1-1094",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "hotel en playa del carmen 3200",
@@ -13794,7 +14488,7 @@
    }
   },
   {
-   "id": "fresco_1-1032",
+   "id": "fresco_1-1095",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué el wifi 499",
@@ -13807,7 +14501,7 @@
    }
   },
   {
-   "id": "fresco_1-1033",
+   "id": "fresco_1-1096",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "licuado de plátano 45",
@@ -13820,7 +14514,7 @@
    }
   },
   {
-   "id": "fresco_1-1034",
+   "id": "fresco_1-1097",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré fruta en el tianguis 120",
@@ -13833,7 +14527,7 @@
    }
   },
   {
-   "id": "fresco_1-1035",
+   "id": "fresco_1-1098",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré 6 caguamas 340",
@@ -13846,20 +14540,20 @@
    }
   },
   {
-   "id": "fresco_1-1036",
+   "id": "fresco_1-1099",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué el predial 2300",
    "expect": {
     "amount": 2300,
-    "categoryId": "housing",
-    "subcategoryId": "house_maintenance",
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_property",
     "missing": [],
     "type": "expense"
    }
   },
   {
-   "id": "fresco_1-1037",
+   "id": "fresco_1-1100",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "donativo a la cruz roja 200",
@@ -13872,7 +14566,7 @@
    }
   },
   {
-   "id": "fresco_1-1038",
+   "id": "fresco_1-1101",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "sesión de psicología 800",
@@ -13885,7 +14579,7 @@
    }
   },
   {
-   "id": "fresco_1-1039",
+   "id": "fresco_1-1102",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "copias y engargolado de la tesis 150",
@@ -13898,7 +14592,7 @@
    }
   },
   {
-   "id": "fresco_1-1040",
+   "id": "fresco_1-1103",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "spotify 129",
@@ -13911,7 +14605,7 @@
    }
   },
   {
-   "id": "fresco_1-1041",
+   "id": "fresco_1-1104",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué 1500 de mantenimiento del edificio",
@@ -13924,7 +14618,7 @@
    }
   },
   {
-   "id": "fresco_1-1042",
+   "id": "fresco_1-1105",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré un sillón 8500",
@@ -13937,7 +14631,7 @@
    }
   },
   {
-   "id": "fresco_1-1043",
+   "id": "fresco_1-1106",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "lavandería 180",
@@ -13950,7 +14644,7 @@
    }
   },
   {
-   "id": "fresco_1-1044",
+   "id": "fresco_1-1107",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué el taller 2200 por el mantenimiento del coche",
@@ -13963,7 +14657,7 @@
    }
   },
   {
-   "id": "fresco_1-1045",
+   "id": "fresco_1-1108",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "dos tacos y una coca 60",
@@ -13976,7 +14670,7 @@
    }
   },
   {
-   "id": "fresco_1-1046",
+   "id": "fresco_1-1109",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "unas chelas con los amigos 270",
@@ -13989,7 +14683,7 @@
    }
   },
   {
-   "id": "fresco_1-1047",
+   "id": "fresco_1-1110",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "entradas al museo 120",
@@ -14002,20 +14696,26 @@
    }
   },
   {
-   "id": "fresco_1-1048",
+   "id": "fresco_1-1111",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la guardería de mi hijo 3500",
    "expect": {
     "amount": 3500,
-    "categoryId": "education",
-    "subcategoryId": "edu_tuition",
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
     "missing": [],
-    "type": "expense"
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_tuition"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
    }
   },
   {
-   "id": "fresco_1-1049",
+   "id": "fresco_1-1112",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "mensualidad del carro 6200",
@@ -14028,7 +14728,7 @@
    }
   },
   {
-   "id": "fresco_1-1050",
+   "id": "fresco_1-1113",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "vendí mi laptop vieja por 4000",
@@ -14041,7 +14741,7 @@
    }
   },
   {
-   "id": "fresco_1-1051",
+   "id": "fresco_1-1114",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "me llegó un pago de un cliente 6500",
@@ -14054,7 +14754,7 @@
    }
   },
   {
-   "id": "fresco_1-1052",
+   "id": "fresco_1-1115",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "tintorería 250",
@@ -14067,7 +14767,7 @@
    }
   },
   {
-   "id": "fresco_1-1053",
+   "id": "fresco_1-1116",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "fui al doctor 600",
@@ -14080,7 +14780,7 @@
    }
   },
   {
-   "id": "fresco_1-1054",
+   "id": "fresco_1-1117",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "análisis de sangre 450",
@@ -14093,7 +14793,7 @@
    }
   },
   {
-   "id": "fresco_1-1055",
+   "id": "fresco_1-1118",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "hamburguesa 120 en el carls",
@@ -14106,7 +14806,7 @@
    }
   },
   {
-   "id": "fresco_1-1056",
+   "id": "fresco_1-1119",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué mi renta 6500",
@@ -14119,7 +14819,7 @@
    }
   },
   {
-   "id": "fresco_1-1057",
+   "id": "fresco_1-1120",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "gasolina 600 pesos",
@@ -14132,7 +14832,7 @@
    }
   },
   {
-   "id": "fresco_1-1058",
+   "id": "fresco_1-1121",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "el super 1250",
@@ -14145,7 +14845,7 @@
    }
   },
   {
-   "id": "fresco_1-1059",
+   "id": "fresco_1-1122",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré audífonos 650",
@@ -14158,7 +14858,7 @@
    }
   },
   {
-   "id": "fresco_1-1060",
+   "id": "fresco_1-1123",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "mi suscripción de chatgpt 400",
@@ -14171,7 +14871,7 @@
    }
   },
   {
-   "id": "fresco_1-1061",
+   "id": "fresco_1-1124",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué el internet 399",
@@ -14184,7 +14884,7 @@
    }
   },
   {
-   "id": "fresco_1-1062",
+   "id": "fresco_1-1125",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "spa con mi mamá 1200",
@@ -14197,7 +14897,7 @@
    }
   },
   {
-   "id": "fresco_1-1063",
+   "id": "fresco_1-1126",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "corte de pelo 150",
@@ -14210,7 +14910,7 @@
    }
   },
   {
-   "id": "fresco_1-1064",
+   "id": "fresco_1-1127",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "kinder de mi hijo 2800",
@@ -14223,7 +14923,7 @@
    }
   },
   {
-   "id": "fresco_1-1065",
+   "id": "fresco_1-1128",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "vuelo a guadalajara 2100",
@@ -14236,7 +14936,7 @@
    }
   },
   {
-   "id": "fresco_1-1066",
+   "id": "fresco_1-1129",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "casetas de ida y vuelta a puebla 360",
@@ -14249,7 +14949,7 @@
    }
   },
   {
-   "id": "fresco_1-1067",
+   "id": "fresco_1-1130",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "propina para el repartidor 30",
@@ -14262,7 +14962,7 @@
    }
   },
   {
-   "id": "fresco_1-1068",
+   "id": "fresco_1-1131",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "cenamos sushi 780",
@@ -14275,7 +14975,7 @@
    }
   },
   {
-   "id": "fresco_1-1069",
+   "id": "fresco_1-1132",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré una laptop 14500",
@@ -14288,7 +14988,7 @@
    }
   },
   {
-   "id": "fresco_1-1070",
+   "id": "fresco_1-1133",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "abono de coppel de la sala 450",
@@ -14301,20 +15001,26 @@
    }
   },
   {
-   "id": "fresco_1-1071",
+   "id": "fresco_1-1134",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué a la señora que me ayuda con la limpieza 600",
    "expect": {
     "amount": 600,
     "categoryId": "housing",
-    "subcategoryId": "house_maintenance",
+    "subcategoryId": "house_domestic",
     "missing": [],
-    "type": "expense"
+    "type": "expense",
+    "altSubcategoryIds": [
+     "house_maintenance"
+    ],
+    "altCategoryIds": [
+     "housing"
+    ]
    }
   },
   {
-   "id": "fresco_1-1072",
+   "id": "fresco_1-1135",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "croquetas 480",
@@ -14327,7 +15033,7 @@
    }
   },
   {
-   "id": "fresco_1-1073",
+   "id": "fresco_1-1136",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "jugo de naranja 35",
@@ -14346,7 +15052,7 @@
    }
   },
   {
-   "id": "fresco_1-1074",
+   "id": "fresco_1-1137",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "tortillas y huevo 70",
@@ -14359,7 +15065,7 @@
    }
   },
   {
-   "id": "fresco_1-1075",
+   "id": "fresco_1-1138",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "luz 520",
@@ -14372,7 +15078,7 @@
    }
   },
   {
-   "id": "fresco_1-1076",
+   "id": "fresco_1-1139",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "fui a un bar 400",
@@ -14385,7 +15091,7 @@
    }
   },
   {
-   "id": "fresco_1-1077",
+   "id": "fresco_1-1140",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "clases de natación 900",
@@ -14398,7 +15104,7 @@
    }
   },
   {
-   "id": "fresco_1-1078",
+   "id": "fresco_1-1141",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "tarjeta del metro 100",
@@ -14411,7 +15117,7 @@
    }
   },
   {
-   "id": "fresco_1-1079",
+   "id": "fresco_1-1142",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pasaje en micro 8",
@@ -14424,7 +15130,7 @@
    }
   },
   {
-   "id": "fresco_1-1080",
+   "id": "fresco_1-1143",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré un libro 280",
@@ -14437,7 +15143,7 @@
    }
   },
   {
-   "id": "fresco_1-1081",
+   "id": "fresco_1-1144",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "tamales y atole 65",
@@ -14450,7 +15156,7 @@
    }
   },
   {
-   "id": "fresco_1-1082",
+   "id": "fresco_1-1145",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la mudanza 3500",
@@ -14463,7 +15169,7 @@
    }
   },
   {
-   "id": "fresco_1-1083",
+   "id": "fresco_1-1146",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "dentista 800",
@@ -14476,7 +15182,7 @@
    }
   },
   {
-   "id": "fresco_1-1084",
+   "id": "fresco_1-1147",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré medicina para la gripa 150",
@@ -14489,7 +15195,7 @@
    }
   },
   {
-   "id": "fresco_1-1085",
+   "id": "fresco_1-1148",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "mi bono de productividad 4000",
@@ -14502,7 +15208,7 @@
    }
   },
   {
-   "id": "fresco_1-1086",
+   "id": "fresco_1-1149",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué 330 de peluquería",
@@ -14515,7 +15221,7 @@
    }
   },
   {
-   "id": "fresco_1-1087",
+   "id": "fresco_1-1150",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré dos cafés 90",
@@ -14528,7 +15234,7 @@
    }
   },
   {
-   "id": "fresco_1-1088",
+   "id": "fresco_1-1151",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "starbucks 120",
@@ -14541,7 +15247,7 @@
    }
   },
   {
-   "id": "fresco_1-1089",
+   "id": "fresco_1-1152",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "hbo max 149",
@@ -14554,7 +15260,7 @@
    }
   },
   {
-   "id": "fresco_1-1090",
+   "id": "fresco_1-1153",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "seguro médico 1800",
@@ -14567,7 +15273,7 @@
    }
   },
   {
-   "id": "fresco_1-1091",
+   "id": "fresco_1-1154",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré un regalo de boda 900",
@@ -14586,7 +15292,7 @@
    }
   },
   {
-   "id": "fresco_1-1092",
+   "id": "fresco_1-1155",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la hipoteca 11000",
@@ -14599,7 +15305,7 @@
    }
   },
   {
-   "id": "fresco_1-1093",
+   "id": "fresco_1-1156",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "tanda 1000",
@@ -14618,7 +15324,7 @@
    }
   },
   {
-   "id": "fresco_1-1094",
+   "id": "fresco_1-1157",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "carnitas 250",
@@ -14631,7 +15337,7 @@
    }
   },
   {
-   "id": "fresco_1-1095",
+   "id": "fresco_1-1158",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré fruta y verdura 200",
@@ -14644,7 +15350,7 @@
    }
   },
   {
-   "id": "fresco_1-1096",
+   "id": "fresco_1-1159",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la verificación 600",
@@ -14657,7 +15363,7 @@
    }
   },
   {
-   "id": "fresco_1-1097",
+   "id": "fresco_1-1160",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "entrada al cine 90 pesos",
@@ -14670,7 +15376,7 @@
    }
   },
   {
-   "id": "fresco_1-1098",
+   "id": "fresco_1-1161",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "agua de garrafón 45",
@@ -14689,7 +15395,7 @@
    }
   },
   {
-   "id": "fresco_1-1099",
+   "id": "fresco_1-1162",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pues ayer gasté como cuatrocientos pesos en gasolina",
@@ -14702,7 +15408,7 @@
    }
   },
   {
-   "id": "fresco_1-1100",
+   "id": "fresco_1-1163",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "fui al súper y me salió en mil doscientos cincuenta",
@@ -14715,7 +15421,7 @@
    }
   },
   {
-   "id": "fresco_1-1101",
+   "id": "fresco_1-1164",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "pagué la renta siete mil quinientos",
@@ -14728,7 +15434,7 @@
    }
   },
   {
-   "id": "fresco_1-1102",
+   "id": "fresco_1-1165",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "compré tacos por ciento veinte pesos",
@@ -14741,7 +15447,7 @@
    }
   },
   {
-   "id": "fresco_1-1103",
+   "id": "fresco_1-1166",
    "suite": "fresco_1",
    "split": "fresh1",
    "text": "me cobraron trescientos cincuenta pesos del dentista",
@@ -14754,7 +15460,7 @@
    }
   },
   {
-   "id": "fresco_2-1104",
+   "id": "fresco_2-1167",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré un cargador de celular 250",
@@ -14767,7 +15473,7 @@
    }
   },
   {
-   "id": "fresco_2-1105",
+   "id": "fresco_2-1168",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "dejé 40 pesos de propina en el restaurante",
@@ -14780,7 +15486,7 @@
    }
   },
   {
-   "id": "fresco_2-1106",
+   "id": "fresco_2-1169",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué el estacionamiento 60",
@@ -14793,7 +15499,7 @@
    }
   },
   {
-   "id": "fresco_2-1107",
+   "id": "fresco_2-1170",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "nueve mil de renta",
@@ -14806,7 +15512,7 @@
    }
   },
   {
-   "id": "fresco_2-1108",
+   "id": "fresco_2-1171",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "me corté el cabello 180",
@@ -14819,7 +15525,7 @@
    }
   },
   {
-   "id": "fresco_2-1109",
+   "id": "fresco_2-1172",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "comida en la fonda 90",
@@ -14832,7 +15538,7 @@
    }
   },
   {
-   "id": "fresco_2-1110",
+   "id": "fresco_2-1173",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "cargué diesel 800",
@@ -14845,7 +15551,7 @@
    }
   },
   {
-   "id": "fresco_2-1111",
+   "id": "fresco_2-1174",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué mi crédito del infonavit 3200",
@@ -14858,7 +15564,7 @@
    }
   },
   {
-   "id": "fresco_2-1112",
+   "id": "fresco_2-1175",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré cuadernos y plumas para la escuela 260",
@@ -14871,7 +15577,7 @@
    }
   },
   {
-   "id": "fresco_2-1113",
+   "id": "fresco_2-1176",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "fui al cine y compré palomitas 310",
@@ -14890,7 +15596,7 @@
    }
   },
   {
-   "id": "fresco_2-1114",
+   "id": "fresco_2-1177",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagamos la cena en un restaurante italiano 1100",
@@ -14903,7 +15609,7 @@
    }
   },
   {
-   "id": "fresco_2-1115",
+   "id": "fresco_2-1178",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "uber a la oficina 95",
@@ -14916,7 +15622,7 @@
    }
   },
   {
-   "id": "fresco_2-1116",
+   "id": "fresco_2-1179",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré vino para la cena 380",
@@ -14929,7 +15635,7 @@
    }
   },
   {
-   "id": "fresco_2-1117",
+   "id": "fresco_2-1180",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué el seguro de gastos médicos 7200",
@@ -14942,7 +15648,7 @@
    }
   },
   {
-   "id": "fresco_2-1118",
+   "id": "fresco_2-1181",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "fui al veterinario con mi gato 650",
@@ -14955,7 +15661,7 @@
    }
   },
   {
-   "id": "fresco_2-1119",
+   "id": "fresco_2-1182",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "la mensualidad de la prepa 3100",
@@ -14968,7 +15674,7 @@
    }
   },
   {
-   "id": "fresco_2-1120",
+   "id": "fresco_2-1183",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "spotify premium 129",
@@ -14981,7 +15687,7 @@
    }
   },
   {
-   "id": "fresco_2-1121",
+   "id": "fresco_2-1184",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué la tarjeta de crédito 5000",
@@ -14994,7 +15700,7 @@
    }
   },
   {
-   "id": "fresco_2-1122",
+   "id": "fresco_2-1185",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "recarga telcel 200",
@@ -15007,7 +15713,7 @@
    }
   },
   {
-   "id": "fresco_2-1123",
+   "id": "fresco_2-1186",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré unos zapatos 1200",
@@ -15020,7 +15726,7 @@
    }
   },
   {
-   "id": "fresco_2-1124",
+   "id": "fresco_2-1187",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "fuimos a comer pizza 480",
@@ -15033,7 +15739,7 @@
    }
   },
   {
-   "id": "fresco_2-1125",
+   "id": "fresco_2-1188",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pasajes de la semana 160",
@@ -15046,7 +15752,7 @@
    }
   },
   {
-   "id": "fresco_2-1126",
+   "id": "fresco_2-1189",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "agua del mes 280",
@@ -15059,7 +15765,7 @@
    }
   },
   {
-   "id": "fresco_2-1127",
+   "id": "fresco_2-1190",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré una tele 9500",
@@ -15072,7 +15778,7 @@
    }
   },
   {
-   "id": "fresco_2-1128",
+   "id": "fresco_2-1191",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "cuota del gimnasio 450",
@@ -15085,7 +15791,7 @@
    }
   },
   {
-   "id": "fresco_2-1129",
+   "id": "fresco_2-1192",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "servicio de mi coche 1900",
@@ -15098,7 +15804,7 @@
    }
   },
   {
-   "id": "fresco_2-1130",
+   "id": "fresco_2-1193",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué el dentista 950",
@@ -15111,7 +15817,7 @@
    }
   },
   {
-   "id": "fresco_2-1131",
+   "id": "fresco_2-1194",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré boletos del concierto 3200",
@@ -15124,7 +15830,7 @@
    }
   },
   {
-   "id": "fresco_2-1132",
+   "id": "fresco_2-1195",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pizza 220",
@@ -15137,7 +15843,7 @@
    }
   },
   {
-   "id": "fresco_2-1133",
+   "id": "fresco_2-1196",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré aguacates y limones 75",
@@ -15150,7 +15856,7 @@
    }
   },
   {
-   "id": "fresco_2-1134",
+   "id": "fresco_2-1197",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "hotel 2800",
@@ -15163,7 +15869,7 @@
    }
   },
   {
-   "id": "fresco_2-1135",
+   "id": "fresco_2-1198",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "renta de coche 1500",
@@ -15176,7 +15882,7 @@
    }
   },
   {
-   "id": "fresco_2-1136",
+   "id": "fresco_2-1199",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "me llegó mi sueldo 14000",
@@ -15189,7 +15895,7 @@
    }
   },
   {
-   "id": "fresco_2-1137",
+   "id": "fresco_2-1200",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "ahorré 800 pesos",
@@ -15202,7 +15908,7 @@
    }
   },
   {
-   "id": "fresco_2-1138",
+   "id": "fresco_2-1201",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "invertí 2500 en bitcoin",
@@ -15215,7 +15921,7 @@
    }
   },
   {
-   "id": "fresco_2-1139",
+   "id": "fresco_2-1202",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué la colegiatura 5200",
@@ -15228,7 +15934,7 @@
    }
   },
   {
-   "id": "fresco_2-1140",
+   "id": "fresco_2-1203",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "café 55",
@@ -15241,7 +15947,7 @@
    }
   },
   {
-   "id": "fresco_2-1141",
+   "id": "fresco_2-1204",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré pan dulce 48",
@@ -15260,7 +15966,7 @@
    }
   },
   {
-   "id": "fresco_2-1142",
+   "id": "fresco_2-1205",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "regalo de navidad para mi mamá 700",
@@ -15273,7 +15979,7 @@
    }
   },
   {
-   "id": "fresco_2-1143",
+   "id": "fresco_2-1206",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "toallas femeninas y condones 160",
@@ -15286,7 +15992,7 @@
    }
   },
   {
-   "id": "fresco_2-1144",
+   "id": "fresco_2-1207",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "reparación de mi celular 900",
@@ -15299,7 +16005,7 @@
    }
   },
   {
-   "id": "fresco_2-1145",
+   "id": "fresco_2-1208",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué el plomero 700",
@@ -15312,7 +16018,7 @@
    }
   },
   {
-   "id": "fresco_2-1146",
+   "id": "fresco_2-1209",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "frutas y verduras en el mercado 210",
@@ -15325,7 +16031,7 @@
    }
   },
   {
-   "id": "fresco_2-1147",
+   "id": "fresco_2-1210",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "dos cervezas 100",
@@ -15338,7 +16044,7 @@
    }
   },
   {
-   "id": "fresco_2-1148",
+   "id": "fresco_2-1211",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré un vestido para la boda 1600",
@@ -15357,7 +16063,7 @@
    }
   },
   {
-   "id": "fresco_2-1149",
+   "id": "fresco_2-1212",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "mi seguro del carro 4300",
@@ -15370,7 +16076,7 @@
    }
   },
   {
-   "id": "fresco_2-1150",
+   "id": "fresco_2-1213",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré una bici 4500",
@@ -15383,7 +16089,7 @@
    }
   },
   {
-   "id": "fresco_2-1151",
+   "id": "fresco_2-1214",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "curso de inglés 1200",
@@ -15396,7 +16102,7 @@
    }
   },
   {
-   "id": "fresco_2-1152",
+   "id": "fresco_2-1215",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué la suscripción de disney plus 159",
@@ -15409,7 +16115,7 @@
    }
   },
   {
-   "id": "fresco_2-1153",
+   "id": "fresco_2-1216",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "tacos 150",
@@ -15422,7 +16128,7 @@
    }
   },
   {
-   "id": "fresco_2-1154",
+   "id": "fresco_2-1217",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "ayer me cobraron 380 por unas pastillas",
@@ -15435,7 +16141,7 @@
    }
   },
   {
-   "id": "fresco_2-1155",
+   "id": "fresco_2-1218",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "fui al doctor y pagué 700 de consulta",
@@ -15448,7 +16154,7 @@
    }
   },
   {
-   "id": "fresco_2-1156",
+   "id": "fresco_2-1219",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "coppel 500",
@@ -15461,7 +16167,7 @@
    }
   },
   {
-   "id": "fresco_2-1157",
+   "id": "fresco_2-1220",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "lavé la ropa en la lavandería 120",
@@ -15474,7 +16180,7 @@
    }
   },
   {
-   "id": "fresco_2-1158",
+   "id": "fresco_2-1221",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "volaris 2300",
@@ -15487,7 +16193,7 @@
    }
   },
   {
-   "id": "fresco_2-1159",
+   "id": "fresco_2-1222",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré muebles para la casa 6000",
@@ -15500,7 +16206,7 @@
    }
   },
   {
-   "id": "fresco_2-1160",
+   "id": "fresco_2-1223",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "panadería 62",
@@ -15513,7 +16219,7 @@
    }
   },
   {
-   "id": "fresco_2-1161",
+   "id": "fresco_2-1224",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "gasté 500 en el antro",
@@ -15526,7 +16232,7 @@
    }
   },
   {
-   "id": "fresco_2-1162",
+   "id": "fresco_2-1225",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué la boda de mi prima 2000",
@@ -15539,7 +16245,7 @@
    }
   },
   {
-   "id": "fresco_2-1163",
+   "id": "fresco_2-1226",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "mandé 1000 a mi mamá",
@@ -15552,7 +16258,7 @@
    }
   },
   {
-   "id": "fresco_2-1164",
+   "id": "fresco_2-1227",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "entradas al zoológico 400",
@@ -15565,20 +16271,26 @@
    }
   },
   {
-   "id": "fresco_2-1165",
+   "id": "fresco_2-1228",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué el seguro de vida 900",
    "expect": {
     "amount": 900,
     "categoryId": "health",
-    "subcategoryId": "health_insurance",
+    "subcategoryId": "health_life_insurance",
     "missing": [],
-    "type": "expense"
+    "type": "expense",
+    "altSubcategoryIds": [
+     "health_insurance"
+    ],
+    "altCategoryIds": [
+     "health"
+    ]
    }
   },
   {
-   "id": "fresco_2-1166",
+   "id": "fresco_2-1229",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "recibo de teléfono 450",
@@ -15591,7 +16303,7 @@
    }
   },
   {
-   "id": "fresco_2-1167",
+   "id": "fresco_2-1230",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré una lavadora 9800",
@@ -15604,7 +16316,7 @@
    }
   },
   {
-   "id": "fresco_2-1168",
+   "id": "fresco_2-1231",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré papel higiénico y jabón 180",
@@ -15617,7 +16329,7 @@
    }
   },
   {
-   "id": "fresco_2-1169",
+   "id": "fresco_2-1232",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "un mezcal 120",
@@ -15630,7 +16342,7 @@
    }
   },
   {
-   "id": "fresco_2-1170",
+   "id": "fresco_2-1233",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "rayos x 800",
@@ -15643,7 +16355,7 @@
    }
   },
   {
-   "id": "fresco_2-1171",
+   "id": "fresco_2-1234",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué la alarma 350",
@@ -15656,7 +16368,7 @@
    }
   },
   {
-   "id": "fresco_2-1172",
+   "id": "fresco_2-1235",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "me regalaron 1000 pesos",
@@ -15669,7 +16381,7 @@
    }
   },
   {
-   "id": "fresco_2-1173",
+   "id": "fresco_2-1236",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "cobré mi quincena 8200",
@@ -15682,7 +16394,7 @@
    }
   },
   {
-   "id": "fresco_2-1174",
+   "id": "fresco_2-1237",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "abono del carro 4800",
@@ -15695,7 +16407,7 @@
    }
   },
   {
-   "id": "fresco_2-1175",
+   "id": "fresco_2-1238",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "préstamo personal 3000",
@@ -15708,7 +16420,7 @@
    }
   },
   {
-   "id": "fresco_2-1176",
+   "id": "fresco_2-1239",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "ahorré para vacaciones 1500",
@@ -15721,7 +16433,7 @@
    }
   },
   {
-   "id": "fresco_2-1177",
+   "id": "fresco_2-1240",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré acciones de apple 2000",
@@ -15734,7 +16446,7 @@
    }
   },
   {
-   "id": "fresco_2-1178",
+   "id": "fresco_2-1241",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "ir al boliche 300",
@@ -15747,7 +16459,7 @@
    }
   },
   {
-   "id": "fresco_2-1179",
+   "id": "fresco_2-1242",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "karaoke 450",
@@ -15760,7 +16472,7 @@
    }
   },
   {
-   "id": "fresco_2-1180",
+   "id": "fresco_2-1243",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué 50 pesos de caseta",
@@ -15773,7 +16485,7 @@
    }
   },
   {
-   "id": "fresco_2-1181",
+   "id": "fresco_2-1244",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré gasolina 700",
@@ -15786,7 +16498,7 @@
    }
   },
   {
-   "id": "fresco_2-1182",
+   "id": "fresco_2-1245",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "batería del coche 2400",
@@ -15799,20 +16511,26 @@
    }
   },
   {
-   "id": "fresco_2-1183",
+   "id": "fresco_2-1246",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "mensualidad de la guardería 2900",
    "expect": {
     "amount": 2900,
-    "categoryId": "education",
-    "subcategoryId": "edu_tuition",
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
     "missing": [],
-    "type": "expense"
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_tuition"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
    }
   },
   {
-   "id": "fresco_2-1184",
+   "id": "fresco_2-1247",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré unos tenis 1800",
@@ -15825,7 +16543,7 @@
    }
   },
   {
-   "id": "fresco_2-1185",
+   "id": "fresco_2-1248",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué la lana de la tanda 800",
@@ -15844,7 +16562,7 @@
    }
   },
   {
-   "id": "fresco_2-1186",
+   "id": "fresco_2-1249",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "hamburguesa y papas 150",
@@ -15857,7 +16575,7 @@
    }
   },
   {
-   "id": "fresco_2-1187",
+   "id": "fresco_2-1250",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "helado 60",
@@ -15870,7 +16588,7 @@
    }
   },
   {
-   "id": "fresco_2-1188",
+   "id": "fresco_2-1251",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué 3 mil de la colegiatura",
@@ -15883,7 +16601,7 @@
    }
   },
   {
-   "id": "fresco_2-1189",
+   "id": "fresco_2-1252",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "uber 140",
@@ -15896,7 +16614,7 @@
    }
   },
   {
-   "id": "fresco_2-1190",
+   "id": "fresco_2-1253",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "didi 110",
@@ -15909,7 +16627,7 @@
    }
   },
   {
-   "id": "fresco_2-1191",
+   "id": "fresco_2-1254",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "taxi 80",
@@ -15922,7 +16640,7 @@
    }
   },
   {
-   "id": "fresco_2-1192",
+   "id": "fresco_2-1255",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "mototaxi 20",
@@ -15935,7 +16653,7 @@
    }
   },
   {
-   "id": "fresco_2-1193",
+   "id": "fresco_2-1256",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "una consulta con el nutriólogo 800",
@@ -15948,7 +16666,7 @@
    }
   },
   {
-   "id": "fresco_2-1194",
+   "id": "fresco_2-1257",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "lentes de contacto 600",
@@ -15961,7 +16679,7 @@
    }
   },
   {
-   "id": "fresco_2-1195",
+   "id": "fresco_2-1258",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré un videojuego 1200",
@@ -15974,7 +16692,7 @@
    }
   },
   {
-   "id": "fresco_2-1196",
+   "id": "fresco_2-1259",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "fiesta de cumpleaños de mi hijo 2500",
@@ -15987,7 +16705,7 @@
    }
   },
   {
-   "id": "fresco_2-1197",
+   "id": "fresco_2-1260",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué la posada 400",
@@ -16000,7 +16718,7 @@
    }
   },
   {
-   "id": "fresco_2-1198",
+   "id": "fresco_2-1261",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "donación 300",
@@ -16013,7 +16731,7 @@
    }
   },
   {
-   "id": "fresco_2-1199",
+   "id": "fresco_2-1262",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "papelería 120",
@@ -16026,7 +16744,7 @@
    }
   },
   {
-   "id": "fresco_2-1200",
+   "id": "fresco_2-1263",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "el mandado 900",
@@ -16035,11 +16753,17 @@
     "categoryId": "food",
     "subcategoryId": "food_supermarket",
     "missing": [],
-    "type": "expense"
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_market"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
    }
   },
   {
-   "id": "fresco_2-1201",
+   "id": "fresco_2-1264",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "chedraui 1500",
@@ -16052,7 +16776,7 @@
    }
   },
   {
-   "id": "fresco_2-1202",
+   "id": "fresco_2-1265",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "la comer 1100",
@@ -16065,7 +16789,7 @@
    }
   },
   {
-   "id": "fresco_2-1203",
+   "id": "fresco_2-1266",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué mil quinientos de gas lp",
@@ -16078,7 +16802,7 @@
    }
   },
   {
-   "id": "fresco_2-1204",
+   "id": "fresco_2-1267",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pasé a la gasolinera y puse 300",
@@ -16091,7 +16815,7 @@
    }
   },
   {
-   "id": "fresco_2-1205",
+   "id": "fresco_2-1268",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "cena con amigos en un bar 900",
@@ -16110,7 +16834,7 @@
    }
   },
   {
-   "id": "fresco_2-1206",
+   "id": "fresco_2-1269",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré dulces 55",
@@ -16123,7 +16847,7 @@
    }
   },
   {
-   "id": "fresco_2-1207",
+   "id": "fresco_2-1270",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "membresía del club 3000",
@@ -16136,7 +16860,7 @@
    }
   },
   {
-   "id": "fresco_2-1208",
+   "id": "fresco_2-1271",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "masaje 700",
@@ -16149,7 +16873,7 @@
    }
   },
   {
-   "id": "fresco_2-1209",
+   "id": "fresco_2-1272",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "mi tinte de cabello 450",
@@ -16162,7 +16886,7 @@
    }
   },
   {
-   "id": "fresco_2-1210",
+   "id": "fresco_2-1273",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré maquillaje 500",
@@ -16175,7 +16899,7 @@
    }
   },
   {
-   "id": "fresco_2-1211",
+   "id": "fresco_2-1274",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "licencia de office 1200",
@@ -16188,7 +16912,7 @@
    }
   },
   {
-   "id": "fresco_2-1212",
+   "id": "fresco_2-1275",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "icloud 49",
@@ -16201,7 +16925,7 @@
    }
   },
   {
-   "id": "fresco_2-1213",
+   "id": "fresco_2-1276",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré un celular 7000",
@@ -16214,7 +16938,7 @@
    }
   },
   {
-   "id": "fresco_2-1214",
+   "id": "fresco_2-1277",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué el agua 250",
@@ -16227,7 +16951,7 @@
    }
   },
   {
-   "id": "fresco_2-1215",
+   "id": "fresco_2-1278",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué doscientos cincuenta de la luz",
@@ -16240,7 +16964,7 @@
    }
   },
   {
-   "id": "fresco_2-1216",
+   "id": "fresco_2-1279",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "tres mil quinientos de renta",
@@ -16253,7 +16977,7 @@
    }
   },
   {
-   "id": "fresco_2-1217",
+   "id": "fresco_2-1280",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "me salió en cuatrocientos pesos el súper",
@@ -16266,7 +16990,7 @@
    }
   },
   {
-   "id": "fresco_2-1218",
+   "id": "fresco_2-1281",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "gasté 20 mil en la mudanza",
@@ -16279,7 +17003,7 @@
    }
   },
   {
-   "id": "fresco_2-1219",
+   "id": "fresco_2-1282",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "pagué ochocientos de pediatra",
@@ -16292,7 +17016,7 @@
    }
   },
   {
-   "id": "fresco_2-1220",
+   "id": "fresco_2-1283",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "compré una cafetera 900",
@@ -16305,7 +17029,7 @@
    }
   },
   {
-   "id": "fresco_2-1221",
+   "id": "fresco_2-1284",
    "suite": "fresco_2",
    "split": "sealed",
    "text": "tianguis 150",
@@ -16315,6 +17039,4443 @@
     "subcategoryId": "food_market",
     "missing": [],
     "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1285",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué mi parte de la renta con mis roomies 3500",
+   "expect": {
+    "amount": 3500,
+    "categoryId": "housing",
+    "subcategoryId": "house_rent",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1286",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "le transferí a mi roomie lo del internet 250",
+   "expect": {
+    "amount": 250,
+    "categoryId": "housing",
+    "subcategoryId": "house_internet",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1287",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "dividimos el súper entre los tres y me tocaron 480",
+   "expect": {
+    "amount": 480,
+    "categoryId": "food",
+    "subcategoryId": "food_supermarket",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1288",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cena de aniversario con mi esposa 1450",
+   "expect": {
+    "amount": 1450,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_partner",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_restaurant"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1289",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cita con mi novia en el cine 380",
+   "expect": {
+    "amount": 380,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_cinema",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_partner"
+    ],
+    "altCategoryIds": [
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1290",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "regalo para mi novia 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_gifts",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_partner"
+    ],
+    "altCategoryIds": [
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1291",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me depositó mi roomie su parte de la luz 400",
+   "expect": {
+    "amount": 400,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1292",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "mi pareja me pagó la mitad del hotel 1800",
+   "expect": {
+    "amount": 1800,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1293",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "le pagué a mi amigo lo que le debía 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "debt",
+    "subcategoryId": "debt_personal",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1294",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué la cuenta de todos en el restaurante 2300",
+   "expect": {
+    "amount": 2300,
+    "categoryId": "food",
+    "subcategoryId": "food_restaurant",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1295",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "la mitad del recibo de la luz 380",
+   "expect": {
+    "amount": 380,
+    "categoryId": "housing",
+    "subcategoryId": "house_electricity",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1296",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué el gas del depa compartido 320",
+   "expect": {
+    "amount": 320,
+    "categoryId": "housing",
+    "subcategoryId": "house_gas",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1297",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "depósito de garantía del departamento 8000",
+   "expect": {
+    "amount": 8000,
+    "categoryId": "housing",
+    "subcategoryId": "house_rent",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1298",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "mi parte del regalo de la oficina 150",
+   "expect": {
+    "amount": 150,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_gifts",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1299",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué los intereses de la tarjeta 380",
+   "expect": {
+    "amount": 380,
+    "categoryId": "debt",
+    "subcategoryId": "debt_interest",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1300",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me cobraron la anualidad de la tarjeta 899",
+   "expect": {
+    "amount": 899,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_bank",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1301",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pago mínimo de la tarjeta de bbva 650",
+   "expect": {
+    "amount": 650,
+    "categoryId": "debt",
+    "subcategoryId": "debt_creditcard",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1302",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué el estado de cuenta de mi tarjeta nu 4200",
+   "expect": {
+    "amount": 4200,
+    "categoryId": "debt",
+    "subcategoryId": "debt_creditcard",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1303",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cargo por pago tardío 350",
+   "expect": {
+    "amount": 350,
+    "categoryId": "debt",
+    "subcategoryId": "debt_interest",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1304",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "abono a mi tarjeta de liverpool 1200",
+   "expect": {
+    "amount": 1200,
+    "categoryId": "debt",
+    "subcategoryId": "debt_creditcard",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "debt_appliance"
+    ],
+    "altCategoryIds": [
+     "debt"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1305",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "comisión por retiro en cajero 35",
+   "expect": {
+    "amount": 35,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_bank",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1306",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "reposición de tarjeta de débito 120",
+   "expect": {
+    "amount": 120,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_bank",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1307",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué el kueski pay 450",
+   "expect": {
+    "amount": 450,
+    "categoryId": "debt",
+    "subcategoryId": "debt_bnpl",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "debt_personal"
+    ],
+    "altCategoryIds": [
+     "debt"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1308",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "liquidé mi tarjeta de crédito 15000",
+   "expect": {
+    "amount": 15000,
+    "categoryId": "debt",
+    "subcategoryId": "debt_creditcard",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1309",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cashback de la tarjeta 120",
+   "expect": {
+    "amount": 120,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1310",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "intereses moratorios del crédito 220",
+   "expect": {
+    "amount": 220,
+    "categoryId": "debt",
+    "subcategoryId": "debt_interest",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1311",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pago de la anualidad del seguro de vida 2800",
+   "expect": {
+    "amount": 2800,
+    "categoryId": "health",
+    "subcategoryId": "health_life_insurance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1312",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "seguro de gastos médicos mayores 9800",
+   "expect": {
+    "amount": 9800,
+    "categoryId": "health",
+    "subcategoryId": "health_insurance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1313",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué el predial 1800",
+   "expect": {
+    "amount": 1800,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_property",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1314",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "honorarios del contador por la declaración anual 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_accounting",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1315",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué el isr de este mes 2300",
+   "expect": {
+    "amount": 2300,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_income",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1316",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "tenencia del carro 1500",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_vehicle",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1317",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "multa de tránsito 1100",
+   "expect": {
+    "amount": 1100,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_fines",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1318",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pasaporte nuevo 1890",
+   "expect": {
+    "amount": 1890,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_procedures",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1319",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "saqué mi acta de nacimiento 120",
+   "expect": {
+    "amount": 120,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_procedures",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1320",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "renovación de licencia de manejar 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_procedures",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "tax_vehicle"
+    ],
+    "altCategoryIds": [
+     "taxes_fees"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1321",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pago de iva 1600",
+   "expect": {
+    "amount": 1600,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_income",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1322",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "el abogado me cobró 3000 por el trámite",
+   "expect": {
+    "amount": 3000,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_legal",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1323",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "notario para la escritura 12000",
+   "expect": {
+    "amount": 12000,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_legal",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1324",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "recargos del sat 480",
+   "expect": {
+    "amount": 480,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_fines",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1325",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me devolvieron el saldo a favor del sat 5200",
+   "expect": {
+    "amount": 5200,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1326",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "aparté 1500 para los impuestos",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "savings",
+    "subcategoryId": "sav_tax_reserve",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_3-1327",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "refrendo vehicular 700",
+   "expect": {
+    "amount": 700,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_vehicle",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1328",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "imss modalidad 40 3100",
+   "expect": {
+    "amount": 3100,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_social",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1329",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "verificación vehicular 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "transport",
+    "subcategoryId": "trans_maintenance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1330",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "comisión por transferencia internacional 250",
+   "expect": {
+    "amount": 250,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_fx",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1331",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "comisión de western union 180",
+   "expect": {
+    "amount": 180,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_fx",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1332",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cambié dólares en la casa de cambio 5000",
+   "expect": {
+    "amount": 5000,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_fx",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1333",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "parto en el hospital 25000",
+   "expect": {
+    "amount": 25000,
+    "categoryId": "health",
+    "subcategoryId": "health_hospital",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1334",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cirugía de rodilla 48000",
+   "expect": {
+    "amount": 48000,
+    "categoryId": "health",
+    "subcategoryId": "health_hospital",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1335",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué la enfermera que cuida a mi abuela 1800",
+   "expect": {
+    "amount": 1800,
+    "categoryId": "health",
+    "subcategoryId": "health_homecare",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1336",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "silla de ruedas 3500",
+   "expect": {
+    "amount": 3500,
+    "categoryId": "health",
+    "subcategoryId": "health_equipment",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1337",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "aparato auditivo 12000",
+   "expect": {
+    "amount": 12000,
+    "categoryId": "health",
+    "subcategoryId": "health_equipment",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1338",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "ambulancia 1500",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "health",
+    "subcategoryId": "health_hospital",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1339",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pañales de adulto 420",
+   "expect": {
+    "amount": 420,
+    "categoryId": "health",
+    "subcategoryId": "health_homecare",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1340",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pañales y fórmula del bebé 780",
+   "expect": {
+    "amount": 780,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1341",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "guardería de mi hijo 2800",
+   "expect": {
+    "amount": 2800,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_tuition"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1342",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "juguetes para mi hija 450",
+   "expect": {
+    "amount": 450,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1343",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pediatra 700",
+   "expect": {
+    "amount": 700,
+    "categoryId": "health",
+    "subcategoryId": "health_doctor",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "health_specialists"
+    ],
+    "altCategoryIds": [
+     "health"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1344",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "uniformes escolares 1200",
+   "expect": {
+    "amount": 1200,
+    "categoryId": "education",
+    "subcategoryId": "edu_supplies",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1345",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "ropa de bebé 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "misc_clothing"
+    ],
+    "altCategoryIds": [
+     "miscellaneous"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1346",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "carriola 3500",
+   "expect": {
+    "amount": 3500,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1347",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "niñera 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "house_domestic"
+    ],
+    "altCategoryIds": [
+     "housing"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1348",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "pagué a la señora de la limpieza 500",
+   "expect": {
+    "amount": 500,
+    "categoryId": "housing",
+    "subcategoryId": "house_domestic",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1349",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "el jardinero 400",
+   "expect": {
+    "amount": 400,
+    "categoryId": "housing",
+    "subcategoryId": "house_domestic",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1350",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "plomero 700",
+   "expect": {
+    "amount": 700,
+    "categoryId": "housing",
+    "subcategoryId": "house_maintenance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1351",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cambié la chapa de la puerta 450",
+   "expect": {
+    "amount": 450,
+    "categoryId": "housing",
+    "subcategoryId": "house_maintenance",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "house_security"
+    ],
+    "altCategoryIds": [
+     "housing"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1352",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "renta del coworking 2500",
+   "expect": {
+    "amount": 2500,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1353",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "compré material de oficina 340",
+   "expect": {
+    "amount": 340,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_supplies"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1354",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "herramienta para la chamba 800",
+   "expect": {
+    "amount": 800,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1355",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "publicidad en facebook para mi negocio 1000",
+   "expect": {
+    "amount": 1000,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1356",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "uniformes del personal 2000",
+   "expect": {
+    "amount": 2000,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1357",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "aporté 500 a la caja de ahorro",
+   "expect": {
+    "amount": 500,
+    "categoryId": "savings",
+    "subcategoryId": "sav_group",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_3-1358",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "ahorré 700 para mi hijo",
+   "expect": {
+    "amount": 700,
+    "categoryId": "savings",
+    "subcategoryId": "sav_kids",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_3-1359",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "invertí 5000 en forex",
+   "expect": {
+    "amount": 5000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_forex",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_3-1360",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "compré un centenario de oro 52000",
+   "expect": {
+    "amount": 52000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_metals",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_3-1361",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cobré la renta del departamento 9000",
+   "expect": {
+    "amount": 9000,
+    "categoryId": "income",
+    "subcategoryId": "inc_rental",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1362",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me depositaron la pensión alimenticia 3500",
+   "expect": {
+    "amount": 3500,
+    "categoryId": "income",
+    "subcategoryId": "inc_support",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1363",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me cayó la beca 1900",
+   "expect": {
+    "amount": 1900,
+    "categoryId": "income",
+    "subcategoryId": "inc_support",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1364",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me llegó el reembolso del seguro 4500",
+   "expect": {
+    "amount": 4500,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1365",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me devolvieron 300 de una compra",
+   "expect": {
+    "amount": 300,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1366",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "me llegó la pensión del imss 4200",
+   "expect": {
+    "amount": 4200,
+    "categoryId": "income",
+    "subcategoryId": "inc_support",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1367",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "vendí 3 pasteles 450",
+   "expect": {
+    "amount": 450,
+    "categoryId": "income",
+    "subcategoryId": "inc_sales",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_3-1368",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "perdí 500 en el casino",
+   "expect": {
+    "amount": 500,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_gambling",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1369",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "compré boletos de la lotería 200",
+   "expect": {
+    "amount": 200,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_gambling",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1370",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "apuesta del partido en caliente 300",
+   "expect": {
+    "amount": 300,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_gambling",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1371",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "melate 100",
+   "expect": {
+    "amount": 100,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_gambling",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1372",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "examen de toefl 4500",
+   "expect": {
+    "amount": 4500,
+    "categoryId": "education",
+    "subcategoryId": "edu_exams",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1373",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "titulación 8000",
+   "expect": {
+    "amount": 8000,
+    "categoryId": "education",
+    "subcategoryId": "edu_exams",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_tuition"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
+   }
+  },
+  {
+   "id": "fresco_3-1374",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "inscripción al ceneval 1200",
+   "expect": {
+    "amount": 1200,
+    "categoryId": "education",
+    "subcategoryId": "edu_exams",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1375",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "gastos del funeral de mi abuelo 15000",
+   "expect": {
+    "amount": 15000,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_funeral",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1376",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "cremación 9000",
+   "expect": {
+    "amount": 9000,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_funeral",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_3-1377",
+   "suite": "fresco_3",
+   "split": "fresh3",
+   "text": "flores para el velorio 800",
+   "expect": {
+    "amount": 800,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_funeral",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1378",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "compré un kilo de limones y jitomates 48",
+   "expect": {
+    "amount": 48,
+    "categoryId": "food",
+    "subcategoryId": "food_supermarket",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_market"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1379",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "una torta de milanesa 70",
+   "expect": {
+    "amount": 70,
+    "categoryId": "food",
+    "subcategoryId": "food_fastfood",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1380",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pedí sushi por uber eats 420",
+   "expect": {
+    "amount": 420,
+    "categoryId": "food",
+    "subcategoryId": "food_delivery",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1381",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pastel de tres leches para la comida 350",
+   "expect": {
+    "amount": 350,
+    "categoryId": "food",
+    "subcategoryId": "food_bakery",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1382",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "tamales y atole 90",
+   "expect": {
+    "amount": 90,
+    "categoryId": "food",
+    "subcategoryId": "food_fastfood",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1383",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "un six de modelo 150",
+   "expect": {
+    "amount": 150,
+    "categoryId": "food",
+    "subcategoryId": "food_alcohol",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1384",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "botella de tequila 520",
+   "expect": {
+    "amount": 520,
+    "categoryId": "food",
+    "subcategoryId": "food_alcohol",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1385",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "elotes en la esquina 30",
+   "expect": {
+    "amount": 30,
+    "categoryId": "food",
+    "subcategoryId": "food_fastfood",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_snacks"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1386",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "helado de la michoacana 45",
+   "expect": {
+    "amount": 45,
+    "categoryId": "food",
+    "subcategoryId": "food_sweets",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_snacks"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1387",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "galletas y refresco 38",
+   "expect": {
+    "amount": 38,
+    "categoryId": "food",
+    "subcategoryId": "food_snacks",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_supermarket"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1388",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pagué la cena en el restaurante italiano 1280",
+   "expect": {
+    "amount": 1280,
+    "categoryId": "food",
+    "subcategoryId": "food_restaurant",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1389",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cambio de llantas 4200",
+   "expect": {
+    "amount": 4200,
+    "categoryId": "transport",
+    "subcategoryId": "trans_maintenance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1390",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "lavado del carro 120",
+   "expect": {
+    "amount": 120,
+    "categoryId": "transport",
+    "subcategoryId": "trans_maintenance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1391",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "recarga de la tarjeta del metro 100",
+   "expect": {
+    "amount": 100,
+    "categoryId": "transport",
+    "subcategoryId": "trans_public",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1392",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "boleto de autobús a puebla 280",
+   "expect": {
+    "amount": 280,
+    "categoryId": "transport",
+    "subcategoryId": "trans_public",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1393",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "vuelo a cancún 3400",
+   "expect": {
+    "amount": 3400,
+    "categoryId": "transport",
+    "subcategoryId": "trans_flights",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1394",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "caseta de la autopista 180",
+   "expect": {
+    "amount": 180,
+    "categoryId": "transport",
+    "subcategoryId": "trans_tolls",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1395",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cargué gasolina premium 700",
+   "expect": {
+    "amount": 700,
+    "categoryId": "transport",
+    "subcategoryId": "trans_gas",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1396",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "un taxi del aeropuerto 350",
+   "expect": {
+    "amount": 350,
+    "categoryId": "transport",
+    "subcategoryId": "trans_taxi",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1397",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "seguro del auto anual 7200",
+   "expect": {
+    "amount": 7200,
+    "categoryId": "transport",
+    "subcategoryId": "trans_car_insurance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1398",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "boletos para el concierto de peso pluma 2400",
+   "expect": {
+    "amount": 2400,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_concerts",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1399",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "recarga de robux 200",
+   "expect": {
+    "amount": 200,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_videogames",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1400",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "torneo de pádel 300",
+   "expect": {
+    "amount": 300,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_sports",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1401",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "entrada al museo 90",
+   "expect": {
+    "amount": 90,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_events",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1402",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "suscripción de spotify 129",
+   "expect": {
+    "amount": 129,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_streaming",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1403",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "disney plus anual 1190",
+   "expect": {
+    "amount": 1190,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_streaming",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1404",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "karaoke con los compas 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_karaoke",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1405",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "entradas del estadio 650",
+   "expect": {
+    "amount": 650,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_events",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "ent_sports"
+    ],
+    "altCategoryIds": [
+     "entertainment"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1406",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "consulta con el dermatólogo 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "health",
+    "subcategoryId": "health_specialists",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "health_doctor"
+    ],
+    "altCategoryIds": [
+     "health"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1407",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "análisis de sangre 450",
+   "expect": {
+    "amount": 450,
+    "categoryId": "health",
+    "subcategoryId": "health_labs",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1408",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "ibuprofeno y vitamina c 130",
+   "expect": {
+    "amount": 130,
+    "categoryId": "health",
+    "subcategoryId": "health_pharmacy",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1409",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "resonancia magnética 5200",
+   "expect": {
+    "amount": 5200,
+    "categoryId": "health",
+    "subcategoryId": "health_labs",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1410",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "terapia con mi psicóloga 800",
+   "expect": {
+    "amount": 800,
+    "categoryId": "health",
+    "subcategoryId": "health_mental",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1411",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "limpieza dental 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "health",
+    "subcategoryId": "health_dentist",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1412",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "ortodoncia mensualidad 1500",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "health",
+    "subcategoryId": "health_dentist",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1413",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "lentes de contacto 700",
+   "expect": {
+    "amount": 700,
+    "categoryId": "health",
+    "subcategoryId": "health_vision",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1414",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "proteína whey 890",
+   "expect": {
+    "amount": 890,
+    "categoryId": "health",
+    "subcategoryId": "health_supplements",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1415",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "recibo del gas estacionario 650",
+   "expect": {
+    "amount": 650,
+    "categoryId": "housing",
+    "subcategoryId": "house_gas",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1416",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cambié el boiler 4800",
+   "expect": {
+    "amount": 4800,
+    "categoryId": "housing",
+    "subcategoryId": "house_maintenance",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "house_appliances"
+    ],
+    "altCategoryIds": [
+     "housing"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1417",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pagué el internet de izzi 599",
+   "expect": {
+    "amount": 599,
+    "categoryId": "housing",
+    "subcategoryId": "house_internet",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1418",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "recibo de telcel 399",
+   "expect": {
+    "amount": 399,
+    "categoryId": "housing",
+    "subcategoryId": "house_phone",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1419",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "compré una lavadora 9500",
+   "expect": {
+    "amount": 9500,
+    "categoryId": "housing",
+    "subcategoryId": "house_appliances",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1420",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "colchón nuevo 6000",
+   "expect": {
+    "amount": 6000,
+    "categoryId": "housing",
+    "subcategoryId": "house_furniture",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1421",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "mudanza 2500",
+   "expect": {
+    "amount": 2500,
+    "categoryId": "housing",
+    "subcategoryId": "house_moving",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1422",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cuota de mantenimiento del edificio 1800",
+   "expect": {
+    "amount": 1800,
+    "categoryId": "housing",
+    "subcategoryId": "house_condofees",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1423",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pago de la cfe 740",
+   "expect": {
+    "amount": 740,
+    "categoryId": "housing",
+    "subcategoryId": "house_electricity",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1424",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "vacunas del perro 450",
+   "expect": {
+    "amount": 450,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_pets",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1425",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "veterinario 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_pets",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1426",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "arena para el gato 180",
+   "expect": {
+    "amount": 180,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_pets",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1427",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "regalo de navidad para mi mamá 800",
+   "expect": {
+    "amount": 800,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_gifts",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_family_support"
+    ],
+    "altCategoryIds": [
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1428",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "donativo a la cruz roja 200",
+   "expect": {
+    "amount": 200,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_donations",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1429",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "diezmo de la iglesia 500",
+   "expect": {
+    "amount": 500,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_donations",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1430",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "libros de la prepa 1100",
+   "expect": {
+    "amount": 1100,
+    "categoryId": "education",
+    "subcategoryId": "edu_supplies",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1431",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "inscripción a inglés 2200",
+   "expect": {
+    "amount": 2200,
+    "categoryId": "education",
+    "subcategoryId": "edu_courses",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_tuition"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1432",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "mensualidad de la universidad 7500",
+   "expect": {
+    "amount": 7500,
+    "categoryId": "education",
+    "subcategoryId": "edu_tuition",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1433",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "clase de matemáticas particular 300",
+   "expect": {
+    "amount": 300,
+    "categoryId": "education",
+    "subcategoryId": "edu_tutoring",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1434",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "curso en udemy 299",
+   "expect": {
+    "amount": 299,
+    "categoryId": "education",
+    "subcategoryId": "edu_courses",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1435",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "jeans en zara 899",
+   "expect": {
+    "amount": 899,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_clothing",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1436",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "tenis nuevos 1800",
+   "expect": {
+    "amount": 1800,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_clothing",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1437",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "corte de cabello y barba 250",
+   "expect": {
+    "amount": 250,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_personal_care",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1438",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "manicure 300",
+   "expect": {
+    "amount": 300,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_personal_care",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1439",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "perfume 1500",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_personal_care",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1440",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "audífonos bluetooth 650",
+   "expect": {
+    "amount": 650,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_electronics",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1441",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "funda para el celular 120",
+   "expect": {
+    "amount": 120,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_electronics",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1442",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "icloud 50 gb 17",
+   "expect": {
+    "amount": 17,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_cloud",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1443",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "google one 49",
+   "expect": {
+    "amount": 49,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_cloud",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1444",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "hotel en playa del carmen 3200",
+   "expect": {
+    "amount": 3200,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_travel",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1445",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "airbnb para el fin de semana 2100",
+   "expect": {
+    "amount": 2100,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_travel",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1446",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "renta de coche en mérida 1500",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "transport",
+    "subcategoryId": "trans_carrental",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1447",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "tour en cenotes 800",
+   "expect": {
+    "amount": 800,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_travel",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_experiences"
+    ],
+    "altCategoryIds": [
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1448",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "abono del crédito del coche 4800",
+   "expect": {
+    "amount": 4800,
+    "categoryId": "debt",
+    "subcategoryId": "debt_car_loan",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1449",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pago de la hipoteca 11500",
+   "expect": {
+    "amount": 11500,
+    "categoryId": "housing",
+    "subcategoryId": "house_mortgage",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "debt_mortgage"
+    ],
+    "altCategoryIds": [
+     "debt"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1450",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pagué mi deuda de nu 2300",
+   "expect": {
+    "amount": 2300,
+    "categoryId": "debt",
+    "subcategoryId": "debt_creditcard",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1451",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "invertí en cetes 10000",
+   "expect": {
+    "amount": 10000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_cetes",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_4-1452",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "compré bitcoin 3000",
+   "expect": {
+    "amount": 3000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_crypto",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_4-1453",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "compré acciones de apple 8000",
+   "expect": {
+    "amount": 8000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_stocks",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_4-1454",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "metí 2000 al fondo de emergencia",
+   "expect": {
+    "amount": 2000,
+    "categoryId": "savings",
+    "subcategoryId": "sav_emergency",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_4-1455",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "aparté 1000 para vacaciones",
+   "expect": {
+    "amount": 1000,
+    "categoryId": "savings",
+    "subcategoryId": "sav_vacation",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_4-1456",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "me cayó mi nómina 15000",
+   "expect": {
+    "amount": 15000,
+    "categoryId": "income",
+    "subcategoryId": "inc_salary",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1457",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cobré un trabajo freelance 6000",
+   "expect": {
+    "amount": 6000,
+    "categoryId": "income",
+    "subcategoryId": "inc_freelance",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1458",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "vendí mi bici 2000",
+   "expect": {
+    "amount": 2000,
+    "categoryId": "income",
+    "subcategoryId": "inc_sales",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1459",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "me regalaron mil pesos mis tíos",
+   "expect": {
+    "amount": 1000,
+    "categoryId": "income",
+    "subcategoryId": "inc_gifts",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1460",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "me llegaron los dividendos 340",
+   "expect": {
+    "amount": 340,
+    "categoryId": "income",
+    "subcategoryId": "inc_dividends",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1461",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "intereses del mes 120",
+   "expect": {
+    "amount": 120,
+    "categoryId": "income",
+    "subcategoryId": "inc_interest",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1462",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "predial del terreno 950",
+   "expect": {
+    "amount": 950,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_property",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1463",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pago provisional del sat 1700",
+   "expect": {
+    "amount": 1700,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_income",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1464",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "placas nuevas del auto 1200",
+   "expect": {
+    "amount": 1200,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_vehicle",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1465",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "infracción por estacionarme mal 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_fines",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1466",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "visa americana 3600",
+   "expect": {
+    "amount": 3600,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_procedures",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1467",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "honorarios del contador 1200",
+   "expect": {
+    "amount": 1200,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_accounting",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1468",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cuota anual de la tarjeta platinum 2500",
+   "expect": {
+    "amount": 2500,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_bank",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1469",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "intereses de la tarjeta de crédito 640",
+   "expect": {
+    "amount": 640,
+    "categoryId": "debt",
+    "subcategoryId": "debt_interest",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1470",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pagué los honorarios del abogado 4000",
+   "expect": {
+    "amount": 4000,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_legal",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1471",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cirugía de apendicitis 38000",
+   "expect": {
+    "amount": 38000,
+    "categoryId": "health",
+    "subcategoryId": "health_hospital",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1472",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "muletas 450",
+   "expect": {
+    "amount": 450,
+    "categoryId": "health",
+    "subcategoryId": "health_equipment",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1473",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "compré una carriola 2900",
+   "expect": {
+    "amount": 2900,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1474",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cena romántica con mi esposo 1700",
+   "expect": {
+    "amount": 1700,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_partner",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_restaurant"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1475",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "pagué a la persona que cuida a mi mamá 2500",
+   "expect": {
+    "amount": 2500,
+    "categoryId": "health",
+    "subcategoryId": "health_homecare",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1476",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "lotería nacional 50",
+   "expect": {
+    "amount": 50,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_gambling",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1477",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "coworking del mes 1800",
+   "expect": {
+    "amount": 1800,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1478",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cobré el alquiler 7500",
+   "expect": {
+    "amount": 7500,
+    "categoryId": "income",
+    "subcategoryId": "inc_rental",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1479",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "me depositaron la beca 3000",
+   "expect": {
+    "amount": 3000,
+    "categoryId": "income",
+    "subcategoryId": "inc_support",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1480",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "me reembolsaron el gasto del viaje 2300",
+   "expect": {
+    "amount": 2300,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_4-1481",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "ahorré 900 para la universidad de mis hijos",
+   "expect": {
+    "amount": 900,
+    "categoryId": "savings",
+    "subcategoryId": "sav_kids",
+    "missing": [],
+    "type": "saving",
+    "altSubcategoryIds": [
+     "sav_education_fund"
+    ],
+    "altCategoryIds": [
+     "savings"
+    ]
+   }
+  },
+  {
+   "id": "fresco_4-1482",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "seguro de vida 3200",
+   "expect": {
+    "amount": 3200,
+    "categoryId": "health",
+    "subcategoryId": "health_life_insurance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_4-1483",
+   "suite": "fresco_4",
+   "split": "sealed2",
+   "text": "cuota del funeral 8000",
+   "expect": {
+    "amount": 8000,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_funeral",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1484",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "le pagué a mi roomie los 350 de la parte del internet",
+   "expect": {
+    "amount": 350,
+    "categoryId": "housing",
+    "subcategoryId": "house_internet",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1485",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagamos a medias el airbnb y a mí me tocaron 1900",
+   "expect": {
+    "amount": 1900,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_travel",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1486",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "mi novia me regresó lo del cine 190",
+   "expect": {
+    "amount": 190,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1487",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "salimos a cenar mi esposa y yo y gasté 980",
+   "expect": {
+    "amount": 980,
+    "categoryId": "food",
+    "subcategoryId": "food_restaurant",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_partner"
+    ],
+    "altCategoryIds": [
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1488",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compartimos el netflix con mis roomies y puse 73",
+   "expect": {
+    "amount": 73,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_streaming",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1489",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "mi amigo me depositó los 500 que le presté",
+   "expect": {
+    "amount": 500,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1490",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "coperacha para el pastel de la jefa 80",
+   "expect": {
+    "amount": 80,
+    "categoryId": "food",
+    "subcategoryId": "food_bakery",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_gifts",
+     "life_celebration"
+    ],
+    "altCategoryIds": [
+     "lifestyle",
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1491",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me cargaron la anualidad del banco 720",
+   "expect": {
+    "amount": 720,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_bank",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1492",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagué el mínimo de mi tarjeta de liverpool 540",
+   "expect": {
+    "amount": 540,
+    "categoryId": "debt",
+    "subcategoryId": "debt_creditcard",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "debt_appliance"
+    ],
+    "altCategoryIds": [
+     "debt"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1493",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "liquidé todo lo que debía en la tarjeta 8300",
+   "expect": {
+    "amount": 8300,
+    "categoryId": "debt",
+    "subcategoryId": "debt_creditcard",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1494",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "cobro de comisión por no mantener saldo mínimo 150",
+   "expect": {
+    "amount": 150,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_bank",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1495",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me cobraron intereses moratorios del crédito del carro 410",
+   "expect": {
+    "amount": 410,
+    "categoryId": "debt",
+    "subcategoryId": "debt_interest",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1496",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré a plazos con aplazo unos tenis 1600",
+   "expect": {
+    "amount": 1600,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_clothing",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "debt_bnpl"
+    ],
+    "altCategoryIds": [
+     "debt"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1497",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "comisión por enviar dinero al extranjero 230",
+   "expect": {
+    "amount": 230,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "fee_fx",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1498",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "abono extra a la hipoteca 6000",
+   "expect": {
+    "amount": 6000,
+    "categoryId": "housing",
+    "subcategoryId": "house_mortgage",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "debt_mortgage"
+    ],
+    "altCategoryIds": [
+     "debt"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1499",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagué la tenencia vehicular de este año 1250",
+   "expect": {
+    "amount": 1250,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_vehicle",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1500",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "anticipo para el contador por la declaración 700",
+   "expect": {
+    "amount": 700,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_accounting",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1501",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "saqué el pasaporte de mi hijo 1420",
+   "expect": {
+    "amount": 1420,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_procedures",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1502",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "le pagué al gestor por los trámites de las placas 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_legal",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "tax_procedures",
+     "tax_vehicle"
+    ],
+    "altCategoryIds": [
+     "taxes_fees",
+     "taxes_fees"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1503",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "honorarios de la notaria por la escritura 18500",
+   "expect": {
+    "amount": 18500,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_legal",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1504",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pago de isr del trimestre 3100",
+   "expect": {
+    "amount": 3100,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_income",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1505",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "multa por estacionarme en doble fila 1100",
+   "expect": {
+    "amount": 1100,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_fines",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1506",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "acta de matrimonio certificada 150",
+   "expect": {
+    "amount": 150,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_procedures",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1507",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "predial del depa 2040",
+   "expect": {
+    "amount": 2040,
+    "categoryId": "taxes_fees",
+    "subcategoryId": "tax_property",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1508",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagué el recibo de totalplay 649",
+   "expect": {
+    "amount": 649,
+    "categoryId": "housing",
+    "subcategoryId": "house_internet",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1509",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "llegó la pipa de agua y me cobraron 1100",
+   "expect": {
+    "amount": 1100,
+    "categoryId": "housing",
+    "subcategoryId": "house_water",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1510",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "cambié los focos del baño por unos led 180",
+   "expect": {
+    "amount": 180,
+    "categoryId": "housing",
+    "subcategoryId": "house_maintenance",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "house_electricity"
+    ],
+    "altCategoryIds": [
+     "housing"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1511",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré un sillón en ikea 7200",
+   "expect": {
+    "amount": 7200,
+    "categoryId": "housing",
+    "subcategoryId": "house_furniture",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1512",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "el plomero cobró 850 por arreglar la fuga",
+   "expect": {
+    "amount": 850,
+    "categoryId": "housing",
+    "subcategoryId": "house_maintenance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1513",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagué al jardinero del mes 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "housing",
+    "subcategoryId": "house_domestic",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1514",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "instalaron una alarma en la casa 3800",
+   "expect": {
+    "amount": 3800,
+    "categoryId": "housing",
+    "subcategoryId": "house_security",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1515",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "mudanza del depa con fletes 4500",
+   "expect": {
+    "amount": 4500,
+    "categoryId": "housing",
+    "subcategoryId": "house_moving",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1516",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pago de luz bimestral cfe 560",
+   "expect": {
+    "amount": 560,
+    "categoryId": "housing",
+    "subcategoryId": "house_electricity",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1517",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "gas natural de naturgy 290",
+   "expect": {
+    "amount": 290,
+    "categoryId": "housing",
+    "subcategoryId": "house_gas",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1518",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "lavamos las cobijas en la lavandería 240",
+   "expect": {
+    "amount": 240,
+    "categoryId": "housing",
+    "subcategoryId": "house_laundry_service",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1519",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "tacos de birria con consomé 160",
+   "expect": {
+    "amount": 160,
+    "categoryId": "food",
+    "subcategoryId": "food_fastfood",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1520",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "una torta ahogada y agua de jamaica 95",
+   "expect": {
+    "amount": 95,
+    "categoryId": "food",
+    "subcategoryId": "food_fastfood",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_restaurant",
+     "food_juice_bar"
+    ],
+    "altCategoryIds": [
+     "food",
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1521",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré fruta y verdura en la central de abastos 420",
+   "expect": {
+    "amount": 420,
+    "categoryId": "food",
+    "subcategoryId": "food_market",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "food_supermarket"
+    ],
+    "altCategoryIds": [
+     "food"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1522",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "café y pan en starbucks 150",
+   "expect": {
+    "amount": 150,
+    "categoryId": "food",
+    "subcategoryId": "food_coffee",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1523",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pedí una pizza por rappi 330",
+   "expect": {
+    "amount": 330,
+    "categoryId": "food",
+    "subcategoryId": "food_delivery",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1524",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "un six de victoria para el partido 140",
+   "expect": {
+    "amount": 140,
+    "categoryId": "food",
+    "subcategoryId": "food_alcohol",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1525",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pastel de cumpleaños de mi mamá 520",
+   "expect": {
+    "amount": 520,
+    "categoryId": "food",
+    "subcategoryId": "food_bakery",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1526",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "cena en el restaurante de mariscos 1450",
+   "expect": {
+    "amount": 1450,
+    "categoryId": "food",
+    "subcategoryId": "food_restaurant",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1527",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "helado de pistache 68",
+   "expect": {
+    "amount": 68,
+    "categoryId": "food",
+    "subcategoryId": "food_sweets",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1528",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "garrafón de agua ciel 45",
+   "expect": {
+    "amount": 45,
+    "categoryId": "food",
+    "subcategoryId": "food_water_delivery",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1529",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "súper de la quincena en chedraui 1980",
+   "expect": {
+    "amount": 1980,
+    "categoryId": "food",
+    "subcategoryId": "food_supermarket",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1530",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "licuado de proteína en el gym 70",
+   "expect": {
+    "amount": 70,
+    "categoryId": "food",
+    "subcategoryId": "food_juice_bar",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1531",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "lavaron mi coche 130",
+   "expect": {
+    "amount": 130,
+    "categoryId": "transport",
+    "subcategoryId": "trans_maintenance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1532",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pasaje en metrobús 6",
+   "expect": {
+    "amount": 6,
+    "categoryId": "transport",
+    "subcategoryId": "trans_public",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1533",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagué la caseta a querétaro 165",
+   "expect": {
+    "amount": 165,
+    "categoryId": "transport",
+    "subcategoryId": "trans_tolls",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1534",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "llené el tanque de gasolina magna 820",
+   "expect": {
+    "amount": 820,
+    "categoryId": "transport",
+    "subcategoryId": "trans_gas",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1535",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "estacionamiento del aeropuerto 3 días 980",
+   "expect": {
+    "amount": 980,
+    "categoryId": "transport",
+    "subcategoryId": "trans_parking",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1536",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "un didi al trabajo 74",
+   "expect": {
+    "amount": 74,
+    "categoryId": "transport",
+    "subcategoryId": "trans_didi",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1537",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "boleto de ado a oaxaca 690",
+   "expect": {
+    "amount": 690,
+    "categoryId": "transport",
+    "subcategoryId": "trans_public",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "trans_flights"
+    ],
+    "altCategoryIds": [
+     "transport"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1538",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "cambio de aceite y filtro 780",
+   "expect": {
+    "amount": 780,
+    "categoryId": "transport",
+    "subcategoryId": "trans_maintenance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1539",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "renta de coche en cancún por tres días 2400",
+   "expect": {
+    "amount": 2400,
+    "categoryId": "transport",
+    "subcategoryId": "trans_carrental",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1540",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "seguro del coche con qualitas 6800",
+   "expect": {
+    "amount": 6800,
+    "categoryId": "transport",
+    "subcategoryId": "trans_car_insurance",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1541",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "consulta con la ginecóloga 1100",
+   "expect": {
+    "amount": 1100,
+    "categoryId": "health",
+    "subcategoryId": "health_specialists",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "health_doctor"
+    ],
+    "altCategoryIds": [
+     "health"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1542",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "medicinas para la alergia 260",
+   "expect": {
+    "amount": 260,
+    "categoryId": "health",
+    "subcategoryId": "health_pharmacy",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1543",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "limpieza dental y revisión 750",
+   "expect": {
+    "amount": 750,
+    "categoryId": "health",
+    "subcategoryId": "health_dentist",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1544",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "análisis de laboratorio en el chopo 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "health",
+    "subcategoryId": "health_labs",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1545",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "mi sesión de terapia 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "health",
+    "subcategoryId": "health_mental",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1546",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "lentes nuevos con micas progresivas 3200",
+   "expect": {
+    "amount": 3200,
+    "categoryId": "health",
+    "subcategoryId": "health_vision",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1547",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "estudio de resonancia de rodilla 5800",
+   "expect": {
+    "amount": 5800,
+    "categoryId": "health",
+    "subcategoryId": "health_labs",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1548",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "una noche de hospital para mi papá 7400",
+   "expect": {
+    "amount": 7400,
+    "categoryId": "health",
+    "subcategoryId": "health_hospital",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1549",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pañales de adulto para mi abuelo 380",
+   "expect": {
+    "amount": 380,
+    "categoryId": "health",
+    "subcategoryId": "health_homecare",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1550",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "vitamina d y omega 3 420",
+   "expect": {
+    "amount": 420,
+    "categoryId": "health",
+    "subcategoryId": "health_supplements",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1551",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "juguetes en la juguetería para mi sobrino 600",
+   "expect": {
+    "amount": 600,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_gifts"
+    ],
+    "altCategoryIds": [
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1552",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagué la guardería del mes 3200",
+   "expect": {
+    "amount": 3200,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_children",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_tuition"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1553",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "croquetas royal canin 780",
+   "expect": {
+    "amount": 780,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_pets",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1554",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "baño y corte de pelo de mi perro 350",
+   "expect": {
+    "amount": 350,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_pets",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1555",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "le mandé 1500 a mi abuela",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_family_support",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1556",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "regalo del día de las madres 650",
+   "expect": {
+    "amount": 650,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_gifts",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1557",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "donativo a la cruz roja 300",
+   "expect": {
+    "amount": 300,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_donations",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1558",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pagamos el velorio y la cremación 22000",
+   "expect": {
+    "amount": 22000,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_funeral",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1559",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "vestido para la boda de mi prima 1800",
+   "expect": {
+    "amount": 1800,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_clothing",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "life_wedding"
+    ],
+    "altCategoryIds": [
+     "lifestyle"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1560",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "colegiatura de marzo 5200",
+   "expect": {
+    "amount": 5200,
+    "categoryId": "education",
+    "subcategoryId": "edu_tuition",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1561",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "libros de la universidad 1350",
+   "expect": {
+    "amount": 1350,
+    "categoryId": "education",
+    "subcategoryId": "edu_supplies",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1562",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "clases de inglés en línea 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "education",
+    "subcategoryId": "edu_courses",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1563",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "regularización de matemáticas para mi hijo 400",
+   "expect": {
+    "amount": 400,
+    "categoryId": "education",
+    "subcategoryId": "edu_tutoring",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1564",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "examen de certificación de inglés 3900",
+   "expect": {
+    "amount": 3900,
+    "categoryId": "education",
+    "subcategoryId": "edu_exams",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "edu_courses"
+    ],
+    "altCategoryIds": [
+     "education"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1565",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "herramientas para el taller 1250",
+   "expect": {
+    "amount": 1250,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "house_maintenance"
+    ],
+    "altCategoryIds": [
+     "housing"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1566",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "mensualidad del coworking 2100",
+   "expect": {
+    "amount": 2100,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1567",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "publicidad en instagram para mi tienda 800",
+   "expect": {
+    "amount": 800,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1568",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pago a proveedores de la semana 5400",
+   "expect": {
+    "amount": 5400,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_work",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1569",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "boletos de cinépolis 220",
+   "expect": {
+    "amount": 220,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_cinema",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1570",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "gimnasio mensualidad de smart fit 449",
+   "expect": {
+    "amount": 449,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_sports",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1571",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "tarjeta de playstation 500",
+   "expect": {
+    "amount": 500,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_videogames",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1572",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "entrada al museo de antropología 95",
+   "expect": {
+    "amount": 95,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_events",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1573",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "spotify familiar 179",
+   "expect": {
+    "amount": 179,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_streaming",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1574",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "jugamos boliche 360",
+   "expect": {
+    "amount": 360,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_bowling",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1575",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré fichas para las maquinitas 100",
+   "expect": {
+    "amount": 100,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_arcade",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1576",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "hotel en puerto vallarta 2800",
+   "expect": {
+    "amount": 2800,
+    "categoryId": "lifestyle",
+    "subcategoryId": "life_travel",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1577",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "vuelo de volaris a tijuana 1950",
+   "expect": {
+    "amount": 1950,
+    "categoryId": "transport",
+    "subcategoryId": "trans_flights",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1578",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "audífonos jbl nuevos 1100",
+   "expect": {
+    "amount": 1100,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_electronics",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1579",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "suscripción a chatgpt plus 400",
+   "expect": {
+    "amount": 400,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_software",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1580",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pantalla del celular rota reparación 1200",
+   "expect": {
+    "amount": 1200,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_repairs",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1581",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "dropbox almacenamiento 190",
+   "expect": {
+    "amount": 190,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_cloud",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1582",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "apuesta en caliente 200",
+   "expect": {
+    "amount": 200,
+    "categoryId": "entertainment",
+    "subcategoryId": "ent_gambling",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1583",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "tenis nuevos en el centro comercial 1700",
+   "expect": {
+    "amount": 1700,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_clothing",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1584",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "corte de pelo y tinte 900",
+   "expect": {
+    "amount": 900,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_personal_care",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1585",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "manicure y pedicure 520",
+   "expect": {
+    "amount": 520,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_personal_care",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1586",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "masaje relajante 700",
+   "expect": {
+    "amount": 700,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_wellness",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1587",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "pedido de amazon 640",
+   "expect": {
+    "amount": 640,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_shopping",
+    "missing": [],
+    "type": "expense"
+   }
+  },
+  {
+   "id": "fresco_5-1588",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré en el bazar una chamarra 250",
+   "expect": {
+    "amount": 250,
+    "categoryId": "miscellaneous",
+    "subcategoryId": "misc_second_hand",
+    "missing": [],
+    "type": "expense",
+    "altSubcategoryIds": [
+     "misc_clothing"
+    ],
+    "altCategoryIds": [
+     "miscellaneous"
+    ]
+   }
+  },
+  {
+   "id": "fresco_5-1589",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me depositaron la quincena 9800",
+   "expect": {
+    "amount": 9800,
+    "categoryId": "income",
+    "subcategoryId": "inc_salary",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1590",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me pagó el cliente por el diseño 4500",
+   "expect": {
+    "amount": 4500,
+    "categoryId": "income",
+    "subcategoryId": "inc_freelance",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1591",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "cobré el alquiler del local 6000",
+   "expect": {
+    "amount": 6000,
+    "categoryId": "income",
+    "subcategoryId": "inc_rental",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1592",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "vendí mi bici usada 1500",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "income",
+    "subcategoryId": "inc_sales",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1593",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me llegó el reembolso de amazon 380",
+   "expect": {
+    "amount": 380,
+    "categoryId": "income",
+    "subcategoryId": "inc_reimbursement",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1594",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me cayó el ptu 8200",
+   "expect": {
+    "amount": 8200,
+    "categoryId": "income",
+    "subcategoryId": "inc_bonus",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1595",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me depositó mi papá la mesada 1500",
+   "expect": {
+    "amount": 1500,
+    "categoryId": "income",
+    "subcategoryId": "inc_allowance",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1596",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "dividendos de fibra uno 560",
+   "expect": {
+    "amount": 560,
+    "categoryId": "income",
+    "subcategoryId": "inc_dividends",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1597",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "me regalaron dinero mis abuelos 1000",
+   "expect": {
+    "amount": 1000,
+    "categoryId": "income",
+    "subcategoryId": "inc_gifts",
+    "missing": [],
+    "type": "income"
+   }
+  },
+  {
+   "id": "fresco_5-1598",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "aparté 2500 para el fondo de emergencia",
+   "expect": {
+    "amount": 2500,
+    "categoryId": "savings",
+    "subcategoryId": "sav_emergency",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_5-1599",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "aparté 1000 para el enganche de la casa",
+   "expect": {
+    "amount": 1000,
+    "categoryId": "savings",
+    "subcategoryId": "sav_house_downpayment",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_5-1600",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "ahorré 800 para la boda",
+   "expect": {
+    "amount": 800,
+    "categoryId": "savings",
+    "subcategoryId": "sav_wedding_fund",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_5-1601",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "metí 1200 a mi ppr",
+   "expect": {
+    "amount": 1200,
+    "categoryId": "savings",
+    "subcategoryId": "sav_retirement",
+    "missing": [],
+    "type": "saving"
+   }
+  },
+  {
+   "id": "fresco_5-1602",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré etf de vanguard 5000",
+   "expect": {
+    "amount": 5000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_etfs",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_5-1603",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "invertí en fibras 3000",
+   "expect": {
+    "amount": 3000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_fibras",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_5-1604",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré ethereum 2000",
+   "expect": {
+    "amount": 2000,
+    "categoryId": "investments",
+    "subcategoryId": "inv_crypto",
+    "missing": [],
+    "type": "investment_buy"
+   }
+  },
+  {
+   "id": "fresco_5-1605",
+   "suite": "fresco_5",
+   "split": "sealed3",
+   "text": "compré dos onzas de plata libertad 1900",
+   "expect": {
+    "amount": 1900,
+    "categoryId": "investments",
+    "subcategoryId": "inv_metals",
+    "missing": [],
+    "type": "investment_buy"
    }
   }
  ]

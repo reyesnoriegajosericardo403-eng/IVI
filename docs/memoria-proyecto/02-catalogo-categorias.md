@@ -7,8 +7,9 @@ categorías/subcategorías) y `src/data/budgetConcepts.ts` (cómo se agrupan
 en el Presupuesto). Este archivo es un espejo legible de esos dos — si se
 edita el catálogo en código, esta nota se debe actualizar también.
 
-**13 categorías, 119 subcategorías, 10 tipos de ingreso, 15 conceptos de
-presupuesto.**
+**14 categorías, 178 subcategorías, 13 tipos de ingreso, 18 conceptos de
+presupuesto** (conteo al 2026-10-03; el detalle de lo agregado ese día está en la
+sección «Ampliación P1b» al final).
 
 ## Ingresos (10 subcategorías)
 
@@ -77,3 +78,35 @@ organización encima.
 Ropa, Compras y Otros (Miscelánea) — ver la nota con \* arriba. Igual toda
 "Transferencias" (`transfer_own`, `excludedFromBudget: true`) — mover
 dinero entre cuentas propias nunca es gasto ni ingreso real.
+
+
+## Ampliación P1b (2026-10-03): áreas de finanzas personales que faltaban
+
+Se agregaron **30 subcategorías** y **1 categoría nueva** para que cosas que toda persona paga o cobra
+dejen de caer en «Otros» o de quedarse sin casa. Todas quedaron en un concepto de Presupuesto (o fuera
+de él a propósito); lo verifica `node scripts/golden/audit-budget.cjs` (sin subcategorías huérfanas).
+
+| Categoría | Subcategorías nuevas | Concepto de Presupuesto |
+|---|---|---|
+| **Impuestos, trámites y comisiones** (categoría nueva, ícono `receipt-outline`) | Impuestos federales (ISR, IVA) · Predial y derechos locales · Tenencia y placas · Trámites y documentos · Abogados, notario y gestoría · Contador y facturación · Multas y recargos · Seguridad social (IMSS, SAR) · Comisiones y anualidades bancarias · Cambio de divisas y envío de dinero | Necesidades › «Impuestos, trámites y comisiones» |
+| Alojamiento | Personal doméstico y jardinería | Vivienda y servicios básicos |
+| Miscelánea | Trabajo y negocio | Necesidades › «Trabajo y negocio» (nuevo) |
+| Entretenimiento | Apuestas y sorteos | Salidas, ocio y antojos |
+| Estilo de vida | Pareja y citas · Hijos y bebés · Funerales y duelo | Ocio · Necesidades › «Hijos y bebés» (nuevo) · Apoyo familiar |
+| Salud | Hospital y cirugías · Cuidado en casa y adultos mayores · Equipo y aparatos médicos · Seguro de vida | Salud y bienestar |
+| Deudas | Intereses y cargos por mora · Compra a plazos (BNPL) | Pagos de deudas |
+| Ahorros | Apartado para impuestos · Tandas y cajas de ahorro · Ahorro para hijos | Metas corto plazo · Metas largo plazo |
+| Inversiones | Oro, plata y coleccionables · Divisas y trading | Inversiones |
+| Educación | Exámenes y titulación | Educación y desarrollo |
+| Ingresos | Reembolsos y devoluciones · Renta cobrada · Pensión, becas y apoyos | un renglón de ingreso por cada una |
+
+**Por qué esas y no otras.** Los ids de categoría/subcategoría son texto libre en Supabase (`category_id text`),
+así que agregar no rompe datos guardados; el catálogo vive solo en el código (no se guarda por usuario).
+Lo que *no* se volvió categoría: «gasto compartido» (pareja/roomies/amigos) y «me deben» — son una
+**modalidad** del movimiento (cualquier categoría puede ser compartida), no un tipo de gasto. Esas
+modalidades viven en `src/data/conceptLexicon.ts` (ver [[03-motor-clasificacion]]).
+
+Dónde se ve en la app sin tocar pantallas: el selector de categoría de «Nuevo movimiento» y el
+presupuesto leen `DEFAULT_CATEGORIES` y `BUDGET_CONCEPTS`, así que muestran lo nuevo solos. Pendiente
+anotado en [[06-pendientes]]: el buscador de categorías compara contra TODAS las palabras clave y con
+decenas de miles ya conviene ordenar por relevancia.

@@ -19,6 +19,7 @@ export const CATEGORY_ICONS = {
   investments: 'bar-chart-outline',
   education: 'school-outline',
   transfer: 'swap-horizontal-outline',
+  taxes_fees: 'receipt-outline',
 } as const satisfies Record<string, IoniconName>;
 
 export type CategoryIconKey = keyof typeof CATEGORY_ICONS;

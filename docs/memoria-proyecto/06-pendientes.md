@@ -2,7 +2,7 @@
 
 Ver también: [[README|Índice]]
 
-## Checklist de pendientes (2026-10-02)
+## Checklist de pendientes (actualizada 2026-10-03)
 
 Esta lista la lee el **explorador del grafo** (`graphify-out/explorer.html`, pestaña «Pendientes») y
 cada punto se liga a sus archivos en el mapa. Formato de cada línea:
@@ -39,7 +39,13 @@ cerrar un pendiente solo hay que cambiar `[ ]` por `[x]` y regenerar el mapa
 
 ### Hoja de ruta de Fase 2
 
-- [x] **P1 · Golden set + ampliar catálogo** — hecho el 2026-10-03: 984 casos + frases frescas, catálogo 864→3,123 claves, 94.9% en frases nuevas selladas (ver docs/memoria-proyecto/08-golden-set-resultados.md). Pendiente menor: escribir un Fresco 3 para la próxima medición. · requiere: Claude · archivos: src/ai/localParser.ts, src/data/keywordExpansion.ts, scripts/golden/
+- [x] **P1 · Golden set + ampliar catálogo** — hecho el 2026-10-03: 984 casos + frases frescas, catálogo 864→3,123 claves, 94.9% en frases nuevas selladas (ver docs/memoria-proyecto/08-golden-set-resultados.md). · requiere: Claude · archivos: src/ai/localParser.ts, src/data/keywordPacks/base.ts, scripts/golden/
+- [x] **P1b · Catálogo de ≈19 mil palabras, 14 categorías / 178 subcategorías** — hecho el 2026-10-03: pareja/roomies, tarjetas y bancos, impuestos y trámites, hogar, comida, transporte, salud, familia, ocio, trabajo, ahorro/inversión. Índice 53× más rápido, construcción en trozos, léxico de conceptos para futuras funciones. 93.4% y 90.2% en frases nuevas selladas (Fresco 4 y 5). · requiere: Claude · archivos: src/data/keywordPacks/index.ts, src/data/categories.ts, src/data/conceptLexicon.ts, src/ai/localParser.ts, src/ai/concepts.ts
+- [ ] **Escribir Fresco 6 (próxima medición honesta)** — ≈120 frases nuevas, de preferencia dictadas por personas reales; correrlo una sola vez. Los Frescos 2, 4 y 5 ya se corrigieron mirando sus fallas y no miden nada. · requiere: Claude, Tu decisión · archivos: scripts/golden/fresh3.cjs, scripts/golden/run-golden.cjs
+- [ ] **Ordenar por relevancia la búsqueda de categorías de la interfaz** — con ≈19 mil palabras, el buscador manual de categorías puede devolver demasiadas coincidencias; ordenarlas por mejor coincidencia en vez de por orden del catálogo. · requiere: Claude · archivos: src/data/categories.ts, app/capture.tsx
+- [ ] **Conectar `detectConcepts` en P2/P3** — las etiquetas de modalidad (pareja, roomies, a plazos, recurrente…) existen pero ninguna pantalla las usa todavía; el planificador multi-acción es el primer consumidor natural. · requiere: Claude · archivos: src/ai/concepts.ts, src/data/conceptLexicon.ts
+- [ ] **Medir el arranque del índice en un teléfono real** — en el contenedor son ≈300 ms en trozos (pausa máxima 13 ms); en un iPhone/Android de gama baja puede ser varias veces más. Si molesta, precalcular o comprimir el índice (idea de Fase 3). · requiere: iPhone, Android · archivos: src/ai/localParser.ts, app/_layout.tsx
+- [ ] **Revisar las frases protegidas cuando aparezcan fallas** — `protegidas.ts` guarda los desempates que la poda automática nunca borra; cada falla real nueva debe terminar como frase protegida o palabra débil, no como más plantillas. · requiere: Claude · archivos: src/data/keywordPacks/protegidas.ts, scripts/golden/packs.cjs
 - [ ] **P2 · Planificador multi-acción + ejecutor seguro con confirmación e idempotencia** — contratos en `docs/03_fase2_contratos_v1.md`. · requiere: Claude · archivos: src/ai/actionCatalog.ts, src/store/useAppStore.ts
 - [ ] **P3 · Nuevas entidades (previsto, rangos, recurrencia, recordatorios personalizados)** — cubre #58 parcial y #59-#65 de la auditoría. · requiere: Claude
 - [ ] **P4 · Ayuda contextual + auditoría de privacidad** · requiere: Claude

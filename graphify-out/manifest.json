@@ -54,10 +54,10 @@
     "semantic_hash": "2c95e1978d6b72dee16921e5fab05d40"
   },
   "app/_layout.tsx": {
-    "mtime": 1790548090.8642704,
-    "seen": 1790552568.2128572,
-    "ast_hash": "3457f2700c595e8828ff7aff3015422f",
-    "semantic_hash": "3457f2700c595e8828ff7aff3015422f"
+    "mtime": 1791060729.6665297,
+    "seen": 1791062009.8516111,
+    "ast_hash": "109ccaeee4dff3a4c7954d5826988c5f",
+    "semantic_hash": ""
   },
   "app/ai-settings.tsx": {
     "mtime": 1790217904.8573909,
@@ -84,10 +84,10 @@
     "semantic_hash": "6deab28c031f38f798d60a7b0eaffdd8"
   },
   "app/capture.tsx": {
-    "mtime": 1790217904.8573909,
-    "seen": 1790552568.2128649,
-    "ast_hash": "29d8c36ab5b22b2d6760742444510933",
-    "semantic_hash": "29d8c36ab5b22b2d6760742444510933"
+    "mtime": 1791060726.2866702,
+    "seen": 1791062009.85162,
+    "ast_hash": "5ad777a34b1cc8b21a8f1fd0ae3878e6",
+    "semantic_hash": ""
   },
   "app/forgot-password.tsx": {
     "mtime": 1790217904.8573909,
@@ -222,9 +222,9 @@
     "semantic_hash": "c187070e0671d3349341976fd3d2cf2e"
   },
   "src/ai/localParser.ts": {
-    "mtime": 1791020673.023775,
-    "seen": 1791020765.3004992,
-    "ast_hash": "63965aa2cd504b91550dfcd5aec9b63c",
+    "mtime": 1791061690.9753451,
+    "seen": 1791062009.8516905,
+    "ast_hash": "2d576a6e1838351999ec708c48262f13",
     "semantic_hash": ""
   },
   "src/ai/webSpeech.ts": {
@@ -534,15 +534,15 @@
     "semantic_hash": "7235561d36c90baaa707f14f1d6c5f77"
   },
   "src/data/budgetConcepts.ts": {
-    "mtime": 1790217904.8717573,
-    "seen": 1790552568.2129843,
-    "ast_hash": "f31e38d04c758ef894ebb1cb479ae984",
-    "semantic_hash": "f31e38d04c758ef894ebb1cb479ae984"
+    "mtime": 1791057221.9831665,
+    "seen": 1791062009.8518026,
+    "ast_hash": "7abb0162e5eb20103249b65697f8b7d7",
+    "semantic_hash": ""
   },
   "src/data/categories.ts": {
-    "mtime": 1791020430.8160052,
-    "seen": 1791020765.3005688,
-    "ast_hash": "c728dac55745875f73526c23ea2d097b",
+    "mtime": 1791061623.6017582,
+    "seen": 1791062009.8518043,
+    "ast_hash": "98d766d9af7ea26403a1029e84105664",
     "semantic_hash": ""
   },
   "src/data/exchangeRate.ts": {
@@ -552,10 +552,10 @@
     "semantic_hash": "1eb5902ef8ab621b2e5b3eccb9c9a199"
   },
   "src/data/iconMap.ts": {
-    "mtime": 1790548090.8762705,
-    "seen": 1790552568.2129884,
-    "ast_hash": "166a53e657cf1dc482e3de6925464a9a",
-    "semantic_hash": "166a53e657cf1dc482e3de6925464a9a"
+    "mtime": 1791057207.7879145,
+    "seen": 1791062009.8518078,
+    "ast_hash": "84645c3e4e22b2368970a61c724d5bee",
+    "semantic_hash": ""
   },
   "src/data/investmentMeta.ts": {
     "mtime": 1790588495.173882,
@@ -1164,15 +1164,15 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/02-catalogo-categorias.md": {
-    "mtime": 1790548424.4562788,
-    "seen": 1790552691.1168234,
-    "ast_hash": "278f93110e27521a7f1969ec49adf25e",
+    "mtime": 1791061815.4966764,
+    "seen": 1791062009.8519526,
+    "ast_hash": "af658f57b4ba17d16ec20c88bf712ca4",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/03-motor-clasificacion.md": {
-    "mtime": 1791020747.9240632,
-    "seen": 1791020765.300757,
-    "ast_hash": "1631f00dd2413e7906517743d1864df5",
+    "mtime": 1791061815.4973643,
+    "seen": 1791062009.8519537,
+    "ast_hash": "e2524b119bfa4b1e9355f8015b4199d4",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/04-migraciones-supabase.md": {
@@ -1182,21 +1182,21 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/05-bitacora-cambios.md": {
-    "mtime": 1791020747.9246235,
-    "seen": 1791020765.3007605,
-    "ast_hash": "891f417de237107a9d251ebb529cac03",
+    "mtime": 1791061975.7907104,
+    "seen": 1791062009.851956,
+    "ast_hash": "55b7d228d532cf055a0e8b2df833db22",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/06-pendientes.md": {
-    "mtime": 1791020747.9252884,
-    "seen": 1791020765.3007617,
-    "ast_hash": "8d7e4a43fa39064bccad6a3d72ebf059",
+    "mtime": 1791061989.07459,
+    "seen": 1791062009.8519568,
+    "ast_hash": "b77a86acb1986a726848eec7927c245a",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/README.md": {
-    "mtime": 1791020750.3732896,
-    "seen": 1791020765.3007653,
-    "ast_hash": "d8972390bffdf96a096ebf2709f465ad",
+    "mtime": 1791061975.7914338,
+    "seen": 1791062009.8519597,
+    "ast_hash": "41ca5969827dcb344f598607fe97f124",
     "semantic_hash": ""
   },
   "public/index.html": {
@@ -1374,9 +1374,9 @@
     "semantic_hash": ""
   },
   "scripts/golden/build-golden.cjs": {
-    "mtime": 1791020645.798519,
-    "seen": 1791020765.3004823,
-    "ast_hash": "ef96e333cb85daf6bab0f6ba902ce6ac",
+    "mtime": 1791061261.2488718,
+    "seen": 1791062009.8516624,
+    "ast_hash": "84a2782c4145dbbb48bb45cad2219ef1",
     "semantic_hash": ""
   },
   "scripts/golden/dump-catalog.cjs": {
@@ -1386,15 +1386,15 @@
     "semantic_hash": ""
   },
   "scripts/golden/fresh.cjs": {
-    "mtime": 1791020679.7173114,
-    "seen": 1791020765.3004851,
-    "ast_hash": "6de4d26066ce32faabe76ce20da06075",
+    "mtime": 1791061062.3494415,
+    "seen": 1791062009.851667,
+    "ast_hash": "a8bb9faadc442e870f6773aa015d1580",
     "semantic_hash": ""
   },
   "scripts/golden/golden-set.json": {
-    "mtime": 1791020679.7662206,
-    "seen": 1791020765.300486,
-    "ast_hash": "51f2fe36d79c9e6dae00157eaa617adf",
+    "mtime": 1791061261.3337665,
+    "seen": 1791062009.851671,
+    "ast_hash": "ca891ee42b65e89822836d68c7827a35",
     "semantic_hash": ""
   },
   "scripts/golden/handwritten.cjs": {
@@ -1410,9 +1410,9 @@
     "semantic_hash": ""
   },
   "scripts/golden/run-golden.cjs": {
-    "mtime": 1791020645.7990537,
-    "seen": 1791020765.3004892,
-    "ast_hash": "4effaae145cdebdab5c03592329ff6fa",
+    "mtime": 1791061261.2494345,
+    "seen": 1791062009.8516767,
+    "ast_hash": "35b70ce77745d8d637441206e435f731",
     "semantic_hash": ""
   },
   "scripts/golden/ts-hook.cjs": {
@@ -1427,16 +1427,10 @@
     "ast_hash": "cb1b9e2a6b9343d6c6c71cc4f8f58b0c",
     "semantic_hash": ""
   },
-  "src/data/keywordExpansion.ts": {
-    "mtime": 1791020700.5611582,
-    "seen": 1791020765.3005745,
-    "ast_hash": "25287df23562f66768721fc1dbac68d1",
-    "semantic_hash": ""
-  },
   "docs/memoria-proyecto/08-golden-set-resultados.md": {
-    "mtime": 1791020747.9242227,
-    "seen": 1791020765.300764,
-    "ast_hash": "3e79bf579cbe324a81e14db683f406ab",
+    "mtime": 1791061989.0740051,
+    "seen": 1791062009.8519588,
+    "ast_hash": "fe523feb380dbbf57ef093adc7140284",
     "semantic_hash": ""
   },
   "scripts/golden/baseline-2026-10-03.txt": {
@@ -1449,6 +1443,180 @@
     "mtime": 1791020690.9342203,
     "seen": 1791020765.3007686,
     "ast_hash": "3804d700a5889d59d66e2e46259bfad6",
+    "semantic_hash": ""
+  },
+  "scripts/golden/audit-budget.cjs": {
+    "mtime": 1791057222.1586711,
+    "seen": 1791062009.8516583,
+    "ast_hash": "3bd80be4737a3ba9d98bfaeeb4ca43ca",
+    "semantic_hash": ""
+  },
+  "scripts/golden/bench.cjs": {
+    "mtime": 1791057316.5058568,
+    "seen": 1791062009.8516612,
+    "ast_hash": "aeab3b2cc7ed0ee93defc4f308e569aa",
+    "semantic_hash": ""
+  },
+  "scripts/golden/conceptos.cjs": {
+    "mtime": 1791060842.2422621,
+    "seen": 1791062009.8516636,
+    "ast_hash": "93049c7f1428d7b8fcaa20e7ead5b6dc",
+    "semantic_hash": ""
+  },
+  "scripts/golden/fresh2.cjs": {
+    "mtime": 1791057185.4138596,
+    "seen": 1791062009.851668,
+    "ast_hash": "acc4a6521b5f9bbf6916d62902d10ca6",
+    "semantic_hash": ""
+  },
+  "scripts/golden/fresh3.cjs": {
+    "mtime": 1791061257.5017664,
+    "seen": 1791062009.8516695,
+    "ast_hash": "abf92304f8ef3be81a23422eefd18f6d",
+    "semantic_hash": ""
+  },
+  "scripts/golden/packs.cjs": {
+    "mtime": 1791061515.5497658,
+    "seen": 1791062009.8516746,
+    "ast_hash": "2714dda1823647fc33360f8fa406a469",
+    "semantic_hash": ""
+  },
+  "scripts/golden/robustez.cjs": {
+    "mtime": 1791060617.0063782,
+    "seen": 1791062009.8516757,
+    "ast_hash": "54ce0d14ee40ae561739f1dea9b66224",
+    "semantic_hash": ""
+  },
+  "scripts/golden/snapshot.cjs": {
+    "mtime": 1791057346.5450714,
+    "seen": 1791062009.8516777,
+    "ast_hash": "dca6c713f0f1e025e92678f4081d70c4",
+    "semantic_hash": ""
+  },
+  "src/ai/concepts.ts": {
+    "mtime": 1791060850.081879,
+    "seen": 1791062009.851687,
+    "ast_hash": "cfb947a6a7a2e4bd77e617712eb85e41",
+    "semantic_hash": ""
+  },
+  "src/data/conceptLexicon.ts": {
+    "mtime": 1791060850.0814638,
+    "seen": 1791062009.8518054,
+    "ast_hash": "d1e3b84a4a431afffd6c5e29993f551c",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/bancos.ts": {
+    "mtime": 1791061759.837755,
+    "seen": 1791062009.8518114,
+    "ast_hash": "dec21a872e2e8e59ccbae0ff1fdb184a",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/base.ts": {
+    "mtime": 1791061759.845755,
+    "seen": 1791062009.8518128,
+    "ast_hash": "3cc4f38feda2dcb34c0be775883ada91",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/comida.ts": {
+    "mtime": 1791061759.849755,
+    "seen": 1791062009.851814,
+    "ast_hash": "856733c4f51b9f564e5e7261cd2f94b1",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/complementos.ts": {
+    "mtime": 1791061759.853755,
+    "seen": 1791062009.851815,
+    "ast_hash": "9f7e0d233e7aabf084e5a046aa7850a9",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/compras.ts": {
+    "mtime": 1791061759.857755,
+    "seen": 1791062009.851816,
+    "ast_hash": "a472d257028aa6f69e1a3bd6d73c2555",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/dinero.ts": {
+    "mtime": 1791061759.8617551,
+    "seen": 1791062009.851817,
+    "ast_hash": "1e849199061961e2618349af7179a20e",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/familia.ts": {
+    "mtime": 1791061759.865755,
+    "seen": 1791062009.851818,
+    "ast_hash": "30b6f6cd56f070e3094263a7d12eff4b",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/hogar.ts": {
+    "mtime": 1791061759.865755,
+    "seen": 1791062009.8518193,
+    "ast_hash": "b779d9797702cb3fd0b6d79fd1271a3b",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/impuestos.ts": {
+    "mtime": 1791061759.869755,
+    "seen": 1791062009.8518202,
+    "ast_hash": "b3f1d160cffa862822425439efde5f75",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/index.ts": {
+    "mtime": 1791061515.5491772,
+    "seen": 1791062009.8518217,
+    "ast_hash": "ae1f4ab23acc5beccff6b2594be8c0e0",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/ocio.ts": {
+    "mtime": 1791061759.873755,
+    "seen": 1791062009.8518224,
+    "ast_hash": "c37a9e40584056f1325bcc20ab346ea2",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/pareja.ts": {
+    "mtime": 1791061759.877755,
+    "seen": 1791062009.8518233,
+    "ast_hash": "37662eab3db4b866f6302f9073d657a6",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/protegidas.ts": {
+    "mtime": 1791061759.877755,
+    "seen": 1791062009.851824,
+    "ast_hash": "fcd5a35245ffe0b54ee6380242f1b8b8",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/salud.ts": {
+    "mtime": 1791061759.881755,
+    "seen": 1791062009.851825,
+    "ast_hash": "47c357f8edb1dfe7acd122505b12931b",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/trabajo.ts": {
+    "mtime": 1791061759.885755,
+    "seen": 1791062009.8518257,
+    "ast_hash": "115b9fac12e7d1d4173282720d7ae848",
+    "semantic_hash": ""
+  },
+  "src/data/keywordPacks/transporte.ts": {
+    "mtime": 1791061759.889755,
+    "seen": 1791062009.8518267,
+    "ast_hash": "0fbd5d8e51de58567a4d92b19df481a0",
+    "semantic_hash": ""
+  },
+  "scripts/golden/README.md": {
+    "mtime": 1791062000.5775902,
+    "seen": 1791062009.851962,
+    "ast_hash": "8fb53bb43f09f9f61aa010086d28b7b2",
+    "semantic_hash": ""
+  },
+  "scripts/golden/sealed2-2026-10-03.txt": {
+    "mtime": 1791061097.66177,
+    "seen": 1791062009.851966,
+    "ast_hash": "9d62b232728576fc84b1df6b15aba706",
+    "semantic_hash": ""
+  },
+  "scripts/golden/sealed3-2026-10-03.txt": {
+    "mtime": 1791061263.6977663,
+    "seen": 1791062009.8519669,
+    "ast_hash": "5e27ded59bfb95b5316da0025191c5ed",
     "semantic_hash": ""
   }
 }

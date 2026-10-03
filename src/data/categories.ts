@@ -1,5 +1,5 @@
 import type { CategoryDef, SubcategoryDef } from './types';
-import { EXTRA_KEYWORDS } from './keywordExpansion';
+import { EXTRA_KEYWORDS } from './keywordPacks';
 
 // Catálogo inicial de categorías (spec sección 10). El usuario puede
 // agregar, editar, eliminar y reordenar — esto es el set por defecto.
@@ -45,6 +45,7 @@ const BASE_CATEGORIES: CategoryDef[] = [
         keywords: ['segunda mano', 'trueque', 'venta de garage', 'facebook marketplace'],
         excludedFromBudget: true,
       },
+      { id: 'misc_work', name: 'Trabajo y negocio', keywords: ['coworking', 'material de oficina', 'herramienta de trabajo', 'gastos del negocio'] },
     ],
   },
   {
@@ -70,6 +71,9 @@ const BASE_CATEGORIES: CategoryDef[] = [
         name: 'Fondo para boda/evento grande',
         keywords: ['fondo para la boda', 'ahorro evento', 'ahorro xv años'],
       },
+      { id: 'sav_tax_reserve', name: 'Apartado para impuestos', keywords: ['para impuestos', 'para el sat', 'apartado para impuestos'] },
+      { id: 'sav_group', name: 'Tandas y cajas de ahorro', keywords: ['caja de ahorro', 'tanda', 'aportación a la tanda'] },
+      { id: 'sav_kids', name: 'Ahorro para hijos', keywords: ['para mi hijo', 'para mi hija', 'para mis hijos', 'ahorro infantil'] },
     ],
   },
   {
@@ -78,7 +82,7 @@ const BASE_CATEGORIES: CategoryDef[] = [
     icon: 'housing',
     subcategories: [
       { id: 'house_rent', name: 'Renta', keywords: ['renta', 'alquiler', 'pago departamento'] },
-      { id: 'house_mortgage', name: 'Hipoteca', keywords: ['hipoteca', 'crédito hipotecario', 'infonavit', 'fovissste'] },
+      { id: 'house_mortgage', name: 'Hipoteca', keywords: ['hipoteca', 'crédito hipotecario', ] },
       { id: 'house_insurance', name: 'Seguro', keywords: ['seguro de casa', 'seguro hogar', 'póliza hogar'] },
       {
         id: 'house_phone',
@@ -95,15 +99,16 @@ const BASE_CATEGORIES: CategoryDef[] = [
       {
         id: 'house_maintenance',
         name: 'Mantenimiento',
-        keywords: ['mantenimiento casa', 'cuota', 'predial', 'roomie', 'coperacha luz', 'reparación fuga', 'cerrajero', 'plomero', 'electricista'],
+        keywords: ['mantenimiento casa', 'cuota', 'coperacha luz', 'reparación fuga', 'cerrajero', 'plomero', 'electricista'],
       },
       { id: 'house_services', name: 'Servicios', keywords: ['servicios'] },
       { id: 'house_condofees', name: 'Cuota de condominio', keywords: ['condominio', 'cuota de mantenimiento', 'administración', 'vigilancia edificio'] },
       { id: 'house_furniture', name: 'Muebles', keywords: ['muebles', 'colchón', 'sala', 'comedor', 'escritorio', 'silla ergonómica'] },
       { id: 'house_appliances', name: 'Electrodomésticos', keywords: ['electrodoméstico', 'refrigerador', 'lavadora', 'microondas', 'licuadora', 'estufa', 'secadora'] },
-      { id: 'house_moving', name: 'Mudanza', keywords: ['mudanza', 'flete', 'camioneta de mudanza'] },
+      { id: 'house_moving', name: 'Mudanza', keywords: ['mudanza', 'camioneta de mudanza'] },
       { id: 'house_security', name: 'Seguridad y alarmas', keywords: ['alarma', 'cámaras de seguridad', 'caseta de vigilancia', 'monitoreo'] },
       { id: 'house_laundry_service', name: 'Lavandería y tintorería', keywords: ['lavandería', 'tintorería', 'lavado de ropa', 'planchado'] },
+      { id: 'house_domestic', name: 'Personal doméstico y jardinería', keywords: ['empleada doméstica', 'jardinero', 'señora de la limpieza'] },
     ],
   },
   {
@@ -121,10 +126,9 @@ const BASE_CATEGORIES: CategoryDef[] = [
           'epazote', 'lechuga', 'fruta', 'verdura', 'manzana', 'plátano', 'sandía', 'melón', 'papaya', 'limones',
           'naranja', 'pollo', 'pechuga', 'bistec', 'carne', 'molida', 'chuleta', 'tocino', 'jamón', 'salchicha',
           'queso', 'panela', 'oaxaca', 'manchego', 'cotija', 'leche', 'lala', 'alpura', 'nutrileche', 'huevo',
-          'huevos', 'bachoco', 'bimbo', 'bolillo', 'telera', 'pan dulce', 'aceite', 'nutrioli', 'sal', 'azúcar',
+          'huevos', 'bachoco', 'bimbo', 'pan dulce', 'aceite', 'nutrioli', 'sal', 'azúcar',
           'pimienta', 'knorr', 'consomé', 'frijol', 'frijoles', 'arroz', 'lentejas', 'sopa', 'pasta', 'maruchan',
-          'atún', 'sardina', 'mayonesa', 'mccormick', 'catsup', 'crema', 'garrafón', 'epura', 'bonafont', 'ciel',
-          'agua embotellada', 'papel de baño', 'pétalo', 'cottonelle', 'jabón', 'zote', 'fabuloso', 'pinol', 'cloro',
+          'atún', 'sardina', 'mayonesa', 'mccormick', 'catsup', 'crema', 'garrafón', 'bonafont', 'agua embotellada', 'papel de baño', 'pétalo', 'cottonelle', 'jabón', 'zote', 'fabuloso', 'pinol', 'cloro',
           'detergente', 'suavitel', 'ariel', 'foca', 'roma', 'shampoo', 'desodorante', 'pasta de dientes', 'colgate',
           'cepillo', 'servilletas', 'bolsas de basura',
         ],
@@ -167,7 +171,7 @@ const BASE_CATEGORIES: CategoryDef[] = [
       { id: 'food_other', name: 'Otros', keywords: ['comida'] },
       { id: 'food_market', name: 'Mercado', keywords: ['mercado', 'tianguis', 'sobre ruedas'] },
       { id: 'food_bakery', name: 'Panadería', keywords: ['panadería', 'pan', 'expendio de pan'] },
-      { id: 'food_organic', name: 'Orgánico y nutrición', keywords: ['orgánico', 'nutrición', 'suplementos alimenticios', 'proteína', 'keto'] },
+      { id: 'food_organic', name: 'Orgánico y nutrición', keywords: ['orgánico', 'nutrición', 'proteína', 'keto'] },
       { id: 'food_juice_bar', name: 'Jugos y licuados', keywords: ['jugo natural', 'licuado', 'smoothie', 'juguería'] },
       { id: 'food_catering', name: 'Banquetes y eventos', keywords: ['banquete', 'catering', 'buffet de evento', 'mesa de dulces'] },
       { id: 'food_water_delivery', name: 'Garrafón y agua a domicilio', keywords: ['garrafón a domicilio', 'servicio de agua', 'repartidor de agua'] },
@@ -178,7 +182,7 @@ const BASE_CATEGORIES: CategoryDef[] = [
     name: 'Entretenimiento',
     icon: 'entertainment',
     subcategories: [
-      { id: 'ent_cinema', name: 'Cine', keywords: ['cine', 'película', 'cinépolis', 'cinemex', 'boletos', 'palomitas'] },
+      { id: 'ent_cinema', name: 'Cine', keywords: ['cine', 'película', 'cinépolis', 'cinemex', 'boletos', ] },
       { id: 'ent_concerts', name: 'Conciertos', keywords: ['concierto', 'ticketmaster', 'festival', 'toquín'] },
       { id: 'ent_hobbies', name: 'Hobbies', keywords: ['hobby', 'pasatiempo'] },
       { id: 'ent_videogames', name: 'Videojuegos', keywords: ['videojuego', 'steam', 'playstation', 'xbox', 'nintendo'] },
@@ -197,12 +201,13 @@ const BASE_CATEGORIES: CategoryDef[] = [
       { id: 'ent_events', name: 'Eventos', keywords: ['evento', 'teatro', 'museo', 'partido', 'estadio'] },
       { id: 'ent_vacation', name: 'Vacaciones', keywords: ['vacaciones'] },
       { id: 'ent_other', name: 'Otros', keywords: ['entretenimiento', 'vida social'] },
-      { id: 'ent_karaoke', name: 'Karaoke y bares', keywords: ['karaoke', 'bar', 'antro'] },
+      { id: 'ent_karaoke', name: 'Karaoke y bares', keywords: ['karaoke', 'antro'] },
       { id: 'ent_amusement', name: 'Parques de diversiones', keywords: ['parque de diversiones', 'feria', 'six flags'] },
       { id: 'ent_escape_room', name: 'Cuartos de escape', keywords: ['cuarto de escape', 'escape room'] },
       { id: 'ent_arcade', name: 'Arcadas y maquinitas', keywords: ['arcada', 'maquinitas', 'ficha de arcada', 'vr arena'] },
       { id: 'ent_billiards', name: 'Billar y dominó', keywords: ['billar', 'pool', 'dominó', 'mesa de billar'] },
       { id: 'ent_photography', name: 'Fotografía y recuerdos de eventos', keywords: ['fotógrafo', 'cabina de fotos', 'recuerditos', 'photobooth'] },
+      { id: 'ent_gambling', name: 'Apuestas y sorteos', keywords: ['casino', 'lotería', 'melate', 'apuesta', 'apuestas', 'rifa', 'boletos de lotería', 'caliente'] },
     ],
   },
   {
@@ -219,10 +224,13 @@ const BASE_CATEGORIES: CategoryDef[] = [
       { id: 'life_other', name: 'Otros', keywords: [] },
       { id: 'life_family_support', name: 'Apoyo familiar', keywords: ['apoyo familiar', 'le di a mi mamá', 'le di a mi papá', 'ayuda familiar', 'dinero para la casa'] },
       { id: 'life_community', name: 'Causas comunitarias', keywords: ['voluntariado', 'causa comunitaria'] },
-      { id: 'life_celebration', name: 'Celebraciones familiares', keywords: ['celebración', 'cumpleaños familiar', 'posada', 'aniversario'] },
+      { id: 'life_celebration', name: 'Celebraciones familiares', keywords: ['celebración', 'cumpleaños familiar', 'posada', ] },
       { id: 'life_self_improvement', name: 'Desarrollo personal', keywords: ['coaching', 'desarrollo personal', 'retiro espiritual'] },
       { id: 'life_social_clubs', name: 'Membresías sociales', keywords: ['club social', 'membresía club', 'country club', 'cuota de club'] },
       { id: 'life_wedding', name: 'Bodas y despedidas', keywords: ['boda', 'despedida de soltero', 'despedida de soltera', 'xv años', 'baby shower'] },
+      { id: 'life_partner', name: 'Pareja y citas', keywords: ['cita con mi novia', 'cita con mi novio', 'aniversario', 'cena romántica', 'salida con mi pareja'] },
+      { id: 'life_children', name: 'Hijos y bebés', keywords: ['pañales', 'fórmula del bebé', 'guardería', 'juguetes', 'carriola', 'biberón', 'niñera'] },
+      { id: 'life_funeral', name: 'Funerales y duelo', keywords: ['funeral', 'velorio', 'cremación', 'funeraria', 'gastos funerarios'] },
     ],
   },
   {
@@ -260,6 +268,10 @@ const BASE_CATEGORIES: CategoryDef[] = [
         name: 'Estudios y laboratorio',
         keywords: ['estudios clínicos', 'análisis de sangre', 'rayos x', 'ultrasonido', 'resonancia', 'tomografía', 'check up'],
       },
+      { id: 'health_hospital', name: 'Hospital y cirugías', keywords: ['hospital', 'cirugía', 'urgencias', 'ambulancia', 'parto', 'cesárea', 'hospitalización'] },
+      { id: 'health_homecare', name: 'Cuidado en casa y adultos mayores', keywords: ['enfermera a domicilio', 'cuidadora', 'asilo', 'pañales de adulto', 'cuidado de adultos mayores'] },
+      { id: 'health_equipment', name: 'Equipo y aparatos médicos', keywords: ['silla de ruedas', 'muletas', 'andadera', 'glucómetro', 'aparato auditivo', 'baumanómetro', 'oxímetro'] },
+      { id: 'health_life_insurance', name: 'Seguro de vida', keywords: ['seguro de vida', 'póliza de vida'] },
     ],
   },
   {
@@ -277,6 +289,9 @@ const BASE_CATEGORIES: CategoryDef[] = [
       { id: 'inc_gifts', name: 'Regalos', keywords: ['me regalaron'], incomeKind: 'variable' },
       { id: 'inc_sales', name: 'Ventas', keywords: ['venta', 'vendí'], incomeKind: 'variable' },
       { id: 'inc_other', name: 'Otros', keywords: ['ingreso'], incomeKind: 'variable' },
+      { id: 'inc_reimbursement', name: 'Reembolsos y devoluciones', keywords: ['reembolso', 'me reembolsaron', 'me devolvieron', 'devolución', 'cashback', 'saldo a favor'], incomeKind: 'variable' },
+      { id: 'inc_rental', name: 'Renta cobrada', keywords: ['cobré la renta', 'renta cobrada', 'alquiler cobrado', 'ingreso por renta'], incomeKind: 'fixed' },
+      { id: 'inc_support', name: 'Pensión, becas y apoyos', keywords: ['pensión alimenticia', 'pensión del imss', 'jubilación', 'beca', 'apoyo del gobierno', 'programa bienestar'], incomeKind: 'fixed' },
     ],
   },
   {
@@ -303,7 +318,7 @@ const BASE_CATEGORIES: CategoryDef[] = [
       {
         id: 'trans_maintenance',
         name: 'Mantenimiento',
-        keywords: ['taller', 'mantenimiento coche', 'mecánico', 'refacción', 'llanta', 'talacha', 'vulcanizadora', 'lavado', 'autolavado', 'verificación', 'tenencia'],
+        keywords: ['taller', 'mantenimiento coche', 'mecánico', 'refacción', 'llanta', 'talacha', 'vulcanizadora', 'lavado', 'autolavado', 'verificación', ],
       },
       { id: 'trans_other', name: 'Otros', keywords: ['transporte'] },
       { id: 'trans_school', name: 'Transporte escolar', keywords: ['transporte escolar', 'camión escolar'] },
@@ -330,6 +345,8 @@ const BASE_CATEGORIES: CategoryDef[] = [
       { id: 'debt_appliance', name: 'Crédito de muebles/electrodomésticos', keywords: ['crédito de muebles', 'a meses sin intereses', 'coppel', 'elektra'] },
       { id: 'debt_payday_loan', name: 'Préstamo de nómina o empeño', keywords: ['empeño', 'monte de piedad', 'préstamo de nómina', 'crédito rápido', 'prestaentresemana'] },
       { id: 'debt_medical', name: 'Deuda médica', keywords: ['deuda médica', 'plan de pagos hospital', 'financiamiento médico'] },
+      { id: 'debt_interest', name: 'Intereses y cargos por mora', keywords: ['intereses de la tarjeta', 'intereses moratorios', 'pago tardío', 'cargo por mora'] },
+      { id: 'debt_bnpl', name: 'Compra a plazos (compra ahora, paga después)', keywords: ['kueski pay', 'aplazo', 'klarna', 'compra a plazos'] },
     ],
   },
   {
@@ -347,6 +364,8 @@ const BASE_CATEGORIES: CategoryDef[] = [
       { id: 'inv_other', name: 'Otros', keywords: ['invertí', 'inversión', 'aportación ppr'] },
       { id: 'inv_real_estate', name: 'Bienes raíces (inversión)', keywords: ['inversión inmobiliaria', 'crowdfunding inmobiliario', 'terreno inversión', 'fideicomiso'] },
       { id: 'inv_p2p_lending', name: 'Préstamos entre personas (fintech)', keywords: ['p2p lending', 'yotepresto', 'cumplo'] },
+      { id: 'inv_metals', name: 'Oro, plata y coleccionables', keywords: ['centenario', 'onza de oro', 'lingote', 'monedas de oro', 'oro físico'] },
+      { id: 'inv_forex', name: 'Divisas y trading', keywords: ['forex', 'trading', 'cfd', 'divisas'] },
     ],
   },
   {
@@ -367,6 +386,27 @@ const BASE_CATEGORIES: CategoryDef[] = [
       { id: 'edu_courses', name: 'Cursos y certificaciones', keywords: ['curso', 'diplomado', 'examen', 'certificación', 'platzi', 'udemy', 'coursera'] },
       { id: 'edu_other', name: 'Otros', keywords: ['educación'] },
       { id: 'edu_tutoring', name: 'Clases particulares y regularización', keywords: ['clases particulares', 'regularización', 'tutor', 'asesoría escolar'] },
+      { id: 'edu_exams', name: 'Exámenes y titulación', keywords: ['examen de certificación', 'toefl', 'ceneval', 'titulación', 'examen de admisión'] },
+    ],
+  },
+  // Impuestos, trámites y comisiones (P1b, 2026-10-03): cosas que toda persona paga y que antes
+  // caían en "Otros" o no tenían casa — ISR/IVA, predial, tenencia, multas, trámites, abogados,
+  // contadores y comisiones/anualidades bancarias.
+  {
+    id: 'taxes_fees',
+    name: 'Impuestos, trámites y comisiones',
+    icon: 'taxes_fees',
+    subcategories: [
+      { id: 'tax_income', name: 'Impuestos federales (ISR, IVA)', keywords: ['isr', 'iva', 'sat', 'impuestos', 'impuesto sobre la renta', 'declaración anual', 'pago provisional'] },
+      { id: 'tax_property', name: 'Predial y derechos locales', keywords: ['predial', 'impuesto predial', 'derechos', 'impuesto sobre nómina'] },
+      { id: 'tax_vehicle', name: 'Tenencia y placas', keywords: ['tenencia', 'refrendo', 'placas', 'calcomanía', 'refrendo vehicular'] },
+      { id: 'tax_procedures', name: 'Trámites y documentos', keywords: ['pasaporte', 'acta de nacimiento', 'curp', 'visa', 'licencia de conducir', 'apostilla', 'trámite'] },
+      { id: 'tax_legal', name: 'Abogados, notario y gestoría', keywords: ['abogado', 'notario', 'escritura', 'gestor', 'honorarios del abogado'] },
+      { id: 'tax_accounting', name: 'Contador y facturación', keywords: ['contador', 'contadora', 'honorarios del contador', 'firma electrónica', 'contabilidad'] },
+      { id: 'tax_fines', name: 'Multas y recargos', keywords: ['multa', 'multas', 'infracción', 'recargos', 'actualizaciones y recargos'] },
+      { id: 'tax_social', name: 'Seguridad social (IMSS, SAR)', keywords: ['imss', 'modalidad 40', 'cuotas imss', 'seguro social'] },
+      { id: 'fee_bank', name: 'Comisiones y anualidades bancarias', keywords: ['anualidad', 'comisión bancaria', 'comisión por manejo de cuenta', 'cuota anual', 'comisión por retiro'] },
+      { id: 'fee_fx', name: 'Cambio de divisas y envío de dinero', keywords: ['casa de cambio', 'western union', 'comisión por transferencia internacional', 'tipo de cambio'] },
     ],
   },
   // Categoría propia para el tipo 'transfer' (data/types.ts, ledger.ts) —

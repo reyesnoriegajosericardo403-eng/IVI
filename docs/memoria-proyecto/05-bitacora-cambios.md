@@ -8,6 +8,18 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-03 (noche) — P1b: catálogo de palabras de 3 mil a ≈19 mil
+
+Pedido: cubrir todas las áreas de las finanzas personales (pareja, roomies, amigos, tarjetas, impuestos…)
+y dejarlo listo para futuras secciones y para el resto de la Fase 2 del motor local.
+
+- **Catálogo**: de 3,123 a **18,885 palabras clave** repartidas en paquetes por tema (`src/data/keywordPacks/*.ts`, ver [[03-motor-clasificacion]]). Se podaron las que no aportaban (medido quitando una a una) y las ambiguas.
+- **Taxonomía**: nueva categoría **Impuestos y trámites** (`taxes_fees`), 30 subcategorías nuevas (hijos, mascotas, trabajo, pareja/roomies, BNPL, comisiones, etc.) y 3 conceptos de presupuesto nuevos. Total: 14 categorías · 178 subcategorías · 18 conceptos ([[02-catalogo-categorias]]).
+- **Motor** (`src/ai/localParser.ts`): índice reescrito (53× más rápido, mismos resultados), construcción en trozos para no congelar la pantalla (`warmUpLocalParser`, llamado desde `capture.tsx` y 4 s después de abrir en `_layout.tsx`), separación de medio de pago vs. gasto («con tarjeta», «a 6 meses», «a medias»), filtro de unidades que no son dinero, tipos de movimiento más finos.
+- **Léxico de conceptos** (`src/data/conceptLexicon.ts`, `src/ai/concepts.ts`): etiquetas de modalidad (pareja, roomies, a plazos, recurrente…) para futuras funciones; todavía no las usa la interfaz.
+- **Medición**: Fresco 4 y 5 sellados (corrida única): 93.4% y 90.2%; Fresco 2 de P1: 94.9%. Con el catálogo viejo las mismas frases daban 89.6% y 81.5% ([[08-golden-set-resultados]]). Robustez 13,224 pruebas sin cambios.
+- Herramientas nuevas en `scripts/golden/` (README ahí mismo). No se tocó la base de datos de Supabase.
+
 ## 2026-10-03 — P1 (semana 3): golden set + motor local más preciso
 
 - Nuevo **golden set** de 984 casos + 2 conjuntos de frases frescas en `scripts/golden/` (ver [[08-golden-set-resultados]]). Línea base del motor: **69.6%**.

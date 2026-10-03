@@ -120,18 +120,72 @@ mi cuenta de ahorro»), y distingue «me depositaron» (ingreso) de «deposité 
 `splitCaptureSegments` corta por «y», comas, «luego», «además», saltos de línea, sin partir números
 compuestos.
 
-## Catálogo ampliado y cómo se mide (P1, 2026-10-03)
+## Catálogo ampliado y cómo se mide (P1 y P1b, 2026-10-03)
 
-- Las palabras clave base viven en `src/data/categories.ts` (≈864). Las ampliaciones
-  (marcas, productos, frases tal como las dice la gente) viven en `src/data/keywordExpansion.ts`
-  y se mezclan al cargar sin duplicar: **3,123 palabras clave** en total, más variantes de
-  singular/plural que genera el índice automáticamente (solo cambian el número, nunca inventan
-  palabras). Reglas del archivo: una palabra solo va en la subcategoría donde la persona la
-  esperaría; si es ambigua, no se agrega (se prefiere preguntar).
-- **Golden set** (`scripts/golden/`): 984 casos con etiqueta humana (no copiada de la salida del motor),
-  divididos 70% desarrollo / 30% reserva, más 3 «límites conocidos» que no cuentan en el %.
-  Cómo correrlo: `node scripts/golden/run-golden.cjs [--split dev|holdout|all|fresh1|sealed] [--suite nombre] [--fail]`;
-  regenerarlo: `node scripts/golden/build-golden.cjs`. No necesita instalar nada.
-- **Resultados** (ver [[08-golden-set-resultados]]): línea base 69.6% → 100% en el set original
-  (**contaminado**: el vocabulario se amplió mirando esas fallas), y la cifra honesta sobre frases
-  **nuevas que el motor nunca vio**: **94.9%** (set sellado, una sola corrida).
+### Tamaño real (medido, no estimado)
+
+| | P1 (mañana) | P1b (tarde) |
+|---|---:|---:|
+| Palabras clave en el catálogo | ≈ 3,100 | **≈ 18,900** (17,900 únicas) |
+| Entradas del índice (con plural/singular automático) | ≈ 6,000 | **≈ 33,700** |
+| Peso del código de datos | ≈ 45 KB | ≈ 385 KB (**106 KB** comprimido) |
+| Tiempo por frase | 1.4 ms | **0.1 ms** |
+| Armado del índice (una vez) | 30 ms | ≈ 200–300 ms, **repartido en trozos de ≤13 ms** |
+
+Esas ≈ 18,900 son el resultado de **escribir ≈ 23,000 y quitar las que no aportaban** (ver «poda» abajo).
+
+### Dónde vive cada cosa
+
+- `src/data/categories.ts` — categorías, subcategorías y sus palabras base.
+- `src/data/keywordPacks/*.ts` — un archivo por **área de la vida financiera**: `pareja` (roomies, amigos, gastos
+  compartidos), `bancos` (tarjetas, intereses, comisiones, remesas, crédito a plazos), `impuestos` (SAT, predial, tenencia,
+  multas, trámites, abogados, contador), `hogar`, `comida`, `transporte`, `salud`, `familia` (hijos, mascotas, regalos,
+  bodas, funerales, donaciones), `ocio` (viajes, apuestas, tecnología, software), `trabajo` (escuela, cursos, negocio),
+  `dinero` (ingresos, ahorro, inversión, transferencias), `compras`, `complementos` y `base`.
+  `index.ts` los mezcla; **el orden desempata** cuando una palabra está en dos subcategorías.
+- `protegidas.ts` — frases «desempatadoras» a mano; la poda nunca las toca.
+- `src/data/conceptLexicon.ts` + `src/ai/concepts.ts` — **modalidades** del movimiento (`detectConcepts`): repartido
+  entre varios, me deben / le debo, liquidación entre personas, recurrente, a plazos/MSI, deducible, reembolsable,
+  otra moneda, previsto. Hoy ninguna pantalla lo usa: es el enganche para P2/P3.
+
+Agregar un área nueva (p. ej. «mascotas exóticas» o «criptos»): crear `keywordPacks/<area>.ts`, sumarlo a `index.ts`,
+y correr las herramientas de abajo.
+
+### Cómo se evita el relleno (la parte que más importa)
+
+Una lista de 20 mil palabras escrita a mano es fácil de inflar con variantes («pago de X», «abono a X», «mi X»…) que no
+cambian ninguna respuesta. `scripts/golden/packs.cjs` lo controla:
+
+1. **`format`** — quita repetidas y las palabras ambiguas sueltas (`sol`, `mango`, `cuartos`, `fiesta`, `oficina`…: significan
+   otra cosa en el habla diaria; la marca solo entra acompañada: «cerveza sol»).
+2. **`resolve`** — cuando una palabra está en dos subcategorías gana la **nueva** si se creó para eso (ej. «predial» → Predial y
+   derechos locales, no «Mantenimiento») o, entre dos viejas, la ya existente; las decisiones a mano van en `PREFER`.
+3. **`prune`** — una palabra **sobra** si el catálogo, *sin ella*, ya clasifica su mismo texto en la misma subcategoría
+   (ej. «pago del predial» sobrando por «predial»). Aun así **no poda frases que contienen vocabulario de otra
+   subcategoría** (son desempatadoras: «cuota anual de la tarjeta» tiene que ganarle a «tarjeta»).
+4. Prueba de **robustez** (`robustez.cjs`): a cada frase que ya acierta se le agrega ruido que no cambia lo comprado («oye»,
+   «con tarjeta», «a meses sin intereses», «el otro día»…) y debe seguir igual. Hoy: **13,224 pruebas, 0 cambios**.
+5. **A/B real** antes de adoptar cualquier ayuda: se probó recuperar 2,500 frases desempatadoras podadas (sin ganancia →
+   descartado) y una regla de «la cabeza de la frase manda» (empeoraba: 99.4% vs 100% en el set y 17 cambios en robustez →
+   descartada). Consecuencia: lo que está en el código es lo que demostró servir.
+
+### Correcciones de lógica que salieron de las pruebas (valen para cualquier tamaño de catálogo)
+
+- **Forma de pago ≠ gasto.** «tacos con mi tarjeta 120» ya es comida (antes: «Tarjeta de crédito»); «la renta por
+  transferencia» es renta (no «Entre mis cuentas»); «a meses sin intereses» y «a medias» tampoco son categoría. Solo se
+  quitan cuando la coincidencia ganadora vive *dentro* de esa frase; «pagué la tarjeta de crédito» (sin «con») sigue
+  siendo deuda. Si solo se entiende la forma de pago («5000 por transferencia») **se pregunta**, no se adivina.
+- **Índice por palabra/frase** en vez de recorrer todas: de 4.6 ms a 0.1 ms por frase con 10 mil palabras, resultados idénticos.
+- **Calentamiento en trozos** (`warmUpLocalParser`): se llama al abrir la captura y 4 s después de abrir la app.
+- «Mis papás» (padres) ya no se confunde con «papas» (verdura); frases que solo nombran a una persona («a mi abuela») valen
+  poco, para no tapar lo que sí dice la frase («la enfermera que cuida a mi abuela» es salud).
+- Medidas no son dinero: «icloud 50 gb 17» → 17. Más verbos de ingreso («me regresó», «me devolvió», «me reembolsó»,
+  beca, pensión, cashback, saldo a favor) y de inversión (centenario, onza, forex).
+- Palabras genéricas como «trámite», «oaxaca» o «centro comercial» valen poco (son lugar o contexto, no el artículo).
+
+### Golden set y resultados
+
+- `scripts/golden/` (sin dependencias nuevas): `node scripts/golden/run-golden.cjs [--split dev|holdout|all|fresh1|fresh3|sealed|sealed2|sealed3] [--suite nombre] [--fail]`;
+  se regenera con `node scripts/golden/build-golden.cjs`. Hoy: **1,047 casos de regresión** (incluye 63 de conceptos) +
+  5 conjuntos de frases nuevas (fresco 1–5).
+- Resultados y la cifra honesta sobre frases que el motor nunca vio: [[08-golden-set-resultados]].

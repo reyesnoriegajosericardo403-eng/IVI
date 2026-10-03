@@ -77,9 +77,10 @@ const AMBIG = {
   caseta: ['house_security'], 'caseta de vigilancia': ['trans_tolls'], 'mensualidad del gym': ['ent_subscriptions'],
   'suscripción mensual': ['misc_software', 'ent_streaming'], membresía: ['life_social_clubs'], suscripción: ['misc_software', 'ent_streaming'],
   hobbies: ['ent_other'], 'mi hobby': ['ent_other'], 'compras en liverpool': ['misc_clothing'],
+  urgencias: ['health_hospital'], 'examen de certificación': ['edu_exams'], titulación: ['edu_exams'],
   'cosas en la tienda': ['food_supermarket'], 'un frappé': ['food_juice_bar'], 'chai latte': ['food_coffee'],
 };
-const PREFIX = { misc: 'miscellaneous', sav: 'savings', house: 'housing', food: 'food', ent: 'entertainment', life: 'lifestyle', health: 'health', inc: 'income', trans: 'transport', debt: 'debt', inv: 'investments', edu: 'education', transfer: 'transfer' };
+const PREFIX = { misc: 'miscellaneous', sav: 'savings', house: 'housing', food: 'food', ent: 'entertainment', life: 'lifestyle', health: 'health', inc: 'income', trans: 'transport', debt: 'debt', inv: 'investments', edu: 'education', transfer: 'transfer', tax: 'taxes_fees', fee: 'taxes_fees' };
 const catOf = (sub) => PREFIX[sub.split('_')[0]];
 const cases = [];
 let n = 0;
@@ -93,9 +94,13 @@ function add(suite, text, expect, extra = {}) {
 
 // A) clasificación de gastos por subcategoría
 let k = 0;
-for (const [cat, sub, items] of LEX) {
-  const [lo, hi] = RANGE[cat];
+// Etiquetas que cambiaron porque el catálogo ganó una subcategoría MÁS correcta (P1b): se corrige la
+// etiqueta humana, no el resultado esperado del motor.
+const RELABEL = { predial: ['taxes_fees', 'tax_property'] };
+for (const [cat0, sub0, items] of LEX) {
   for (const item of items) {
+    const [cat, sub] = RELABEL[item] || [cat0, sub0];
+    const [lo, hi] = RANGE[cat] || RANGE[cat0];
     const usd = USD_SUBS.has(sub) && rnd() < 0.25;
     const raw = usd ? int(5, 120) : int(lo, hi);
     const a = amountText(raw, usd);
@@ -146,6 +151,9 @@ for (const [text, segs] of H.SEGMENTOS) add('segmentos', text, { segments: segs 
 // I) ajuste de saldo de una cuenta
 for (const [text, e] of H.AJUSTES) add('ajuste_cuenta', text, { adjustment: e });
 
+// K) detector de conceptos (modalidades: repartido, deudas, recurrente, a plazos, deducible...)
+for (const [text, tags] of require('./conceptos.cjs')) add('conceptos', text, { concepts: tags });
+
 // J) frases NUEVAS e independientes (ver fresh.cjs): fresco_1 se usa para iterar, fresco_2 está SELLADO.
 const F = require('./fresh.cjs');
 function addFresh(suite, split, list) {
@@ -159,9 +167,14 @@ function addFresh(suite, split, list) {
 }
 addFresh('fresco_1', 'fresh1', F.FRESH1);
 addFresh('fresco_2', 'sealed', F.FRESH2);
+const F2 = require('./fresh2.cjs');
+addFresh('fresco_3', 'fresh3', F2.FRESH3);
+addFresh('fresco_4', 'sealed2', F2.FRESH4);
+const F3 = require('./fresh3.cjs');
+addFresh('fresco_5', 'sealed3', F3.FRESH5);
 
 const out = path.join(__dirname, 'golden-set.json');
 fs.writeFileSync(out, JSON.stringify({ version: 1, generated: '2026-10-03', cases }, null, 1) + '\n');
 const by = {};
 for (const c of cases) by[c.suite] = (by[c.suite] || 0) + 1;
-console.log('casos:', cases.length, by, '| dev:', cases.filter((c) => c.split === 'dev').length, 'reserva:', cases.filter((c) => c.split === 'holdout').length, 'fresco1:', cases.filter((c) => c.split === 'fresh1').length, 'sellado:', cases.filter((c) => c.split === 'sealed').length);
+console.log('casos:', cases.length, by, '| dev:', cases.filter((c) => c.split === 'dev').length, 'reserva:', cases.filter((c) => c.split === 'holdout').length, 'fresco1:', cases.filter((c) => c.split === 'fresh1').length, 'sellado:', cases.filter((c) => c.split === 'sealed').length, 'fresco3:', cases.filter((c) => c.split === 'fresh3').length, 'sellado2:', cases.filter((c) => c.split === 'sealed2').length, 'sellado3:', cases.filter((c) => c.split === 'sealed3').length);

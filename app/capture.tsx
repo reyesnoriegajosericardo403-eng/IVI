@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { applyCustomMapping, detectAccountAdjustment, splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
+import { applyCustomMapping, detectAccountAdjustment, splitCaptureSegments, warmUpLocalParser, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { ValuMark } from '@/components/ValuMark';
 import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
@@ -87,6 +87,12 @@ export default function Capture() {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
       releaseListenerCleanupRef.current?.();
     };
+  }, []);
+
+  // El motor local tiene un catálogo grande: se prepara en trozos mientras la persona habla, para que
+  // el primer movimiento no espere (y la pantalla no se congela).
+  useEffect(() => {
+    void warmUpLocalParser();
   }, []);
 
   // El efectivo siempre debe poder elegirse — no solo cuando alguien

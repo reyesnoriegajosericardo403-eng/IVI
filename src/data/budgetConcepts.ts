@@ -97,6 +97,28 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     icon: 'education',
     matches: [{ categoryId: 'education' }],
   },
+  // Agregados el 2026-10-03 (P1b): cada subcategoría nueva del catálogo queda en un concepto.
+  {
+    id: 'concept_taxes_fees',
+    name: 'Impuestos, trámites y comisiones',
+    group: 'necesidades',
+    icon: 'taxes_fees',
+    matches: [{ categoryId: 'taxes_fees' }],
+  },
+  {
+    id: 'concept_children',
+    name: 'Hijos y bebés',
+    group: 'necesidades',
+    icon: 'lifestyle',
+    matches: [{ categoryId: 'lifestyle', subcategoryIds: ['life_children'] }],
+  },
+  {
+    id: 'concept_work',
+    name: 'Trabajo y negocio',
+    group: 'necesidades',
+    icon: 'miscellaneous',
+    matches: [{ categoryId: 'miscellaneous', subcategoryIds: ['misc_work'] }],
+  },
 
   // ---------- DESEOS: gustos, salidas y estilo de vida ----------
   {
@@ -113,7 +135,7 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
         subcategoryIds: [
           'ent_cinema', 'ent_concerts', 'ent_hobbies', 'ent_videogames', 'ent_sports',
           'ent_bowling', 'ent_clubs', 'ent_events', 'ent_karaoke', 'ent_amusement', 'ent_other', 'ent_vacation',
-          'ent_escape_room', 'ent_arcade', 'ent_billiards', 'ent_photography',
+          'ent_escape_room', 'ent_arcade', 'ent_billiards', 'ent_photography', 'ent_gambling',
         ],
       },
       { categoryId: 'food', subcategoryIds: ['food_alcohol', 'food_fastfood', 'food_snacks', 'food_sweets', 'food_delivery', 'food_catering'] },
@@ -123,7 +145,7 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
         // estaban en NINGÚN concepto (huérfanos silenciosos), igual que
         // life_self_improvement/life_social_clubs/life_wedding, nuevas del
         // catálogo v9.
-        subcategoryIds: ['life_travel', 'life_experiences', 'life_personal', 'life_pets', 'life_other', 'life_self_improvement', 'life_social_clubs', 'life_wedding'],
+        subcategoryIds: ['life_travel', 'life_experiences', 'life_personal', 'life_pets', 'life_other', 'life_self_improvement', 'life_social_clubs', 'life_wedding', 'life_partner'],
       },
     ],
   },
@@ -150,7 +172,7 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     name: 'Apoyo familiar',
     group: 'deseos',
     icon: 'lifestyle',
-    matches: [{ categoryId: 'lifestyle', subcategoryIds: ['life_family_support', 'life_celebration'] }],
+    matches: [{ categoryId: 'lifestyle', subcategoryIds: ['life_family_support', 'life_celebration', 'life_funeral'] }],
   },
   {
     id: 'concept_donations',
@@ -166,14 +188,14 @@ export const BUDGET_CONCEPTS: BudgetConcept[] = [
     name: 'Metas a corto plazo',
     group: 'ahorro',
     icon: 'savings',
-    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_short', 'sav_goals', 'sav_vacation', 'sav_wedding_fund'] }],
+    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_short', 'sav_goals', 'sav_vacation', 'sav_wedding_fund', 'sav_tax_reserve', 'sav_group'] }],
   },
   {
     id: 'concept_goals_long',
     name: 'Metas a mediano/largo plazo',
     group: 'ahorro',
     icon: 'savings',
-    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_long', 'sav_retirement', 'sav_house_downpayment', 'sav_education_fund'] }],
+    matches: [{ categoryId: 'savings', subcategoryIds: ['sav_goals_long', 'sav_retirement', 'sav_house_downpayment', 'sav_education_fund', 'sav_kids'] }],
   },
   {
     id: 'concept_emergency',
@@ -286,7 +308,7 @@ export function findBudgetConceptForCategory(categoryId: string, subcategoryId?:
 
 // Un concepto por cada subcategoría de ingreso — a diferencia de los
 // gastos (que agrupan varias subcategorías por concepto para que no sean
-// demasiados renglones), aquí solo hay 10 en total, así que mostrarlas
+// demasiados renglones), aquí solo hay 13 en total, así que mostrarlas
 // todas por separado es lo más simple y directo.
 export interface IncomeConcept {
   id: string;
@@ -312,6 +334,9 @@ export const INCOME_CONCEPTS: IncomeConcept[] = [
   { id: 'income_inc_freelance', name: 'Freelance', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_freelance'] }] },
   { id: 'income_inc_gifts', name: 'Regalos recibidos', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_gifts'] }] },
   { id: 'income_inc_sales', name: 'Ventas', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_sales'] }] },
+  { id: 'income_inc_reimbursement', name: 'Reembolsos y devoluciones', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_reimbursement'] }] },
+  { id: 'income_inc_rental', name: 'Renta cobrada', icon: 'income', kind: 'fixed', matches: [{ categoryId: 'income', subcategoryIds: ['inc_rental'] }] },
+  { id: 'income_inc_support', name: 'Pensión, becas y apoyos', icon: 'income', kind: 'fixed', matches: [{ categoryId: 'income', subcategoryIds: ['inc_support'] }] },
   { id: 'income_inc_other', name: 'Otros ingresos', icon: 'income', kind: 'variable', matches: [{ categoryId: 'income', subcategoryIds: ['inc_other'] }] },
 ];
 

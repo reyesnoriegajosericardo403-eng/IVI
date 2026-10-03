@@ -227,7 +227,7 @@ function levenshteinDistance(a: string, b: string): number {
 const WEAK_KEYWORDS = new Set([
   'compre', 'compras', 'comida', 'tienda', 'pago', 'servicio', 'servicios',
   'boleto', 'boletos', 'ahorre', 'guarde', 'ahorro', 'ahorros', 'inverti', 'inversion', 'invertir', 'ingreso', 'ingresos',
-  'pasaje', 'pasajes', 'suscripcion', 'suscripciones', 'membresia', 'membresias',
+  'pasaje', 'pasajes', 'suscripcion', 'suscripciones', 'membresia', 'membresias', 'tramite', 'tramites', 'oaxaca', 'centro comercial', 'plaza comercial', 'el mall', 'mall',
 ]);
 
 const KNOWN_MERCHANTS: Array<{ name: string; keyword: string; categoryId: string; subcategoryId: string }> = [
@@ -243,6 +243,19 @@ interface KeywordEntry {
   categoryId: string;
   subcategoryId: string;
   score: number;
+  order: number; // posición en el catálogo: desempata a igual puntaje (gana la primera)
+}
+
+// Índice para buscar sin recorrer toda la lista: con 8–10 mil palabras clave, comparar la frase contra
+// cada una costaba milisegundos en el teléfono. Aquí cada palabra/frase se busca directo por su texto
+// (los n-gramas de la frase del usuario) y los recorridos difusos solo ven las candidatas posibles.
+interface KeywordIndex {
+  entries: KeywordEntry[];
+  byKeyword: Map<string, KeywordEntry[]>;
+  maxWords: number;
+  phrasesByScore: KeywordEntry[]; // frases de varias palabras, de mayor a menor puntaje (para el difuso de frases)
+  longSingles: KeywordEntry[]; // palabras sueltas lo bastante largas para corregir typos
+  phrasesByWord: Map<string, KeywordEntry[]>; // palabra de contenido -> frases que la contienen (para el difuso de frases)
 }
 
 // Plural/singular de la última palabra ("cines"↔"cine", "inscripciones"↔
@@ -265,9 +278,19 @@ function numberVariants(kw: string): string[] {
 
 // Índice único: catálogo (en orden, para desempates) + comercios + variantes.
 // Se arma una vez; así cada frase solo recorre una lista ya normalizada.
-let keywordIndex: KeywordEntry[] | null = null;
-function getKeywordIndex(): KeywordEntry[] {
-  if (keywordIndex) return keywordIndex;
+// Frases que solo nombran a una persona ("a mi abuela", "para mis papás"): dicen A QUIÉN, no EN QUÉ se
+// gastó. Valen 1 punto, como las palabras genéricas, para no tapar lo que sí dice la frase ("pagué la
+// enfermera que cuida a mi abuela" es salud, no apoyo familiar).
+const RELATION_ONLY_RE = /^((a|para|de|con|por) )?((mi|mis|el|la|los|las) )?(mama|papa|mamas|papas|abuela|abuelo|abuelos|hermano|hermana|hermanos|tia|tio|tios|familia|madre|padre|padres|hijo|hija|hijos|bebe|pareja|novia|novio|esposa|esposo|amigo|amiga|amigos|amigas|roomie|roomies|compa|cuate)$/;
+// Palabras de relleno: no sirven para localizar una frase del catálogo (aparecen en miles).
+const PHRASE_STOP_WORDS = new Set(['del', 'los', 'las', 'con', 'por', 'para', 'mis', 'sus', 'una', 'uno', 'que', 'como', 'pero', 'sin', 'sobre', 'entre', 'hacia', 'desde', 'este', 'esta', 'esto', 'ese', 'esa']);
+let keywordIndex: KeywordIndex | null = null;
+let keywordIndexWarmUp: Promise<void> | null = null;
+const INDEX_CHUNK = 1500;
+
+// Arma el índice por pasos (un `yield` cada INDEX_CHUNK palabras) para poder repartirlo en el tiempo:
+// con ~17 mil palabras construirlo de una sola vez tarda 150–400 ms según el teléfono.
+function* buildKeywordIndexSteps(): Generator<void, KeywordIndex, void> {
   const seen = new Set<string>();
   const out: KeywordEntry[] = [];
   const push = (kw: string, categoryId: string, subcategoryId: string) => {
@@ -277,20 +300,124 @@ function getKeywordIndex(): KeywordEntry[] {
     const key = `${n}|${categoryId}`;
     if (n.length <= 2 || seen.has(key)) return;
     seen.add(key);
-    out.push({ kw: n, categoryId, subcategoryId, score: WEAK_KEYWORDS.has(n) ? 1 : n.length });
+    out.push({ kw: n, categoryId, subcategoryId, score: WEAK_KEYWORDS.has(n) || (categoryId !== 'savings' && categoryId !== 'income' && RELATION_ONLY_RE.test(n)) ? 1 : n.length, order: out.length });
   };
+  let work = 0;
+  const tick = () => ++work % INDEX_CHUNK === 0;
   for (const category of DEFAULT_CATEGORIES) {
     for (const sub of category.subcategories) {
-      for (const kw of sub.keywords) push(kw, category.id, sub.id);
+      for (const kw of sub.keywords) {
+        push(kw, category.id, sub.id);
+        if (tick()) yield;
+      }
     }
   }
   for (const m of KNOWN_MERCHANTS) push(m.keyword, m.categoryId, m.subcategoryId);
   // variantes después de TODAS las exactas: nunca le quitan una palabra a otra subcategoría
   for (const e of [...out]) {
     for (const v of numberVariants(e.kw)) push(v, e.categoryId, e.subcategoryId);
+    if (tick()) yield;
   }
-  keywordIndex = out;
-  return out;
+  const byKeyword = new Map<string, KeywordEntry[]>();
+  let maxWords = 1;
+  for (const e of out) {
+    const list = byKeyword.get(e.kw);
+    if (list) list.push(e);
+    else byKeyword.set(e.kw, [e]);
+    const words = e.kw.split(' ').length;
+    if (words > maxWords) maxWords = words;
+    if (tick()) yield;
+  }
+  const built: KeywordIndex = {
+    entries: out,
+    byKeyword,
+    maxWords,
+    // sort estable: a igual puntaje se conserva el orden del catálogo
+    phrasesByScore: out.filter((e) => e.score > 1 && e.kw.includes(' ')).sort((a, b) => b.score - a.score || a.order - b.order),
+    longSingles: out.filter((e) => e.score > 1 && !e.kw.includes(' ') && e.kw.length >= FUZZY_MIN_KEYWORD_LENGTH),
+    phrasesByWord: new Map(),
+  };
+  yield;
+  for (const e of built.phrasesByScore) {
+    for (const w of new Set(e.kw.split(' '))) {
+      if (w.length < 3 || PHRASE_STOP_WORDS.has(w)) continue;
+      const list = built.phrasesByWord.get(w);
+      if (list) list.push(e);
+      else built.phrasesByWord.set(w, [e]);
+    }
+    if (tick()) yield;
+  }
+  return built;
+}
+
+function getKeywordIndex(): KeywordIndex {
+  if (keywordIndex) return keywordIndex;
+  // si alguien lo pide antes de que termine el calentamiento, se arma completo y de una vez
+  const steps = buildKeywordIndexSteps();
+  let r = steps.next();
+  while (!r.done) r = steps.next();
+  keywordIndex = r.value;
+  return keywordIndex;
+}
+
+// Prepara el índice en segundo plano, en trozos, sin congelar la pantalla. Llamarlo cuando se abre la
+// captura: para cuando la persona termina de hablar ya está listo. Es seguro llamarlo varias veces.
+export function warmUpLocalParser(): Promise<void> {
+  if (keywordIndex) return Promise.resolve();
+  if (keywordIndexWarmUp) return keywordIndexWarmUp;
+  keywordIndexWarmUp = new Promise<void>((resolve) => {
+    const steps = buildKeywordIndexSteps();
+    const run = () => {
+      if (keywordIndex) return resolve(); // alguien lo armó mientras tanto
+      const r = steps.next();
+      if (r.done) {
+        keywordIndex = r.value;
+        return resolve();
+      }
+      setTimeout(run, 0);
+    };
+    setTimeout(run, 0);
+  });
+  return keywordIndexWarmUp;
+}
+
+// Solo para pruebas/auditorías: obliga a reconstruir el índice después de cambiar el catálogo en memoria.
+export function __resetKeywordIndexForAudit(): void {
+  keywordIndex = null;
+  keywordIndexWarmUp = null;
+}
+
+// Auditorías (scripts/golden): acceso al índice y clasificación sin el conjunto `excluded` de palabras.
+export const __auditNumberVariants = (kw: string): string[] => numberVariants(kw);
+export function __auditKeywordIndex(): KeywordIndex {
+  return getKeywordIndex();
+}
+export function __auditBestExact(text: string, type: TransactionType, excluded?: Set<KeywordEntry>): { kw: string; categoryId: string; subcategoryId: string; score: number } | null {
+  return bestExactMatch(normalize(text), type, false, excluded);
+}
+
+// Mejor coincidencia EXACTA (palabra o frase completa) del texto ya normalizado: mayor puntaje,
+// y a igual puntaje la primera del catálogo. Equivale a recorrer todas las palabras clave, pero
+// mirando solo las que el texto realmente puede contener.
+function bestExactMatch(normalizedText: string, type: TransactionType, skipGas: boolean, excluded?: Set<KeywordEntry>): KeywordEntry | null {
+  const index = getKeywordIndex();
+  const tokens = normalizedText.split(' ').filter(Boolean);
+  let best: KeywordEntry | null = null;
+  for (let i = 0; i < tokens.length; i++) {
+    let phrase = '';
+    for (let n = 1; n <= index.maxWords && i + n <= tokens.length; n++) {
+      phrase = n === 1 ? tokens[i] : `${phrase} ${tokens[i + n - 1]}`;
+      const list = index.byKeyword.get(phrase);
+      if (!list) continue;
+      for (const e of list) {
+        if (!categoryAllowed(type, e.categoryId)) continue;
+        if (skipGas && e.kw === 'gas') continue;
+        if (excluded && excluded.has(e)) continue;
+        if (!best || e.score > best.score || (e.score === best.score && e.order < best.order)) best = e;
+      }
+    }
+  }
+  return best;
 }
 
 // Qué categorías tienen sentido según el tipo de movimiento: un gasto nunca se
@@ -313,10 +440,19 @@ const FUZZY_MIN_KEYWORD_LENGTH = 7;
 // la ventana de palabras debe coincidir salvo UNA palabra larga con una letra de
 // diferencia. Compite contra las coincidencias exactas por largo, porque una
 // frase casi exacta es mejor señal que una palabra suelta exacta ("celular").
-function fuzzyPhraseMatch(tokens: string[], type: TransactionType): KeywordEntry | null {
-  let best: KeywordEntry | null = null;
-  for (const e of getKeywordIndex()) {
-    if (e.score === 1 || !e.kw.includes(' ') || (best && e.score <= best.score)) continue;
+function fuzzyPhraseMatch(tokens: string[], type: TransactionType, minScore = 0): KeywordEntry | null {
+  // Una frase con un solo typo conserva al menos una palabra exacta: se buscan solo las frases que
+  // comparten alguna palabra con el texto (en vez de revisar las miles del catálogo) y se ordenan de
+  // mayor a menor puntaje, a igual puntaje por orden del catálogo.
+  const index = getKeywordIndex();
+  const candidates = new Set<KeywordEntry>();
+  for (const tok of tokens) {
+    const list = index.phrasesByWord.get(tok);
+    if (list) for (const e of list) if (e.score >= minScore) candidates.add(e);
+  }
+  if (candidates.size === 0) return null;
+  const ordered = [...candidates].sort((a, b) => b.score - a.score || a.order - b.order);
+  for (const e of ordered) {
     if (!categoryAllowed(type, e.categoryId)) continue;
     const words = e.kw.split(' ');
     if (words.length > tokens.length) continue;
@@ -330,19 +466,15 @@ function fuzzyPhraseMatch(tokens: string[], type: TransactionType): KeywordEntry
         if (a.length >= 6 && b.length >= 6 && a[0] === b[0] && Math.abs(a.length - b.length) <= 1 && levenshteinDistance(a, b) === 1) diffs++;
         else ok = false;
       }
-      if (ok && diffs === 1) {
-        best = e;
-        break;
-      }
+      if (ok && diffs === 1) return e;
     }
   }
-  return best;
+  return null;
 }
 
 function fuzzyMatchCategory(tokens: string[], type: TransactionType): { categoryId: string; subcategoryId: string } | null {
   let best: { categoryId: string; subcategoryId: string; distance: number } | null = null;
-  for (const e of getKeywordIndex()) {
-    if (e.kw.includes(' ') || e.kw.length < FUZZY_MIN_KEYWORD_LENGTH || e.score === 1) continue;
+  for (const e of getKeywordIndex().longSingles) {
     if (!categoryAllowed(type, e.categoryId)) continue;
     const maxAllowed = e.kw.length <= 10 ? 1 : 2;
     for (const tok of tokens) {
@@ -361,7 +493,7 @@ function fuzzyMatchCategory(tokens: string[], type: TransactionType): { category
 // del catálogo, no de lo que la persona quiso decir. Se usa el resto de la
 // frase para desempatar (catálogo v7, matriz de inferencia contextual).
 const GAS_CAR_CONTEXT = ['magna', 'premium', 'diesel', 'gasolinera', 'coche', 'carro', 'auto', 'camioneta', 'tanque lleno', 'litros'];
-const GAS_HOME_CONTEXT = ['lp', 'cilindro', 'natural', 'naturgy', 'casa', 'estufa', 'boiler', 'calentador', 'tanque estacionario', 'pipa', 'depa', 'departamento'];
+const GAS_HOME_CONTEXT = ['lp', 'cilindro', 'natural', 'naturgy', 'casa', 'estufa', 'boiler', 'calentador', 'tanque estacionario', 'estacionario', 'pipa', 'depa', 'departamento'];
 
 function disambiguateGas(normalizedText: string): { categoryId: string; subcategoryId: string } | 'ambiguous' | null {
   if (!/\bgas\b/.test(normalizedText)) return null;
@@ -448,6 +580,9 @@ function expandThousands(tokens: string[]): string[] {
 // Con más de un número en la frase (cantidad + precio: "3 tacos 60", "medio
 // kilo de huevo por cuarenta pesos") se prefiere el pegado a una palabra de
 // moneda; si no hay, el MAYOR — el precio casi siempre es mayor que la cantidad.
+// Medidas que acompañan a un número pero no son dinero.
+const NON_MONEY_UNITS = new Set(['gb', 'tb', 'mb', 'kb', 'gigas', 'giga', 'megas', 'mega', 'teras', 'pulgadas', 'pulgada', 'hz', 'mah', 'mp', 'ml', 'cm', 'mm', 'km', 'kilometros', 'kilometro', 'metros', 'metro', 'watts', 'w']);
+
 export function extractAmount(text: string): number | null {
   const tokens = expandThousands(amountTokens(text));
   const candidates: AmountCandidate[] = [];
@@ -463,6 +598,14 @@ export function extractAmount(text: string): number | null {
 
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return candidates[0].value;
+
+  // "icloud 50 gb 17": un número pegado a una unidad (gb, pulgadas, km...) es una medida, no el precio.
+  // Solo se descarta si queda otro candidato.
+  const notMeasure = candidates.filter((c) => !NON_MONEY_UNITS.has(tokens[c.tokenIndex + 1]));
+  if (notMeasure.length > 0 && notMeasure.length < candidates.length) {
+    if (notMeasure.length === 1) return notMeasure[0].value;
+    candidates.splice(0, candidates.length, ...notMeasure);
+  }
 
   const nearCurrency = candidates.filter((c) => CURRENCY_WORDS.has(tokens[c.tokenIndex + 1]) || CURRENCY_WORDS.has(tokens[c.tokenIndex + 2]));
   if (nearCurrency.length > 0) return nearCurrency[0].value;
@@ -486,7 +629,7 @@ function extractType(text: string): TransactionType {
   const t = normalize(text);
   if (
     /\binvert(i|imos|ido)\b/.test(t) ||
-    /\b(compre|compramos)\b.*\b(accion|acciones|etf|etfs|cetes|bono|bonos|bitcoin|btc|ethereum|eth|cripto|criptos|criptomonedas|fibra|fibras|udibonos)\b/.test(t) ||
+    /\b(compre|compramos)\b.*\b(accion|acciones|etf|etfs|cetes|bono|bonos|bitcoin|btc|ethereum|eth|cripto|criptos|criptomonedas|fibra|fibras|udibonos|centenario|centenarios|onza|onzas|lingote|lingotes|forex|divisas)\b/.test(t) ||
     /\b(meti|metimos|puse)\b.*\b(cetes|cetesdirecto|gbm|bolsa|bitso|binance|etf)\b/.test(t)
   ) {
     return 'investment_buy';
@@ -498,19 +641,68 @@ function extractType(text: string): TransactionType {
     return 'saving';
   }
   if (
-    /\bme (pagaron|pago|depositaron|deposito|transfirieron|abonaron|regalaron)\b/.test(t) ||
-    /\bme (dieron|llego|llegaron|cayo|cayeron)\b.*\b(sueldo|salario|nomina|quincena|aguinaldo|bono|mesada|utilidades|ptu|intereses|dividendos|pago)\b/.test(t) ||
+    /\bme (pagaron|pago|depositaron|deposito|transfirieron|transfirio|abonaron|abono|regalaron|reembolsaron|devolvieron|regresaron|reintegraron|regreso|devolvio|reembolso|reintegro)\b/.test(t) ||
+    /\bme (dieron|llego|llegaron|cayo|cayeron)\b.*\b(sueldo|salario|nomina|quincena|aguinaldo|bono|mesada|utilidades|ptu|intereses|dividendos|pago|beca|becas|pension|reembolso|devolucion|renta|apoyo|transferencia|deposito|regalo|premio|comision|ganancia|ganancias|cashback)\b/.test(t) ||
     /\b(cobre|cobramos|recibi|recibimos|vendi|vendimos)\b/.test(t) ||
     /\bingreso\b/.test(t) ||
-    (!EXPENSE_VERBS_RE.test(t) && /\b(sueldo|salario|nomina|aguinaldo|quincena|mesada|dividendo|dividendos|rendimiento|rendimientos|bono|ptu|finiquito|gratificacion)\b/.test(t))
+    (!EXPENSE_VERBS_RE.test(t) && !/\b(de|para|en|con) (la|mi|esta|esa) (quincena|semana)\b/.test(t) && /\b(sueldo|salario|nomina|aguinaldo|quincena|mesada|dividendo|dividendos|rendimiento|rendimientos|bono|ptu|finiquito|gratificacion|reembolso|cashback|devolucion de impuestos|saldo a favor)\b/.test(t))
   ) {
     return 'income';
   }
   return 'expense';
 }
 
+// "Con qué se pagó" no es "en qué se gastó": "tacos con mi tarjeta 120" es comida, no pago de tarjeta;
+// "la renta por transferencia" es renta, no una transferencia entre cuentas. Estas frases (tarjeta,
+// efectivo, transferencia, billeteras, "a meses") se quitan SOLO cuando la mejor coincidencia vive
+// dentro de ellas y queda otra palabra que clasificar; "pagué la tarjeta" (sin "con") sigue siendo deuda.
+const PAYMENT_BANKS = 'bbva|bancomer|banamex|citibanamex|santander|hsbc|banorte|scotiabank|inbursa|nu|nubank|amex|azteca|bancoppel|afirme|banregio|rappi|rappicard|stori|klar|plata|hey|openbank|revolut|mercado pago|liverpool|palacio|sears|sanborns|walmart|costco|oxxo|coppel|elektra|soriana|chedraui|didi|uala|spin';
+const PAYMENT_INSTRUMENT_RE = new RegExp(
+  `\\b(?:con|usando|mediante|via|por|en|cargue a|cargado a|pase a|pasado a|puse en|pague en|pague con)\\s+(?:(?:mi|mis|la|las|el|su|sus|una|un|otra|otro)\\s+)?` +
+    `(?:tarjetas?(?:\\s+(?:de\\s+(?:credito|debito|nomina|regalo|vales)|(?:${PAYMENT_BANKS})(?:\\s+(?:credito|debito))?|visa|mastercard|platinum|oro|gold|black))*` +
+    `|visa|mastercard|master card|amex|american express|carnet|efectivo|cash|transferencia|spei|apple pay|google pay|samsung pay|paypal|mercado pago|oxxo pay|vales de despensa|vales|cheque|deposito)\\b` +
+    `|\\ba\\s+(?:\\d+\\s+)?(?:meses|msi|quincenas|mensualidades|plazos|pagos|parcialidades)(?:\\s+sin\\s+intereses)?\\b|\\ba medias\\b|\\bmitad y mitad\\b|\\bpartes iguales\\b`,
+  'g',
+);
+
+function stripPaymentInstruments(normalizedText: string): { stripped: string; spans: string[] } {
+  const spans: string[] = [];
+  const stripped = normalizedText.replace(PAYMENT_INSTRUMENT_RE, (m) => {
+    spans.push(` ${m} `);
+    return ' ';
+  });
+  return { stripped: stripped.replace(/\s+/g, ' ').trim(), spans };
+}
+
 function extractCategory(text: string, type: TransactionType): { categoryId: string | null; subcategoryId: string | null; merchant?: string } {
   const normalizedText = normalize(text);
+  const first = classifyNormalized(normalizedText, type);
+  if (first.categoryId === null && type === 'expense') return first;
+  // ¿la coincidencia ganadora es solo la forma de pago? entonces se clasifica lo que queda de la frase
+  const { stripped, spans } = stripPaymentInstruments(normalizedText);
+  if (spans.length === 0 || stripped === normalizedText || !first.matchedKeyword) return stripResult(first);
+  const inSpan = spans.some((sp) => sp.includes(` ${first.matchedKeyword} `));
+  if (!inSpan) return stripResult(first);
+  const second = classifyNormalized(stripped, type);
+  if (second.categoryId && second.matchedKeyword) return stripResult(second);
+  // lo único que se entendió es la forma de pago ("5000 por transferencia"): no se adivina el gasto, se pregunta.
+  // "a meses sin intereses" sin más datos sí apunta a una compra a plazos (Deudas), así que se conserva.
+  const installmentOnly = spans.every((sp) => !sp.includes(` ${first.matchedKeyword} `) || sp.startsWith(' a '));
+  if (type === 'expense' && !installmentOnly) return { categoryId: null, subcategoryId: null };
+  return stripResult(first);
+}
+
+function stripResult(r: ReturnType<typeof classifyNormalized>): { categoryId: string | null; subcategoryId: string | null; merchant?: string } {
+  return { categoryId: r.categoryId, subcategoryId: r.subcategoryId, ...(r.merchant ? { merchant: r.merchant } : {}) };
+}
+
+// "mis papás" se escribe sin acento igual que "papas" (la verdura): con posesivo son los padres.
+function fixParentsWord(normalizedText: string): string {
+  return normalizedText.replace(/\b(mis|tus|sus|mi|tu|su) papas\b/g, '$1 padres');
+}
+
+function classifyNormalized(normalizedText: string, type: TransactionType): { categoryId: string | null; subcategoryId: string | null; merchant?: string; matchedKeyword?: string } {
+  normalizedText = fixParentsWord(normalizedText);
   const padded = ` ${normalizedText} `;
 
   let gasAmbiguous = false;
@@ -524,23 +716,19 @@ function extractCategory(text: string, type: TransactionType): { categoryId: str
   // rápida) no se confunde con la coincidencia parcial más corta "bar"
   // (discotecas) que también aparece dentro de esa palabra. Las palabras
   // genéricas (WEAK_KEYWORDS) valen 1: solo ganan si no hay nada mejor.
-  let best: KeywordEntry | null = null;
-  for (const e of getKeywordIndex()) {
-    if (!categoryAllowed(type, e.categoryId)) continue;
-    if (gasAmbiguous && e.kw === 'gas') continue;
-    if (best && e.score <= best.score) continue;
-    if (padded.includes(` ${e.kw} `)) best = e;
-  }
+  let best: KeywordEntry | null = bestExactMatch(normalizedText, type, gasAmbiguous);
 
-  const phrase = fuzzyPhraseMatch(normalizedText.split(' ').filter(Boolean), type);
-  if (phrase && (!best || phrase.score - 1 > best.score)) best = phrase;
+  // una frase casi exacta (un typo) solo gana si supera por 2 puntos a la mejor coincidencia exacta
+  const phrase = fuzzyPhraseMatch(normalizedText.split(' ').filter(Boolean), type, best ? best.score + 2 : 0);
+  // una coincidencia exacta de varias palabras no se deja ganar por una frase "casi igual" (recarga ≠ recargo)
+  if (phrase && (!best || (!best.kw.includes(' ') && phrase.score - 1 > best.score))) best = phrase;
 
   if (gasAmbiguous && (!best || best.score === 1)) return { categoryId: null, subcategoryId: null };
 
   if (best) {
     const bestKw = best.kw;
     const merchant = KNOWN_MERCHANTS.find((m) => normalize(m.keyword) === bestKw)?.name;
-    return { categoryId: best.categoryId, subcategoryId: best.subcategoryId, merchant };
+    return { categoryId: best.categoryId, subcategoryId: best.subcategoryId, merchant, matchedKeyword: bestKw };
   }
 
   // Sin coincidencia exacta: se intenta con tolerancia a errores de

@@ -1,0 +1,43 @@
+Casos evaluados: 122 (sealed3) — pasan completos: 110 (90.2%)
+
+| Suite | Casos | Pasan | % |
+|---|---:|---:|---:|
+| fresco_5 | 122 | 110 | 90.2% |
+
+--- FALLAS ---
+[fresco_5-1485] «pagamos a medias el airbnb y a mí me tocaron 1900»
+    esperado: categoryId=lifestyle subcategoryId=life_travel
+    obtenido: categoryId=food subcategoryId=food_restaurant
+[fresco_5-1486] «mi novia me regresó lo del cine 190»
+    esperado: categoryId=income subcategoryId=inc_reimbursement type=income
+    obtenido: categoryId=entertainment subcategoryId=ent_cinema type=expense
+[fresco_5-1490] «coperacha para el pastel de la jefa 80»
+    esperado: subcategoryId=food_bakery
+    obtenido: subcategoryId=food_restaurant
+[fresco_5-1493] «liquidé todo lo que debía en la tarjeta 8300»
+    esperado: categoryId=debt subcategoryId=debt_creditcard
+    obtenido: categoryId=food subcategoryId=food_juice_bar
+[fresco_5-1497] «comisión por enviar dinero al extranjero 230»
+    esperado: subcategoryId=fee_fx
+    obtenido: subcategoryId=fee_bank
+[fresco_5-1519] «tacos de birria con consomé 160»
+    esperado: subcategoryId=food_fastfood
+    obtenido: subcategoryId=food_supermarket
+[fresco_5-1525] «pastel de cumpleaños de mi mamá 520»
+    esperado: categoryId=food subcategoryId=food_bakery
+    obtenido: categoryId=lifestyle subcategoryId=life_celebration
+[fresco_5-1529] «súper de la quincena en chedraui 1980»
+    esperado: categoryId=food subcategoryId=food_supermarket type=expense
+    obtenido: categoryId=income subcategoryId=inc_salary type=income
+[fresco_5-1531] «lavaron mi coche 130»
+    esperado: categoryId=transport subcategoryId=trans_maintenance missing=
+    obtenido: categoryId=null subcategoryId=null missing=["category"]
+[fresco_5-1537] «boleto de ado a oaxaca 690»
+    esperado: categoryId=transport subcategoryId=trans_public
+    obtenido: categoryId=food subcategoryId=food_supermarket
+[fresco_5-1583] «tenis nuevos en el centro comercial 1700»
+    esperado: subcategoryId=misc_clothing
+    obtenido: subcategoryId=misc_shopping
+[fresco_5-1600] «ahorré 800 para la boda»
+    esperado: subcategoryId=sav_wedding_fund
+    obtenido: subcategoryId=sav_other

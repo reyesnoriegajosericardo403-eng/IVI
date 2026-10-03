@@ -5,6 +5,7 @@ import React, { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { warmUpLocalParser } from '@/ai/localParser';
 import { AppBackground } from '@/components/AppBackground';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { useRemoteVisualStyles } from '@/services/themes/remoteThemes';
@@ -58,6 +59,13 @@ function RootStack() {
   useEffect(() => {
     registerConfiguredLLMProvider();
     registerMarketDataProvider();
+  }, []);
+
+  // Prepara el catálogo del motor local en segundo plano (en trozos) unos segundos después de abrir la app,
+  // para que el primer movimiento dictado no espere.
+  useEffect(() => {
+    const t = setTimeout(() => void warmUpLocalParser(), 4000);
+    return () => clearTimeout(t);
   }, []);
 
   // Registra un snapshot diario del patrimonio neto real del usuario para

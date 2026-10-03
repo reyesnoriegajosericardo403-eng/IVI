@@ -1,5 +1,5 @@
 // Corre el golden set contra el motor local REAL (src/ai/localParser.ts).
-//   node scripts/golden/run-golden.cjs [--split dev|holdout|all|fresh1|sealed] [--suite nombre] [--fail] [--md]
+//   node scripts/golden/run-golden.cjs [--split dev|holdout|all|fresh1|sealed|fresh3|sealed2|sealed3] [--suite nombre] [--fail] [--md]
 require('./ts-hook.cjs');
 const P = require('../../src/ai/localParser.ts');
 const { cases } = require('./golden-set.json');
@@ -19,6 +19,11 @@ function evaluate(c) {
   if (c.suite === 'segmentos') {
     const got = P.splitCaptureSegments(c.text).map(norm);
     return { ok: eq(got, e.segments.map(norm)), got, fields: { segments: eq(got, e.segments.map(norm)) } };
+  }
+  if (c.suite === 'conceptos') {
+    const got = [...require('../../src/ai/concepts.ts').detectConcepts(c.text)].sort();
+    const want = [...e.concepts].sort();
+    return { ok: eq(got, want), got, fields: { concepts: eq(got, want) } };
   }
   if (c.suite === 'ajuste_cuenta') {
     const got = P.detectAccountAdjustment(c.text);
@@ -41,7 +46,7 @@ function evaluate(c) {
   return { ok: Object.values(fields).every(Boolean), got: r, fields };
 }
 
-const allRows = cases.filter((c) => ((split === 'all' && c.split !== 'fresh1' && c.split !== 'sealed') || c.split === split) && (!only || c.suite === only)).map((c) => ({ c, ...evaluate(c) }));
+const allRows = cases.filter((c) => ((split === 'all' && ['dev', 'holdout'].includes(c.split)) || c.split === split) && (!only || c.suite === only)).map((c) => ({ c, ...evaluate(c) }));
 // "Límites conocidos": casos que NO se arreglan a propósito (se documentan y no cuentan en el %).
 const knownRows = allRows.filter((r) => r.c.known);
 const rows = allRows.filter((r) => !r.c.known);
@@ -76,6 +81,7 @@ if (showFail) {
     const e = r.c.expect;
     let want, got;
     if (r.c.suite === 'segmentos') { want = JSON.stringify(e.segments); got = JSON.stringify(r.got); }
+    else if (r.c.suite === 'conceptos') { want = JSON.stringify(e.concepts); got = JSON.stringify(r.got); }
     else if (r.c.suite === 'ajuste_cuenta') { want = JSON.stringify(e.adjustment); got = JSON.stringify(r.got); }
     else {
       const bad = Object.keys(r.fields).filter((k) => !r.fields[k]);
