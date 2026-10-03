@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import {
+  type ActionPlan,
   type AddAccountArgs,
   type AddGoalArgs,
   type AddLiabilityArgs,
@@ -23,6 +24,7 @@ import {
   type UpdateGoalTargetArgs,
   type UpdateLiabilityBalanceArgs,
 } from '@/ai/chatTypes';
+import { executePlan, recoverInterruptedPlan } from '@/ai/planExecutor';
 import { extractLearnableKeywords, type CustomCategoryMapping } from '@/ai/localParser';
 import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
 import type {
@@ -287,6 +289,15 @@ interface AppState {
   // hermana real correspondiente. Nunca crea lógica de negocio nueva: solo
   // reenvía a addAccount/deleteGoal/etc., las mismas que ya usa toda la UI.
   aiApplyAction: (action: AIActionProposal) => { ok: boolean; error?: string };
+  // Aplica un PLAN de varias acciones (contrato §5): idempotente por mensaje (lee el estado guardado, no el
+  // objeto que le pase la pantalla), en orden, sin revertir ni continuar si un paso falla, con auditoría.
+  // Marca una pregunta de aclaración como contestada o superada (la persona cambió de tema).
+  setClarificationStatus: (messageId: string, status: 'answered' | 'superseded') => void;
+  aiApplyPlan: (messageId: string) => { ok: boolean; status: ActionPlan['status']; error?: string };
+  // Cierra los planes que quedaron en 'applying' porque la app se cerró a la mitad (se llama al rehidratar).
+  recoverInterruptedPlans: () => void;
+  // Cancelar un plan que aún no se aplicó (solo desde 'proposed').
+  dismissPlan: (messageId: string) => void;
 
   clearSyncQueueEntries: (ids: string[]) => void;
   setLastSyncedAt: (iso: string) => void;
@@ -1053,6 +1064,106 @@ export const useAppStore = create<AppState>()(
           }
         },
 
+        aiApplyPlan: (messageId) => {
+          const message = get().chatMessages.find((m) => m.id === messageId);
+          const plan = message?.plan;
+          if (!message || !plan) return { ok: false, status: 'failed', error: 'No encontré ese plan.' };
+          const writePlan = (next: ActionPlan) =>
+            set((s) => ({ chatMessages: s.chatMessages.map((m) => (m.id === messageId ? { ...m, plan: next } : m)) }));
+
+          // Ids que existen ANTES de cada paso, para saber cuál registro creó (auditoría).
+          let before = { tx: new Set<string>(), goals: new Set<string>(), accounts: new Set<string>(), liabilities: new Set<string>() };
+          const snapshot = () => ({
+            tx: new Set(get().transactions.map((x) => x.id)),
+            goals: new Set(get().goals.map((x) => x.id)),
+            accounts: new Set(get().accounts.map((x) => x.id)),
+            liabilities: new Set(get().liabilities.map((x) => x.id)),
+          });
+          const created = (key: 'tx' | 'goals' | 'accounts' | 'liabilities') => {
+            const list = key === 'tx' ? get().transactions : key === 'goals' ? get().goals : key === 'accounts' ? get().accounts : get().liabilities;
+            return list.find((x) => !before[key].has(x.id))?.id;
+          };
+
+          const result = executePlan(plan, {
+            persist: writePlan,
+            apply: (step) => {
+              before = snapshot();
+              return get().aiApplyAction(step);
+            },
+            onStepApplied: (step, index) => {
+              const label = `Chat IA · plan ${plan.id.slice(0, 8)} · paso ${index + 1}: ${step.summary}`;
+              const a = step.args as Record<string, any>;
+              switch (step.type) {
+                case 'add_transaction':
+                  logAudit({ entityType: 'transaction', entityId: created('tx') ?? step.id, action: 'create', summary: label, newValue: a.amount });
+                  break;
+                case 'transfer_between_accounts':
+                  logAudit({ entityType: 'transaction', entityId: created('tx') ?? step.id, action: 'create', summary: label, newValue: a.amount });
+                  break;
+                case 'delete_transaction':
+                  logAudit({ entityType: 'transaction', entityId: a.transactionId, action: 'delete', summary: label });
+                  break;
+                case 'add_account':
+                  logAudit({ entityType: 'account', entityId: created('accounts') ?? step.id, action: 'create', summary: label, newValue: a.balance });
+                  break;
+                case 'delete_account':
+                  logAudit({ entityType: 'account', entityId: a.accountId, action: 'delete', summary: label });
+                  break;
+                case 'add_goal':
+                  logAudit({ entityType: 'goal', entityId: created('goals') ?? step.id, action: 'create', summary: label, newValue: a.targetAmount });
+                  break;
+                case 'contribute_to_goal':
+                  logAudit({ entityType: 'goal', entityId: a.goalId, action: 'update', summary: label, newValue: a.amount });
+                  break;
+                case 'update_goal_target':
+                  logAudit({ entityType: 'goal', entityId: a.goalId, action: 'update', summary: label, newValue: a.targetAmount });
+                  break;
+                case 'delete_goal':
+                  logAudit({ entityType: 'goal', entityId: a.goalId, action: 'delete', summary: label });
+                  break;
+                case 'delete_liability':
+                  logAudit({ entityType: 'liability', entityId: a.liabilityId, action: 'delete', summary: label });
+                  break;
+                case 'add_liability':
+                  logAudit({ entityType: 'liability', entityId: created('liabilities') ?? step.id, action: 'create', summary: label, newValue: a.balance });
+                  break;
+                case 'set_budget_line':
+                  logAudit({ entityType: 'budget', entityId: get().templateBudgetLines.find((l) => l.categoryId === a.categoryId && !l.deletedAt)?.id ?? step.id, action: 'update', summary: label, newValue: a.monthlyAmount });
+                  break;
+                case 'delete_budget_line':
+                  logAudit({ entityType: 'budget', entityId: a.lineId, action: 'delete', summary: label });
+                  break;
+                case 'update_liability_balance':
+                  break; // updateLiability ya deja su propia entrada de auditoría con el saldo anterior y el nuevo
+                default: {
+                  const exhaustive: never = step.type;
+                  void exhaustive;
+                }
+              }
+            },
+          });
+          return { ok: result.ok, status: result.status, error: result.error };
+        },
+        dismissPlan: (messageId) => {
+          set((s) => ({
+            chatMessages: s.chatMessages.map((m) =>
+              m.id === messageId && m.plan?.status === 'proposed'
+                ? { ...m, plan: { ...m.plan, status: 'dismissed', steps: m.plan.steps.map((st) => ({ ...st, status: 'dismissed' })) } }
+                : m
+            ),
+          }));
+        },
+        setClarificationStatus: (messageId, status) => {
+          set((s) => ({
+            chatMessages: s.chatMessages.map((m) => (m.id === messageId && m.clarification ? { ...m, clarification: { ...m.clarification, status } } : m)),
+          }));
+        },
+        recoverInterruptedPlans: () => {
+          set((s) => ({
+            chatMessages: s.chatMessages.map((m) => (m.plan?.status === 'applying' ? { ...m, plan: recoverInterruptedPlan(m.plan) } : m)),
+          }));
+        },
+
         clearSyncQueueEntries: (ids) =>
           set((s) => ({ pendingSync: s.pendingSync.filter((e) => !ids.includes(e.id)) })),
 
@@ -1112,6 +1223,7 @@ export const useAppStore = create<AppState>()(
       name: 'valu-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
+        state?.recoverInterruptedPlans();
         state?.setHasHydrated(true);
       },
       // liveQuotes/lastQuotesFetchedAt/cetesRates quedan fuera a propósito

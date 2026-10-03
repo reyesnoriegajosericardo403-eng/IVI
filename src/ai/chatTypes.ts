@@ -131,7 +131,8 @@ export type ResolvedAction =
   | { type: 'delete_transaction'; args: DeleteTransactionArgs }
   | { type: 'transfer_between_accounts'; args: TransferBetweenAccountsArgs };
 
-export type AIActionStatus = 'proposed' | 'applied' | 'dismissed' | 'failed';
+// 'skipped' solo lo usan los pasos de un plan que no se llegaron a ejecutar porque uno anterior falló.
+export type AIActionStatus = 'proposed' | 'applied' | 'dismissed' | 'failed' | 'skipped';
 
 // Lo que de verdad se guarda en un mensaje del chat. `summary` SIEMPRE se
 // genera por código a partir de `args` ya validados (actionCatalog.ts) —
@@ -148,6 +149,67 @@ export interface AIActionProposal {
   error?: string;
 }
 
+// ---------- Contratos de Fase 2 (docs/03_fase2_contratos_v1.md §1-§5), versión 1 ----------
+
+// Qué dato le falta al catálogo para construir una acción (§2). `field` es el vocabulario cerrado de lo que
+// puede faltar; `slot` es la clave del candidato que la respuesta de la persona va a llenar; `prompt` es la
+// pregunta ya redactada por código (nunca prosa libre de un modelo).
+export interface MissingField {
+  field: 'account' | 'amount' | 'category' | 'goal' | 'liability' | 'currency' | 'date' | 'name';
+  slot: string;
+  prompt: string;
+}
+
+// Una pregunta de aclaración pendiente: qué acción se estaba armando y con qué datos. La respuesta de la
+// persona se aplica sobre ESTE mismo candidato y se reintenta el MISMO resolver (§2): no se reinicia nada.
+export interface PendingClarification {
+  contractVersion: 1;
+  type: AIActionType;
+  candidate: Record<string, unknown>;
+  missing: MissingField[];
+  // Pasos que ya estaban resueltos en el mismo mensaje (un plan con un paso por aclarar). Se conservan
+  // en el orden original y `index` dice dónde entra el paso que falta.
+  resolvedSteps?: Array<{ type: AIActionType; args: Record<string, unknown>; summary: string }>;
+  index?: number;
+  status: 'open' | 'answered' | 'superseded';
+}
+
+export type PlanStatus = 'proposed' | 'applying' | 'applied' | 'partially_applied' | 'dismissed' | 'failed';
+
+// Cómo quedan las cuentas/metas/deudas si se aplican todos los pasos EN ORDEN (§4). Se calcula sobre una
+// copia; nada se escribe hasta confirmar.
+export interface PlanEffect {
+  kind: 'account' | 'goal' | 'liability';
+  id: string;
+  name: string;
+  currency: Currency;
+  before: number;
+  after: number;
+}
+
+export interface ActionPlan {
+  id: string;
+  contractVersion: 1;
+  steps: AIActionProposal[]; // cada paso sigue siendo una acción validada del catálogo, sin cambios
+  status: PlanStatus;
+  effects: PlanEffect[];
+  warnings: string[];
+  createdAt: string;
+  appliedAt?: string;
+}
+
+// Lo que devuelve un proveedor al interpretar un mensaje del chat (contrato §1, versión 1, aditivo): `action`
+// +`summary` (una sola acción, como siempre), `plan` (varias, como una unidad) o `clarification` (falta un dato).
+export interface InterpretedMessage {
+  reply: string;
+  action?: ResolvedAction;
+  summary?: string;
+  plan?: { steps: Array<{ action: ResolvedAction; summary: string }>; effects: PlanEffect[]; warnings: string[] };
+  clarification?: PendingClarification;
+  // true cuando el mensaje era la respuesta a una pregunta pendiente (para marcarla como contestada)
+  handledClarification?: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -156,6 +218,10 @@ export interface ChatMessage {
   createdAt: string;
   // Solo en mensajes del asistente que proponen una acción sobre datos.
   action?: AIActionProposal;
+  // Solo en mensajes del asistente que proponen VARIAS acciones como una unidad (P2).
+  plan?: ActionPlan;
+  // Solo en mensajes del asistente que preguntan un dato que faltó (P2).
+  clarification?: PendingClarification;
 }
 
 export interface ChatConversation {

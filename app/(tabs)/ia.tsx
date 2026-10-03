@@ -7,9 +7,10 @@ import { Animated, Easing, FlatList, KeyboardAvoidingView, Platform, Pressable, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, FeGaussianBlur, Filter, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 
-import { topFrequentQuestions, type AIActionProposal, type ChatMessage } from '@/ai/chatTypes';
+import { topFrequentQuestions, type ActionPlan, type AIActionProposal, type ChatMessage } from '@/ai/chatTypes';
 import { AiOrb } from '@/components/AiOrb';
 import { ChatActionCard } from '@/components/ChatActionCard';
+import { ChatPlanCard } from '@/components/ChatPlanCard';
 import { ChatComposer } from '@/components/ChatComposer';
 import { ChatSidebar } from '@/components/ChatSidebar';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -71,6 +72,9 @@ export default function Ia() {
   const clearAllConversations = useAppStore((s) => s.clearAllConversations);
   const updateActionStatus = useAppStore((s) => s.updateActionStatus);
   const aiApplyAction = useAppStore((s) => s.aiApplyAction);
+  const aiApplyPlan = useAppStore((s) => s.aiApplyPlan);
+  const dismissPlan = useAppStore((s) => s.dismissPlan);
+  const setClarificationStatus = useAppStore((s) => s.setClarificationStatus);
 
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
   const accounts = useMemo(() => selectActiveAccounts(rawAccounts), [rawAccounts]);
@@ -107,6 +111,10 @@ export default function Ia() {
   const send = async (text: string) => {
     if (sending) return;
     const conversationId = activeConversationId ?? startConversation();
+    // Si la última respuesta del asistente en esta conversación fue una pregunta de aclaración abierta, este
+    // texto puede ser su respuesta (contrato §2): se intenta contestar sobre la MISMA acción, sin reiniciar.
+    const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+    const openClarification = lastAssistant?.clarification?.status === 'open' ? lastAssistant : undefined;
     addChatMessage({ conversationId, role: 'user', text });
     setSending(true);
     setThinking(true);
@@ -126,7 +134,7 @@ export default function Ia() {
           budgets,
           goals,
           templateBudgetLines,
-        }),
+        }, { pending: openClarification?.clarification }),
         new Promise((resolve) => setTimeout(resolve, MIN_THINKING_MS)),
       ]);
       let action: AIActionProposal | undefined;
@@ -140,7 +148,28 @@ export default function Ia() {
           createdAt: new Date().toISOString(),
         };
       }
-      addChatMessage({ conversationId, role: 'assistant', text: result.reply, action });
+      let plan: ActionPlan | undefined;
+      if (result.plan && result.plan.steps.length > 0) {
+        const createdAt = new Date().toISOString();
+        plan = {
+          id: generateId(),
+          contractVersion: 1,
+          steps: result.plan.steps.map((s) => ({
+            id: generateId(),
+            type: s.action.type,
+            args: s.action.args as unknown as Record<string, unknown>,
+            summary: s.summary,
+            status: 'proposed',
+            createdAt,
+          })),
+          status: 'proposed',
+          effects: result.plan.effects,
+          warnings: result.plan.warnings,
+          createdAt,
+        };
+      }
+      if (openClarification) setClarificationStatus(openClarification.id, result.handledClarification ? 'answered' : 'superseded');
+      addChatMessage({ conversationId, role: 'assistant', text: result.reply, action, plan, clarification: result.clarification });
     } catch {
       addChatMessage({
         conversationId,
@@ -166,6 +195,13 @@ export default function Ia() {
     // estática de "falló".
     setTimeout(() => updateActionStatus(message.id, 'failed', { error: result.error }), 3000);
     throw new Error(result.error ?? 'No se pudo aplicar');
+  };
+
+  const handleConfirmPlan = async (message: ChatMessage) => {
+    const result = aiApplyPlan(message.id);
+    // Todo o nada visible: si no quedó 'applied' se muestra el anillo de error (la tarjeta ya detalla qué
+    // pasos sí y cuáles no se aplicaron).
+    if (!result.ok) throw new Error(result.error ?? 'No se pudo aplicar el plan completo');
   };
 
   const handleNewConversation = () => {
@@ -230,7 +266,21 @@ export default function Ia() {
                 onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
                 renderItem={({ item }) => (
                   <FadeInRow>
-                    {item.role === 'assistant' && item.action ? (
+                    {item.role === 'assistant' && item.plan ? (
+                      <View style={{ alignSelf: 'flex-start', gap: spacing.sm, maxWidth: '92%' }}>
+                        {!!item.text && (
+                          <View style={[styles.bubble, styles.assistantBubble, chatGlass()]}>
+                            <MessageBody text={item.text} palette={CHAT_PALETTE} />
+                          </View>
+                        )}
+                        <ChatPlanCard
+                          plan={item.plan}
+                          onConfirm={() => handleConfirmPlan(item)}
+                          onCancel={() => dismissPlan(item.id)}
+                          palette={CHAT_PALETTE}
+                        />
+                      </View>
+                    ) : item.role === 'assistant' && item.action ? (
                       <View style={{ alignSelf: 'flex-start', gap: spacing.sm, maxWidth: '90%' }}>
                         {!!item.text && (
                           <View style={[styles.bubble, styles.assistantBubble, chatGlass()]}>

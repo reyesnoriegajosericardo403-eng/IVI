@@ -1,4 +1,4 @@
-import type { ResolvedAction } from '@/ai/chatTypes';
+import type { InterpretedMessage, PendingClarification } from '@/ai/chatTypes';
 import type { ParsedCapture } from '@/ai/localParser';
 import type { CopilotContext } from '@/ai/localCopilot';
 import type { Currency, TemplateBudgetLine } from '@/data/types';
@@ -35,7 +35,8 @@ export interface ActionAgentContext extends CopilotContext {
 // (ver ChatActionCard.tsx).
 export interface ActionAgentProvider {
   name: string;
-  interpretMessage(text: string, ctx: ActionAgentContext): Promise<{ reply: string; action?: ResolvedAction; summary?: string }>;
+  // `pending`: la pregunta de aclaración abierta de este chat, si la hay — el texto puede ser su respuesta.
+  interpretMessage(text: string, ctx: ActionAgentContext, opts?: { pending?: PendingClarification }): Promise<InterpretedMessage>;
 }
 
 export interface MarketQuote {

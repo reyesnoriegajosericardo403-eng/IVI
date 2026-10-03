@@ -1,0 +1,36 @@
+name: Revisión automática
+
+# Corre solo en cada subida: tipos, pruebas del motor local (golden, catálogo, planificador, ejecutor,
+# presupuesto, robustez) y peso de la versión web. Si algo falla, el check sale en rojo en GitHub.
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tipos (TypeScript)
+        run: npm run typecheck
+      - name: Pruebas del motor local
+        run: npm test
+
+  peso-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Peso de la versión web (con presupuestos)
+        run: npm run size

@@ -22,6 +22,7 @@ import {
   type ActionValidationContext,
   type ResolveResult,
 } from './actionCatalog';
+import { resolveAccountByNameHint, resolveGoalByNameHint } from '@/utils/accounts';
 import { ACCOUNT_INCREMENT_WORDS, detectAccountAdjustment, extractAmount, normalize } from './localParser';
 
 function hasAnyWord(normalizedText: string, words: Set<string> | string[]): boolean {
@@ -45,6 +46,8 @@ function captureNameAfter(text: string, keyword: string): string | null {
 }
 
 const ADD_VERBS = ['agregar', 'agrega', 'agrego', 'crea', 'crear', 'creo', 'abre', 'abrir', 'anade', 'anadir', 'nueva', 'nuevo', 'registra', 'registrar'];
+// Verbos propios de las metas ("aporta 300 a mi meta de viaje"): la gente no dice "agrégale" a una meta.
+const GOAL_CONTRIBUTE_VERBS = ['aporta', 'aportar', 'aporto', 'aportale', 'ahorra', 'ahorrar', 'ahorrale', 'guarda', 'guardar', 'guardale', 'apartale', 'separa', 'separale'];
 const DELETE_VERBS = ['borrar', 'borra', 'borro', 'elimina', 'eliminar', 'elimino', 'quita', 'quitar', 'quito'];
 
 // Verbos de transferencia entre cuentas propias (backlog #144) — ninguno
@@ -61,9 +64,9 @@ const TRANSFER_VERBS = [
 // Captura "de <cuenta A> a <cuenta B>" sobre el texto ORIGINAL (conserva
 // mayúsculas/acentos del nombre). Se detiene antes de un número suelto
 // para no tragarse un monto que venga DESPUÉS del nombre de la cuenta
-// destino (ej. "...a mi tarjeta nu 500 pesos").
+// destino (ej. "...a mi tarjeta nu 500 pesos"). Un número pegado a letras sí es parte del nombre ("Efectivo2").
 const TRANSFER_ACCOUNTS_REGEX =
-  /\bde\s+(?:mi|la|el|tu|una|un)?\s*([\p{L}][\p{L}\s]*?)\s+(?:a|hacia|para)\s+(?:mi|la|el|tu|una|un)?\s*([\p{L}][\p{L}\s]*?)(?=\s+\d|$|[.,;])/iu;
+  /\bde\s+(?:mi|la|el|tu|una|un)?\s*(\p{L}[\p{L}\p{N}]*(?:\s+\p{L}[\p{L}\p{N}]*)*?)\s+(?:a|hacia|para)\s+(?:mi|la|el|tu|una|un)?\s*(\p{L}[\p{L}\p{N}]*(?:\s+\p{L}[\p{L}\p{N}]*)*?)(?=\s+\d|$|[.,;])/iu;
 
 export function detectChatIntent(rawText: string, ctx: ActionValidationContext): ResolveResult | null {
   const normalized = normalize(rawText);
@@ -74,11 +77,16 @@ export function detectChatIntent(rawText: string, ctx: ActionValidationContext):
   if (hasAnyWord(normalized, TRANSFER_VERBS)) {
     const match = rawText.match(TRANSFER_ACCOUNTS_REGEX);
     const amount = extractAmount(rawText);
-    if (match && amount !== null) {
+    if (match) {
       const fromAccountNameHint = match[1].trim();
       const toAccountNameHint = match[2].trim();
       if (fromAccountNameHint.length >= 2 && toAccountNameHint.length >= 2) {
-        return resolveTransferBetweenAccounts({ fromAccountNameHint, toAccountNameHint, amount }, ctx);
+        if (amount !== null) return resolveTransferBetweenAccounts({ fromAccountNameHint, toAccountNameHint, amount }, ctx);
+        // Sin monto: solo se pregunta "¿cuánto?" si las DOS cuentas existen de verdad ("¿qué pasa de enero a
+        // febrero?" no es una transferencia); si no, sigue como siempre (respuesta del copiloto).
+        if (resolveAccountByNameHint(fromAccountNameHint, ctx.accounts) && resolveAccountByNameHint(toAccountNameHint, ctx.accounts)) {
+          return resolveTransferBetweenAccounts({ fromAccountNameHint, toAccountNameHint, amount: undefined }, ctx);
+        }
       }
     }
   }
@@ -109,12 +117,14 @@ export function detectChatIntent(rawText: string, ctx: ActionValidationContext):
     if (hasAnyWord(normalized, ADD_VERBS)) {
       const name = captureNameAfter(rawText, 'meta');
       const amount = extractAmount(rawText);
-      if (name && amount !== null) return resolveAddGoal({ name, targetAmount: amount }, ctx);
+      if (name) return resolveAddGoal({ name, targetAmount: amount ?? undefined }, ctx); // sin monto: pregunta el objetivo
     }
-    if (hasAnyWord(normalized, ACCOUNT_INCREMENT_WORDS)) {
+    if (hasAnyWord(normalized, ACCOUNT_INCREMENT_WORDS) || hasAnyWord(normalized, GOAL_CONTRIBUTE_VERBS)) {
       const name = captureNameAfter(rawText, 'meta') ?? captureNameAfter(rawText, 'objetivo');
       const amount = extractAmount(rawText);
       if (name && amount !== null) return resolveContributeToGoal({ goalNameHint: name, amount }, ctx);
+      // Sin monto: solo se pregunta si la meta existe de verdad.
+      if (name && resolveGoalByNameHint(name, ctx.goals)) return resolveContributeToGoal({ goalNameHint: name, amount: undefined }, ctx);
     }
   }
 
@@ -127,7 +137,7 @@ export function detectChatIntent(rawText: string, ctx: ActionValidationContext):
     if (hasAnyWord(normalized, ADD_VERBS)) {
       const name = captureNameAfter(rawText, 'deuda');
       const amount = extractAmount(rawText);
-      if (name && amount !== null) return resolveAddLiability({ institution: name, balance: amount }, ctx);
+      if (name) return resolveAddLiability({ institution: name, balance: amount ?? undefined }, ctx); // sin monto: pregunta el saldo
     }
     if (/\b(actualiza|actualizar|cambia|cambiar|pon|poner|debo)\b/.test(normalized)) {
       const name = captureNameAfter(rawText, 'deuda');

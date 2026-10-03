@@ -16,6 +16,8 @@ import {
   type ActionValidationContext,
   type ResolveResult,
 } from '@/ai/actionCatalog';
+import { answerClarification, combineResults, interpretationFrom, MAX_PLAN_STEPS } from '@/ai/planner';
+import type { PendingClarification } from '@/ai/chatTypes';
 import { DEFAULT_CATEGORIES } from '@/data/categories';
 
 import { localActionAgentProvider } from '../local/localActionAgent';
@@ -29,14 +31,14 @@ const CATEGORY_CATALOG = DEFAULT_CATEGORIES.map((c) => ({ categoryId: c.id, subc
 // se evita a propósito el tool-use nativo de cada proveedor (4
 // implementaciones distintas) a cambio de este único contrato, ya probado
 // en producción.
-const SYSTEM_PROMPT = `Eres el asistente de datos de VALU, una app de finanzas personales. El usuario te escribe o te dicta en español. Puedes responder preguntas de solo lectura sobre sus datos, o proponer UNA sola acción para modificar sus propios datos financieros (nunca código, ajustes, apariencia ni nada fuera de esto).
+const SYSTEM_PROMPT = `Eres el asistente de datos de VALU, una app de finanzas personales. El usuario te escribe o te dicta en español. Puedes responder preguntas de solo lectura sobre sus datos, o proponer una o varias acciones (hasta ${MAX_PLAN_STEPS}, en el orden en que deben aplicarse) para modificar sus propios datos financieros (nunca código, ajustes, apariencia ni nada fuera de esto).
 
 Devuelve ÚNICAMENTE un objeto JSON, sin texto adicional, sin bloques de código, con esta forma exacta:
-{"reply":"string","action":null|{"type":"...","...campos según el tipo..."}}
+{"reply":"string","actions":[{"type":"...","...campos según el tipo..."}]}
 
-Si el mensaje es una pregunta o no pide modificar nada: "action" es null, y "reply" responde SOLO con los datos del JSON de abajo — nunca inventes una cifra.
+Si el mensaje es una pregunta o no pide modificar nada: "actions" es [], y "reply" responde SOLO con los datos del JSON de abajo — nunca inventes una cifra.
 
-Si el mensaje pide agregar, quitar o cambiar un dato, "action" debe ser EXACTAMENTE uno de estos tipos (nunca inventes otro tipo, nunca más de una acción a la vez; usa el "id" real que aparece en los datos de abajo cuando se pida, nunca inventes uno):
+Si el mensaje pide agregar, quitar o cambiar datos, cada elemento de "actions" debe ser EXACTAMENTE uno de estos tipos (nunca inventes otro tipo; una acción por cada cosa distinta que se pidió, en orden; usa el "id" real que aparece en los datos de abajo cuando se pida, nunca inventes uno):
 
 - {"type":"add_transaction","transactionType":"expense"|"income","amount":number,"accountNameHint":"string","categoryId":"id del catálogo o null","subcategoryId":"id del catálogo o null"} — categoryId/subcategoryId deben ser de este catálogo (o null si no aplica): ${JSON.stringify(CATEGORY_CATALOG)}
 - {"type":"add_account","name":"string","accountTypeHint":"banco"|"efectivo"|"tarjeta"|"ahorro"|"inversion","balance":number}
@@ -53,7 +55,7 @@ Si el mensaje pide agregar, quitar o cambiar un dato, "action" debe ser EXACTAME
 - {"type":"delete_transaction","transactionId":"id real de movimientos_recientes abajo, nunca inventado"}
 - {"type":"transfer_between_accounts","fromAccountNameHint":"string","toAccountNameHint":"string","amount":number} — mover dinero entre dos cuentas propias del usuario, nunca hacia/desde una cuenta de otra persona
 
-"reply" siempre es una frase corta y natural — nunca describas ahí el detalle exacto de la acción (monto, cuenta), eso lo arma la app aparte a partir de "action".`;
+"reply" siempre es una frase corta y natural — nunca describas ahí el detalle exacto de la acción (monto, cuenta), eso lo arma la app aparte a partir de "actions".`;
 
 // Convierte el `action` crudo del JSON del modelo (nada confiable todavía)
 // en un ResolveResult validado, reutilizando el MISMO catálogo que usa el
@@ -118,29 +120,45 @@ function extractJson(raw: string): any | null {
 export function createLLMActionAgentProvider(client: LLMClient, providerName: string): ActionAgentProvider {
   return {
     name: providerName,
-    async interpretMessage(text: string, ctx: ActionAgentContext) {
+    async interpretMessage(text: string, ctx: ActionAgentContext, opts?: { pending?: PendingClarification }) {
       try {
-        const summary = buildActionContextSummary(ctx);
-        const systemPrompt = `${SYSTEM_PROMPT}\n\nDatos del usuario (JSON):\n${JSON.stringify(summary)}`;
-        const raw = await client.chat(systemPrompt, [{ role: 'user', content: text }]);
-        const json = extractJson(raw);
-        if (!json || typeof json.reply !== 'string') return localActionAgentProvider.interpretMessage(text, ctx);
-
-        if (!json.action) return { reply: json.reply };
-
-        const result = resolveModelAction(json.action, {
+        const validationCtx: ActionValidationContext = {
           accounts: ctx.accounts,
           goals: ctx.goals,
           liabilities: ctx.liabilities,
           templateBudgetLines: ctx.templateBudgetLines,
           recentTransactions: ctx.transactions.slice(0, 20),
           primaryCurrency: ctx.profile.primaryCurrency,
-        });
-        if (!result) return { reply: json.reply };
-        if (!result.ok) return { reply: result.reason };
-        return { reply: json.reply, action: result.action, summary: result.summary };
+        };
+        // Contestar una pregunta pendiente es determinista y no necesita al modelo (ni gastar su cuota).
+        if (opts?.pending) {
+          const answered = answerClarification(opts.pending, text, validationCtx);
+          const interpreted = answered ? interpretationFrom(answered, validationCtx) : null;
+          if (interpreted) return { ...interpreted, handledClarification: true };
+        }
+
+        const summary = buildActionContextSummary(ctx);
+        const systemPrompt = `${SYSTEM_PROMPT}\n\nDatos del usuario (JSON):\n${JSON.stringify(summary)}`;
+        const raw = await client.chat(systemPrompt, [{ role: 'user', content: text }]);
+        const json = extractJson(raw);
+        if (!json || typeof json.reply !== 'string') return localActionAgentProvider.interpretMessage(text, ctx, opts);
+
+        // `actions` (varias) o, por compatibilidad con respuestas viejas, `action` (una).
+        const rawActions: unknown[] = Array.isArray(json.actions) ? json.actions : json.action ? [json.action] : [];
+        if (rawActions.length === 0) return { reply: json.reply };
+        if (rawActions.length > MAX_PLAN_STEPS) return { reply: `Son demasiadas acciones juntas (máximo ${MAX_PLAN_STEPS}). Pídemelas en dos mensajes.` };
+
+        // Cada acción del modelo pasa por el MISMO catálogo que las reglas locales: nada llega al plan sin validar.
+        const results = rawActions.map((a) => resolveModelAction(a, validationCtx));
+        const labels = rawActions.map((_, i) => `acción ${i + 1}`);
+        const outcome = combineResults(labels, results, () => null);
+        if (outcome.kind === 'none') return { reply: json.reply };
+        const interpreted = interpretationFrom(outcome, validationCtx);
+        if (!interpreted) return { reply: json.reply };
+        // Con una sola acción válida se conserva la frase natural del modelo (como siempre).
+        return outcome.kind === 'single' ? { ...interpreted, reply: json.reply } : interpreted;
       } catch {
-        return localActionAgentProvider.interpretMessage(text, ctx);
+        return localActionAgentProvider.interpretMessage(text, ctx, opts);
       }
     },
   };

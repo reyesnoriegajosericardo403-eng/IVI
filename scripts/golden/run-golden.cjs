@@ -92,3 +92,12 @@ if (showFail) {
   }
 }
 if (md) process.exitCode = 0;
+// Puerta de calidad: `--min 100` hace que el comando falle (código 1) si pasa menos de ese %. Sirve para `npm test`/CI
+// con el conjunto de regresión (`all`); los conjuntos sellados no se usan con puerta (se corren una sola vez).
+const minIdx = process.argv.indexOf('--min');
+if (minIdx > -1) {
+  const min = Number(process.argv[minIdx + 1]);
+  const pass = rows.filter((r) => r.ok).length;
+  const real = (100 * pass) / Math.max(1, rows.length);
+  if (real < min) { console.log(`\n✗ ${real.toFixed(1)}% < mínimo ${min}%`); process.exitCode = 1; }
+}

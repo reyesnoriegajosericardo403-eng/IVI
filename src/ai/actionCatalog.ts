@@ -17,6 +17,8 @@ import type {
   DeleteGoalArgs,
   DeleteLiabilityArgs,
   DeleteTransactionArgs,
+  AIActionType,
+  MissingField,
   ResolvedAction,
   SetBudgetLineArgs,
   TransferBetweenAccountsArgs,
@@ -54,8 +56,46 @@ export interface ResolveOk {
 export interface ResolveErr {
   ok: false;
   reason: string;
+  // Cuando lo que falta es UN dato que la persona puede contestar en una frase (monto, a qué cuenta...), aquí
+  // va lo necesario para preguntarlo y reintentar el mismo resolver con la respuesta (contrato §2).
+  clarification?: { type: AIActionType; candidate: Record<string, unknown>; missing: MissingField[] };
 }
 export type ResolveResult = ResolveOk | ResolveErr;
+
+// ---------- Datos faltantes: pregunta + candidato para reintentar (contrato §2) ----------
+
+function ask(type: AIActionType, candidate: object, missing: MissingField[]): ResolveErr {
+  return {
+    ok: false,
+    reason: missing.map((m) => m.prompt).join(' '),
+    clarification: { type, candidate: { ...(candidate as Record<string, unknown>) }, missing },
+  };
+}
+
+const askAmount = (slot: string, prompt: string): MissingField => ({ field: 'amount', slot, prompt });
+const askName = (slot: string, prompt: string): MissingField => ({ field: 'name', slot, prompt });
+
+function listNames(names: string[]): string {
+  const clean = names.filter(Boolean).slice(0, 8);
+  return clean.length ? ` (tienes: ${clean.join(', ')})` : '';
+}
+const askAccount = (slot: string, hint: string, ctx: ActionValidationContext, label = 'cuenta'): MissingField => ({
+  field: 'account',
+  slot,
+  prompt: hint.trim()
+    ? `No encontré ninguna ${label} que se llame "${hint.trim()}". ¿Cuál es?${listNames(ctx.accounts.filter((a) => !a.deletedAt).map((a) => a.name))}`
+    : `¿En qué ${label}? Dime el nombre${listNames(ctx.accounts.filter((a) => !a.deletedAt).map((a) => a.name))}.`,
+});
+const askGoal = (hint: string, ctx: ActionValidationContext): MissingField => ({
+  field: 'goal',
+  slot: 'goalNameHint',
+  prompt: `No encontré ninguna meta que se llame "${hint}". ¿Cuál es?${listNames(ctx.goals.filter((g) => !g.deletedAt).map((g) => g.name))}`,
+});
+const askLiability = (hint: string, ctx: ActionValidationContext): MissingField => ({
+  field: 'liability',
+  slot: 'institutionHint',
+  prompt: `No encontré ninguna deuda con "${hint}". ¿Cuál es?${listNames(ctx.liabilities.filter((l) => !l.deletedAt).map((l) => l.institution))}`,
+});
 
 function positiveAmount(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
@@ -235,9 +275,9 @@ function resolveBudgetConcept(hint: string): BudgetConcept | undefined {
 
 export function resolveAddTransaction(candidate: AddTransactionCandidate, ctx: ActionValidationContext): ResolveResult {
   const amount = positiveAmount(candidate.amount);
-  if (amount === null) return { ok: false, reason: 'No reconocí un monto claro — dime un número, por ejemplo "500".' };
+  if (amount === null) return ask('add_transaction', candidate, [askAmount('amount', 'No reconocí un monto claro — dime un número, por ejemplo "500".')]);
   const account = resolveAccountByNameHint(candidate.accountNameHint, ctx.accounts);
-  if (!account) return { ok: false, reason: `No encontré ninguna cuenta que se llame "${candidate.accountNameHint}".` };
+  if (!account) return ask('add_transaction', candidate, [askAccount('accountNameHint', candidate.accountNameHint, ctx)]);
 
   const transactionType: 'income' | 'expense' = candidate.transactionType === 'income' ? 'income' : 'expense';
   const candidateCategoryId = cleanString(candidate.categoryId);
@@ -261,7 +301,7 @@ export function resolveAddTransaction(candidate: AddTransactionCandidate, ctx: A
     accountName: account.name,
   };
   const summary = hasValidCategory
-    ? `Agregar ${transactionType === 'income' ? 'ingreso' : 'gasto'} de ${formatCurrency(amount, account.currency)} en "${account.name}"`
+    ? `Agregar ${transactionType === 'income' ? 'ingreso' : 'gasto'} de ${formatCurrency(amount, account.currency)} (${findSubcategory(categoryId, subcategoryId)?.name ?? 'sin categoría'}) en "${account.name}"`
     : `${transactionType === 'income' ? 'Agregar' : 'Quitar'} ${formatCurrency(amount, account.currency)} ${transactionType === 'income' ? 'a' : 'de'} "${account.name}"`;
   return { ok: true, action: { type: 'add_transaction', args }, summary };
 }
@@ -276,11 +316,11 @@ export function resolveAddTransaction(candidate: AddTransactionCandidate, ctx: A
 // comparables — mover soporte de FX real es un problema aparte.
 export function resolveTransferBetweenAccounts(candidate: TransferBetweenAccountsCandidate, ctx: ActionValidationContext): ResolveResult {
   const amount = positiveAmount(candidate.amount);
-  if (amount === null) return { ok: false, reason: 'No reconocí un monto claro para transferir — dime un número, por ejemplo "500".' };
+  if (amount === null) return ask('transfer_between_accounts', candidate, [askAmount('amount', 'No reconocí un monto claro para transferir — dime un número, por ejemplo "500".')]);
   const fromAccount = resolveAccountByNameHint(candidate.fromAccountNameHint, ctx.accounts);
-  if (!fromAccount) return { ok: false, reason: `No encontré ninguna cuenta que se llame "${candidate.fromAccountNameHint}".` };
+  if (!fromAccount) return ask('transfer_between_accounts', candidate, [askAccount('fromAccountNameHint', candidate.fromAccountNameHint, ctx, 'cuenta de origen')]);
   const toAccount = resolveAccountByNameHint(candidate.toAccountNameHint, ctx.accounts);
-  if (!toAccount) return { ok: false, reason: `No encontré ninguna cuenta que se llame "${candidate.toAccountNameHint}".` };
+  if (!toAccount) return ask('transfer_between_accounts', candidate, [askAccount('toAccountNameHint', candidate.toAccountNameHint, ctx, 'cuenta de destino')]);
   if (fromAccount.id === toAccount.id) return { ok: false, reason: 'La cuenta de origen y destino no pueden ser la misma.' };
   if (fromAccount.currency !== toAccount.currency) {
     return { ok: false, reason: `"${fromAccount.name}" y "${toAccount.name}" usan monedas distintas — todavía no puedo convertir entre ellas.` };
@@ -301,7 +341,7 @@ export function resolveTransferBetweenAccounts(candidate: TransferBetweenAccount
 
 export function resolveAddAccount(candidate: AddAccountCandidate, ctx: ActionValidationContext): ResolveResult {
   const name = cleanString(candidate.name);
-  if (name.length < 2) return { ok: false, reason: 'Necesito un nombre para la cuenta — por ejemplo "Banorte" o "Nu".' };
+  if (name.length < 2) return ask('add_account', candidate, [askName('name', 'Necesito un nombre para la cuenta — por ejemplo "Banorte" o "Nu".')]);
   const accountType = resolveAccountType(candidate.accountTypeHint);
   const currency = resolveCurrency(candidate.currency, ctx.primaryCurrency);
   const balance = finiteAmount(candidate.balance) ?? 0;
@@ -312,7 +352,7 @@ export function resolveAddAccount(candidate: AddAccountCandidate, ctx: ActionVal
 
 export function resolveDeleteAccount(candidate: DeleteAccountCandidate, ctx: ActionValidationContext): ResolveResult {
   const account = resolveAccountByNameHint(candidate.accountNameHint, ctx.accounts);
-  if (!account) return { ok: false, reason: `No encontré ninguna cuenta que se llame "${candidate.accountNameHint}".` };
+  if (!account) return ask('delete_account', candidate, [askAccount('accountNameHint', candidate.accountNameHint, ctx)]);
   const args: DeleteAccountArgs = { accountId: account.id, accountName: account.name };
   return { ok: true, action: { type: 'delete_account', args }, summary: `Borrar la cuenta "${account.name}"` };
 }
@@ -321,9 +361,9 @@ export function resolveDeleteAccount(candidate: DeleteAccountCandidate, ctx: Act
 
 export function resolveAddGoal(candidate: AddGoalCandidate, ctx: ActionValidationContext): ResolveResult {
   const name = cleanString(candidate.name);
-  if (name.length < 2) return { ok: false, reason: 'Necesito un nombre para la meta.' };
+  if (name.length < 2) return ask('add_goal', candidate, [askName('name', 'Necesito un nombre para la meta.')]);
   const targetAmount = positiveAmount(candidate.targetAmount);
-  if (targetAmount === null) return { ok: false, reason: 'Necesito un monto objetivo claro para la meta.' };
+  if (targetAmount === null) return ask('add_goal', candidate, [askAmount('targetAmount', 'Necesito un monto objetivo claro para la meta.')]);
   const currency = resolveCurrency(candidate.currency, ctx.primaryCurrency);
   const args: AddGoalArgs = { name, targetAmount, currency };
   return { ok: true, action: { type: 'add_goal', args }, summary: `Crear la meta "${name}" con objetivo de ${formatCurrency(targetAmount, currency)}` };
@@ -331,18 +371,18 @@ export function resolveAddGoal(candidate: AddGoalCandidate, ctx: ActionValidatio
 
 export function resolveContributeToGoal(candidate: ContributeToGoalCandidate, ctx: ActionValidationContext): ResolveResult {
   const amount = positiveAmount(candidate.amount);
-  if (amount === null) return { ok: false, reason: 'No reconocí un monto claro para aportar.' };
+  if (amount === null) return ask('contribute_to_goal', candidate, [askAmount('amount', 'No reconocí un monto claro para aportar.')]);
   const goal = resolveGoalByNameHint(candidate.goalNameHint, ctx.goals);
-  if (!goal) return { ok: false, reason: `No encontré ninguna meta que se llame "${candidate.goalNameHint}".` };
+  if (!goal) return ask('contribute_to_goal', candidate, [askGoal(candidate.goalNameHint, ctx)]);
   const args: ContributeToGoalArgs = { goalId: goal.id, goalName: goal.name, amount, currency: goal.currency };
   return { ok: true, action: { type: 'contribute_to_goal', args }, summary: `Aportar ${formatCurrency(amount, goal.currency)} a la meta "${goal.name}"` };
 }
 
 export function resolveUpdateGoalTarget(candidate: UpdateGoalTargetCandidate, ctx: ActionValidationContext): ResolveResult {
   const targetAmount = positiveAmount(candidate.targetAmount);
-  if (targetAmount === null) return { ok: false, reason: 'No reconocí un monto objetivo claro.' };
+  if (targetAmount === null) return ask('update_goal_target', candidate, [askAmount('targetAmount', 'No reconocí un monto objetivo claro.')]);
   const goal = resolveGoalByNameHint(candidate.goalNameHint, ctx.goals);
-  if (!goal) return { ok: false, reason: `No encontré ninguna meta que se llame "${candidate.goalNameHint}".` };
+  if (!goal) return ask('update_goal_target', candidate, [askGoal(candidate.goalNameHint, ctx)]);
   const args: UpdateGoalTargetArgs = { goalId: goal.id, goalName: goal.name, targetAmount, currency: goal.currency };
   return {
     ok: true,
@@ -353,7 +393,7 @@ export function resolveUpdateGoalTarget(candidate: UpdateGoalTargetCandidate, ct
 
 export function resolveDeleteGoal(candidate: DeleteGoalCandidate, ctx: ActionValidationContext): ResolveResult {
   const goal = resolveGoalByNameHint(candidate.goalNameHint, ctx.goals);
-  if (!goal) return { ok: false, reason: `No encontré ninguna meta que se llame "${candidate.goalNameHint}".` };
+  if (!goal) return ask('delete_goal', candidate, [askGoal(candidate.goalNameHint, ctx)]);
   const args: DeleteGoalArgs = { goalId: goal.id, goalName: goal.name };
   return { ok: true, action: { type: 'delete_goal', args }, summary: `Borrar la meta "${goal.name}"` };
 }
@@ -362,9 +402,9 @@ export function resolveDeleteGoal(candidate: DeleteGoalCandidate, ctx: ActionVal
 
 export function resolveAddLiability(candidate: AddLiabilityCandidate, ctx: ActionValidationContext): ResolveResult {
   const institution = cleanString(candidate.institution);
-  if (institution.length < 2) return { ok: false, reason: 'Necesito el nombre de la institución o deuda.' };
+  if (institution.length < 2) return ask('add_liability', candidate, [askName('institution', 'Necesito el nombre de la institución o deuda.')]);
   const balance = positiveAmount(candidate.balance);
-  if (balance === null) return { ok: false, reason: 'Necesito un saldo claro para la deuda.' };
+  if (balance === null) return ask('add_liability', candidate, [askAmount('balance', 'Necesito un saldo claro para la deuda.')]);
   const liabilityType = resolveLiabilityType(candidate.liabilityTypeHint);
   const currency = resolveCurrency(candidate.currency, ctx.primaryCurrency);
   const args: AddLiabilityArgs = { institution, liabilityType, balance, currency };
@@ -377,9 +417,9 @@ export function resolveAddLiability(candidate: AddLiabilityCandidate, ctx: Actio
 
 export function resolveUpdateLiabilityBalance(candidate: UpdateLiabilityBalanceCandidate, ctx: ActionValidationContext): ResolveResult {
   const balance = finiteAmount(candidate.balance);
-  if (balance === null || balance < 0) return { ok: false, reason: 'No reconocí un saldo válido.' };
+  if (balance === null || balance < 0) return ask('update_liability_balance', candidate, [askAmount('balance', 'No reconocí un saldo válido.')]);
   const liability = resolveLiabilityByNameHint(candidate.institutionHint, ctx.liabilities);
-  if (!liability) return { ok: false, reason: `No encontré ninguna deuda con "${candidate.institutionHint}".` };
+  if (!liability) return ask('update_liability_balance', candidate, [askLiability(candidate.institutionHint, ctx)]);
   const args: UpdateLiabilityBalanceArgs = { liabilityId: liability.id, institution: liability.institution, balance, currency: liability.currency };
   return {
     ok: true,
@@ -390,7 +430,7 @@ export function resolveUpdateLiabilityBalance(candidate: UpdateLiabilityBalanceC
 
 export function resolveDeleteLiability(candidate: DeleteLiabilityCandidate, ctx: ActionValidationContext): ResolveResult {
   const liability = resolveLiabilityByNameHint(candidate.institutionHint, ctx.liabilities);
-  if (!liability) return { ok: false, reason: `No encontré ninguna deuda con "${candidate.institutionHint}".` };
+  if (!liability) return ask('delete_liability', candidate, [askLiability(candidate.institutionHint, ctx)]);
   const args: DeleteLiabilityArgs = { liabilityId: liability.id, institution: liability.institution };
   return { ok: true, action: { type: 'delete_liability', args }, summary: `Borrar la deuda "${liability.institution}"` };
 }
@@ -399,9 +439,9 @@ export function resolveDeleteLiability(candidate: DeleteLiabilityCandidate, ctx:
 
 export function resolveSetBudgetLine(candidate: SetBudgetLineCandidate, ctx: ActionValidationContext): ResolveResult {
   const monthlyAmount = positiveAmount(candidate.monthlyAmount);
-  if (monthlyAmount === null) return { ok: false, reason: 'No reconocí un monto mensual claro.' };
+  if (monthlyAmount === null) return ask('set_budget_line', candidate, [askAmount('monthlyAmount', 'No reconocí un monto mensual claro.')]);
   const concept = resolveBudgetConcept(candidate.categoryHint);
-  if (!concept) return { ok: false, reason: `No reconocí la categoría de presupuesto "${candidate.categoryHint}".` };
+  if (!concept) return ask('set_budget_line', candidate, [{ field: 'category', slot: 'categoryHint', prompt: `No reconocí la categoría de presupuesto "${candidate.categoryHint}". ¿Cuál es? (por ejemplo comida, renta, transporte)` }]);
   const args: SetBudgetLineArgs = { categoryId: concept.id, categoryName: concept.name, monthlyAmount, currency: ctx.primaryCurrency };
   const current = ctx.templateBudgetLines.find((l) => l.categoryId === concept.id && !l.deletedAt);
   const summary = current
@@ -428,4 +468,46 @@ export function resolveDeleteTransaction(candidate: DeleteTransactionCandidate, 
   const summary = `Borrar el movimiento de ${formatCurrency(tx.amount, tx.currency)}${tx.merchant ? ` en "${tx.merchant}"` : ''} del ${tx.date.slice(0, 10)}`;
   const args: DeleteTransactionArgs = { transactionId: tx.id, transactionSummary: summary };
   return { ok: true, action: { type: 'delete_transaction', args }, summary };
+}
+
+// ---------- Reintento con la respuesta de la persona (contrato §2) ----------
+
+// Reconstruye una acción desde (tipo, candidato) con el MISMO resolver de siempre. Lo usa el planificador al
+// contestar una aclaración y la prueba del catálogo.
+export function resolveCandidate(type: AIActionType, c: Record<string, unknown>, ctx: ActionValidationContext): ResolveResult {
+  const s = (k: string) => (typeof c[k] === 'string' ? (c[k] as string) : '');
+  switch (type) {
+    case 'add_transaction':
+      return resolveAddTransaction({ transactionType: c.transactionType === 'income' ? 'income' : 'expense', amount: c.amount, accountNameHint: s('accountNameHint'), categoryId: c.categoryId, subcategoryId: c.subcategoryId }, ctx);
+    case 'transfer_between_accounts':
+      return resolveTransferBetweenAccounts({ fromAccountNameHint: s('fromAccountNameHint'), toAccountNameHint: s('toAccountNameHint'), amount: c.amount }, ctx);
+    case 'add_account':
+      return resolveAddAccount({ name: c.name, accountTypeHint: c.accountTypeHint, balance: c.balance, currency: c.currency }, ctx);
+    case 'delete_account':
+      return resolveDeleteAccount({ accountNameHint: s('accountNameHint') }, ctx);
+    case 'add_goal':
+      return resolveAddGoal({ name: c.name, targetAmount: c.targetAmount, currency: c.currency }, ctx);
+    case 'contribute_to_goal':
+      return resolveContributeToGoal({ goalNameHint: s('goalNameHint'), amount: c.amount }, ctx);
+    case 'update_goal_target':
+      return resolveUpdateGoalTarget({ goalNameHint: s('goalNameHint'), targetAmount: c.targetAmount }, ctx);
+    case 'delete_goal':
+      return resolveDeleteGoal({ goalNameHint: s('goalNameHint') }, ctx);
+    case 'add_liability':
+      return resolveAddLiability({ institution: c.institution, liabilityTypeHint: c.liabilityTypeHint, balance: c.balance, currency: c.currency }, ctx);
+    case 'update_liability_balance':
+      return resolveUpdateLiabilityBalance({ institutionHint: s('institutionHint'), balance: c.balance }, ctx);
+    case 'delete_liability':
+      return resolveDeleteLiability({ institutionHint: s('institutionHint') }, ctx);
+    case 'set_budget_line':
+      return resolveSetBudgetLine({ categoryHint: s('categoryHint'), monthlyAmount: c.monthlyAmount }, ctx);
+    case 'delete_budget_line':
+      return resolveDeleteBudgetLine({ categoryHint: s('categoryHint') }, ctx);
+    case 'delete_transaction':
+      return resolveDeleteTransaction({ transactionId: c.transactionId }, ctx);
+    default: {
+      const exhaustive: never = type;
+      return { ok: false, reason: `Tipo de acción no reconocido: ${exhaustive}` };
+    }
+  }
 }

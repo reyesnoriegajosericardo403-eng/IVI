@@ -26,3 +26,4 @@ for (const c of base) {
 console.log(`Pruebas: ${tot} · cambian de subcategoría: ${bad} (${(100 * bad / tot).toFixed(2)}%)`);
 console.log(byNoise);
 if (show) console.log(examples.join('\n'));
+process.exitCode = bad ? 1 : 0;
