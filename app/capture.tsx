@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { describeDateEs } from '@/ai/dates';
 import { loadExtendedCatalog, whenCatalogReady } from '@/data/catalogLoader';
 import { applyCustomMapping, detectAccountAdjustment, splitCaptureSegments, type ParsedCapture } from '@/ai/localParser';
 import { CategoryIcon } from '@/components/CategoryIcon';
@@ -149,7 +150,8 @@ export default function Capture() {
       subcategoryId,
       merchant: result.merchant,
       accountId,
-      date: new Date().toISOString(),
+      // Si la persona dijo cuándo fue ("ayer", "el viernes", "el 15 de marzo"), el movimiento queda en ESA fecha.
+      date: result.date ?? new Date().toISOString(),
       origin: 'voice',
       // Respaldo textual de lo que se dijo — si la categorización
       // automática se equivocó, aquí queda lo que realmente se dijo.
@@ -536,6 +538,7 @@ export default function Capture() {
                       {item.subcategoryId ? ` · ${findSubcategory(item.categoryId ?? '', item.subcategoryId)?.name}` : ''}
                       {item.merchant ? ` · ${item.merchant}` : ''}
                       {account ? ` · ${account.name}` : ''}
+                      {item.dateIso ? ` · ${describeDateEs(item.dateIso)}` : ''}
                     </Text>
                   </View>
                 );

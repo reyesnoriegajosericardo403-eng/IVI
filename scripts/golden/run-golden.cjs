@@ -11,6 +11,7 @@ const only = opt('suite', null);
 const showFail = args.includes('--fail');
 const md = args.includes('--md');
 
+const GOLDEN_NOW = new Date(2026, 9, 3, 15, 30);
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const norm = (s) => String(s).trim();
 
@@ -33,7 +34,8 @@ function evaluate(c) {
     else ok = !!got && got.direction === want.direction && P.normalize(got.accountNameHint).includes(P.normalize(want.hintContains));
     return { ok, got, fields: { adjustment: ok } };
   }
-  const r = P.parseCaptureText(c.text);
+  // Los casos de fechas dependen de "hoy": el golden fija el día (sábado 2026-10-03) para que nunca cambie con el calendario.
+  const r = P.parseCaptureText(c.text, GOLDEN_NOW);
   const fields = {};
   for (const k of Object.keys(e)) {
     if (k === 'altSubcategoryIds' || k === 'altCategoryIds') continue;
@@ -41,6 +43,8 @@ function evaluate(c) {
     if (k === 'categoryId' && e.altCategoryIds && e.altCategoryIds.includes(r.categoryId)) { fields[k] = true; continue; }
     if (k === 'missing') fields.missing = eq([...r.missing].sort(), [...e.missing].sort());
     else if (k === 'amount') fields.amount = r.amount === e.amount;
+    else if (k === 'date') fields.date = (r.dateIso ?? null) === e.date;
+    else if (k === 'futureDate') fields.futureDate = (r.futureDate ?? null) === e.futureDate;
     else fields[k] = r[k] === e[k];
   }
   return { ok: Object.values(fields).every(Boolean), got: r, fields };

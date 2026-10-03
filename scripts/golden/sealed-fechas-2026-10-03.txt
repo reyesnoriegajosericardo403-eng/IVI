@@ -1,0 +1,24 @@
+SELLADO: 106/113 (93.8%)
+
+--- FALLAS ---
+[fecha] «el martes de la semana pasada pagué la luz» past
+    esperado: 2026-09-22
+    obtenido: 2026-09-29 («el martes»)
+[fecha] «el siguiente miércoles pago» past
+    esperado: 2026-10-07
+    obtenido: 2026-09-30 («miércoles»)
+[hora] «a las 9 y media»
+    esperado: 09:30
+    obtenido: 09:00
+[hora] «a las cinco de la tarde»
+    esperado: 17:00
+    obtenido: null
+[hora] «a las 3 y cuarto»
+    esperado: 03:15
+    obtenido: 03:00
+[periodo] «el gasto del mes pasado»
+    esperado: 2026-09-01..2026-09-30 month
+    obtenido: 2026-10-01..2026-10-31 month
+[periodo] «en el 2027»
+    esperado: 2027-01-01..2027-12-31 year
+    obtenido: null

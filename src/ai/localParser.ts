@@ -1,5 +1,6 @@
 import { DEFAULT_CATEGORIES, getCatalogRevision } from '@/data/categories';
 import type { Currency, TransactionType } from '@/data/types';
+import { findDateMentions, findTimeMentions, isoDateToTimestamp, removeRanges } from './dates';
 
 // Intérprete local de lenguaje natural — Fase 1.
 // Cubre los patrones más comunes del spec (monto + categoría + comercio)
@@ -18,6 +19,15 @@ export interface ParsedCapture {
   merchant?: string;
   missing: Array<'amount' | 'category'>;
   rawText: string;
+  // Fecha de un día YA PASADO que la persona dijo ("ayer", "el viernes", "el 15 de marzo", "hace 3 días"):
+  // mediodía local de ese día, listo para guardarse. Sin esto, el movimiento es de "ahora". Una fecha de hoy
+  // no la llena (es lo mismo que no decir nada).
+  date?: string;
+  dateIso?: string; // AAAA-MM-DD de lo mismo, para mostrarlo
+  dateText?: string; // lo que se interpretó, tal como se dijo
+  // Si lo que dijo es un día FUTURO ("mañana", "el viernes que viene"): aún no hay "movimiento previsto" (P3),
+  // así que NO se usa como fecha del movimiento; se conserva aquí para cuando exista.
+  futureDate?: string;
   // Cuenta asignada al guardar (tarjeta de transporte, cuenta destino de
   // presupuesto o efectivo de respaldo) — se llena en app/capture.tsx,
   // nunca aquí, porque el parser no conoce las cuentas del usuario.
@@ -773,6 +783,9 @@ export interface CustomCategoryMapping {
 // o "compré" terminarían "enseñando" una categoría falsa la próxima vez
 // que aparezcan en cualquier frase (catálogo v7, memoria de mapeo personal).
 const LEARNING_STOPWORDS = new Set([
+  // meses y días de la semana: describen CUÁNDO, no DE QUÉ fue el gasto
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'setiembre', 'octubre', 'noviembre', 'diciembre',
+  'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'semana', 'quincena', 'antier', 'anteayer', 'anoche',
   'para', 'esta', 'este', 'estas', 'estos', 'esas', 'esos', 'pero',
   'como', 'cuando', 'donde', 'porque', 'tambien', 'ademas', 'entonces',
   'hoy', 'ayer', 'manana', 'siempre', 'nunca', 'ahora', 'luego', 'otra', 'otro',
@@ -976,15 +989,28 @@ export function splitCaptureSegments(rawText: string): string[] {
   return cleaned.length > 0 ? cleaned : [rawText.trim()];
 }
 
-export function parseCaptureText(rawText: string): ParsedCapture {
-  const type = extractType(rawText);
-  const amount = extractAmount(rawText);
-  const currency = extractCurrency(rawText);
-  const { categoryId, subcategoryId, merchant } = extractCategory(rawText, type);
+export function parseCaptureText(rawText: string, now: Date = new Date()): ParsedCapture {
+  // Las fechas y horas dichas ("el 15 de marzo", "a las 5") se recortan ANTES de buscar monto/tipo/categoría:
+  // "pagué 12 de luz el 15" no debe leer 15 como el monto.
+  const dates = findDateMentions(rawText, now, { prefer: 'past' });
+  const text = removeRanges(rawText, [...dates, ...findTimeMentions(rawText)]);
+  const type = extractType(text);
+  const amount = extractAmount(text);
+  const currency = extractCurrency(text);
+  const { categoryId, subcategoryId, merchant } = extractCategory(text, type);
 
   const missing: ParsedCapture['missing'] = [];
   if (amount === null) missing.push('amount');
   if (!categoryId && type === 'expense') missing.push('category');
 
-  return { type, amount, currency, categoryId, subcategoryId, merchant, missing, rawText };
+  const result: ParsedCapture = { type, amount, currency, categoryId, subcategoryId, merchant, missing, rawText };
+  const past = dates.find((d) => d.relation === 'past');
+  const future = dates.find((d) => d.relation === 'future');
+  if (past) {
+    result.date = isoDateToTimestamp(past.iso);
+    result.dateIso = past.iso;
+    result.dateText = past.text;
+  }
+  if (future) result.futureDate = future.iso;
+  return result;
 }

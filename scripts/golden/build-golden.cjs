@@ -154,6 +154,9 @@ for (const [text, e] of H.AJUSTES) add('ajuste_cuenta', text, { adjustment: e })
 // K) detector de conceptos (modalidades: repartido, deudas, recurrente, a plazos, deducible...)
 for (const [text, tags] of require('./conceptos.cjs')) add('conceptos', text, { concepts: tags });
 
+// L) fechas dentro de una captura completa (monto, tipo, categoría y día dicho). Hoy = sábado 2026-10-03.
+for (const [text, e] of require('./fechas-captura.cjs')) add('fechas', text, e);
+
 // J) frases NUEVAS e independientes (ver fresh.cjs): fresco_1 se usa para iterar, fresco_2 está SELLADO.
 const F = require('./fresh.cjs');
 function addFresh(suite, split, list) {
