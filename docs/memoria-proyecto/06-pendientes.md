@@ -39,7 +39,7 @@ cerrar un pendiente solo hay que cambiar `[ ]` por `[x]` y regenerar el mapa
 
 ### Hoja de ruta de Fase 2
 
-- [ ] **P1 · Golden set de 1,000 casos de prueba + ampliar 858→3,003 claves** — siguiente fase planeada (semana 3). · requiere: Claude · archivos: src/ai/localParser.ts
+- [x] **P1 · Golden set + ampliar catálogo** — hecho el 2026-10-03: 984 casos + frases frescas, catálogo 864→3,123 claves, 94.9% en frases nuevas selladas (ver docs/memoria-proyecto/08-golden-set-resultados.md). Pendiente menor: escribir un Fresco 3 para la próxima medición. · requiere: Claude · archivos: src/ai/localParser.ts, src/data/keywordExpansion.ts, scripts/golden/
 - [ ] **P2 · Planificador multi-acción + ejecutor seguro con confirmación e idempotencia** — contratos en `docs/03_fase2_contratos_v1.md`. · requiere: Claude · archivos: src/ai/actionCatalog.ts, src/store/useAppStore.ts
 - [ ] **P3 · Nuevas entidades (previsto, rangos, recurrencia, recordatorios personalizados)** — cubre #58 parcial y #59-#65 de la auditoría. · requiere: Claude
 - [ ] **P4 · Ayuda contextual + auditoría de privacidad** · requiere: Claude

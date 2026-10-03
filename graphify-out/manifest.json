@@ -222,10 +222,10 @@
     "semantic_hash": "c187070e0671d3349341976fd3d2cf2e"
   },
   "src/ai/localParser.ts": {
-    "mtime": 1790548090.8741658,
-    "seen": 1790552568.2129002,
-    "ast_hash": "fc8d44578d99b0154f8c92471c8a369f",
-    "semantic_hash": "fc8d44578d99b0154f8c92471c8a369f"
+    "mtime": 1791020673.023775,
+    "seen": 1791020765.3004992,
+    "ast_hash": "63965aa2cd504b91550dfcd5aec9b63c",
+    "semantic_hash": ""
   },
   "src/ai/webSpeech.ts": {
     "mtime": 1790217904.8679998,
@@ -540,10 +540,10 @@
     "semantic_hash": "f31e38d04c758ef894ebb1cb479ae984"
   },
   "src/data/categories.ts": {
-    "mtime": 1790548090.8762705,
-    "seen": 1790552568.2129858,
-    "ast_hash": "1741b3b9f2792339eed615a59170b414",
-    "semantic_hash": "1741b3b9f2792339eed615a59170b414"
+    "mtime": 1791020430.8160052,
+    "seen": 1791020765.3005688,
+    "ast_hash": "c728dac55745875f73526c23ea2d097b",
+    "semantic_hash": ""
   },
   "src/data/exchangeRate.ts": {
     "mtime": 1790217904.8717573,
@@ -1170,9 +1170,9 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/03-motor-clasificacion.md": {
-    "mtime": 1790217904.8643372,
-    "seen": 1790552691.1168249,
-    "ast_hash": "c6bc3f07646f41919ba8e37f305af9d7",
+    "mtime": 1791020747.9240632,
+    "seen": 1791020765.300757,
+    "ast_hash": "1631f00dd2413e7906517743d1864df5",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/04-migraciones-supabase.md": {
@@ -1182,21 +1182,21 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/05-bitacora-cambios.md": {
-    "mtime": 1790980808.3297708,
-    "seen": 1790980814.728399,
-    "ast_hash": "10fae4d7df3bbd6b0e997385a95f89ac",
+    "mtime": 1791020747.9246235,
+    "seen": 1791020765.3007605,
+    "ast_hash": "891f417de237107a9d251ebb529cac03",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/06-pendientes.md": {
-    "mtime": 1790978450.8744528,
-    "seen": 1790978797.1442332,
-    "ast_hash": "f080f564bd7d11a7447378336b9196b6",
+    "mtime": 1791020747.9252884,
+    "seen": 1791020765.3007617,
+    "ast_hash": "8d7e4a43fa39064bccad6a3d72ebf059",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/README.md": {
-    "mtime": 1790589433.8887153,
-    "seen": 1790589505.0177994,
-    "ast_hash": "3d2d4bb5f5373ccc0faae77966a7b30e",
+    "mtime": 1791020750.3732896,
+    "seen": 1791020765.3007653,
+    "ast_hash": "d8972390bffdf96a096ebf2709f465ad",
     "semantic_hash": ""
   },
   "public/index.html": {
@@ -1365,6 +1365,90 @@
     "mtime": 1790980791.3177824,
     "seen": 1790980814.7284245,
     "ast_hash": "839ff79b1a9d16e447961b1a866167fa",
+    "semantic_hash": ""
+  },
+  "scripts/golden/audit-catalog.cjs": {
+    "mtime": 1791020006.5846465,
+    "seen": 1791020765.3004808,
+    "ast_hash": "f643a31ceb2f8287cc21f284d0b3aefd",
+    "semantic_hash": ""
+  },
+  "scripts/golden/build-golden.cjs": {
+    "mtime": 1791020645.798519,
+    "seen": 1791020765.3004823,
+    "ast_hash": "ef96e333cb85daf6bab0f6ba902ce6ac",
+    "semantic_hash": ""
+  },
+  "scripts/golden/dump-catalog.cjs": {
+    "mtime": 1791019253.5342534,
+    "seen": 1791020765.300484,
+    "ast_hash": "9a815b67b130e170ad0624a3ee0306ba",
+    "semantic_hash": ""
+  },
+  "scripts/golden/fresh.cjs": {
+    "mtime": 1791020679.7173114,
+    "seen": 1791020765.3004851,
+    "ast_hash": "6de4d26066ce32faabe76ce20da06075",
+    "semantic_hash": ""
+  },
+  "scripts/golden/golden-set.json": {
+    "mtime": 1791020679.7662206,
+    "seen": 1791020765.300486,
+    "ast_hash": "51f2fe36d79c9e6dae00157eaa617adf",
+    "semantic_hash": ""
+  },
+  "scripts/golden/handwritten.cjs": {
+    "mtime": 1791020463.2427397,
+    "seen": 1791020765.3004868,
+    "ast_hash": "134f19b7cd73db5a1bcbb47921ec3f10",
+    "semantic_hash": ""
+  },
+  "scripts/golden/lexicon.cjs": {
+    "mtime": 1791019397.98225,
+    "seen": 1791020765.300488,
+    "ast_hash": "e8d0b3b603c935f789b5ce66e4ebca88",
+    "semantic_hash": ""
+  },
+  "scripts/golden/run-golden.cjs": {
+    "mtime": 1791020645.7990537,
+    "seen": 1791020765.3004892,
+    "ast_hash": "4effaae145cdebdab5c03592329ff6fa",
+    "semantic_hash": ""
+  },
+  "scripts/golden/ts-hook.cjs": {
+    "mtime": 1791019253.5337436,
+    "seen": 1791020765.3004901,
+    "ast_hash": "76c602f2149eab64b3051c0fd8bcfcbe",
+    "semantic_hash": ""
+  },
+  "scripts/golden/why.cjs": {
+    "mtime": 1791020405.102227,
+    "seen": 1791020765.300491,
+    "ast_hash": "cb1b9e2a6b9343d6c6c71cc4f8f58b0c",
+    "semantic_hash": ""
+  },
+  "src/data/keywordExpansion.ts": {
+    "mtime": 1791020700.5611582,
+    "seen": 1791020765.3005745,
+    "ast_hash": "25287df23562f66768721fc1dbac68d1",
+    "semantic_hash": ""
+  },
+  "docs/memoria-proyecto/08-golden-set-resultados.md": {
+    "mtime": 1791020747.9242227,
+    "seen": 1791020765.300764,
+    "ast_hash": "3e79bf579cbe324a81e14db683f406ab",
+    "semantic_hash": ""
+  },
+  "scripts/golden/baseline-2026-10-03.txt": {
+    "mtime": 1791019766.6222415,
+    "seen": 1791020765.3007672,
+    "ast_hash": "c9f48c72ced5bbabdfaf26906808333c",
+    "semantic_hash": ""
+  },
+  "scripts/golden/sealed-2026-10-03.txt": {
+    "mtime": 1791020690.9342203,
+    "seen": 1791020765.3007686,
+    "ast_hash": "3804d700a5889d59d66e2e46259bfad6",
     "semantic_hash": ""
   }
 }

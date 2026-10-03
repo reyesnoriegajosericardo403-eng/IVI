@@ -8,6 +8,14 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-03 — P1 (semana 3): golden set + motor local más preciso
+
+- Nuevo **golden set** de 984 casos + 2 conjuntos de frases frescas en `scripts/golden/` (ver [[08-golden-set-resultados]]). Línea base del motor: **69.6%**.
+- Motor (`src/ai/localParser.ts`): montos con decimales/miles/«5 mil»/lucas, tipo de movimiento más fino, categorías restringidas por tipo, palabras genéricas débiles, corrección difusa más estricta (mínimo 7 letras) y de frases, ajuste de saldo sin dígitos, separador de movimientos.
+- Catálogo: de ≈864 a **3,123 palabras clave** (`src/data/keywordExpansion.ts`), sin duplicados.
+- Resultado: 100% en el set original (contaminado) y **94.9% en frases nuevas selladas** (cifra honesta).
+- No se tocó la base de datos ni la UI.
+
 ## 2026-10-02 — Despliegue de push en Supabase (avance) + explorador ordenado del grafo
 
 - **Supabase (hecho desde el iPad, sin terminal)**: migraciones `0020` y `0021` corridas, los 4

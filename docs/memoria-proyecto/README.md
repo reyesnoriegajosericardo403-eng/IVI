@@ -29,6 +29,7 @@ Esta carpeta nunca reemplaza eso ni lo toca — ver [[06-pendientes#Sobre Obsidi
 - [[01-arquitectura|Arquitectura]] — de qué está hecho VALU y cómo encajan las piezas.
 - [[02-catalogo-categorias|Catálogo de categorías]] — las 12 categorías, 118 subcategorías y 15 conceptos de presupuesto, organizados.
 - [[03-motor-clasificacion|Motor de clasificación]] — cómo VALU entiende lo que dictas/escribes sin depender de un proveedor de IA.
+- [[08-golden-set-resultados|Golden set del motor local]] — cómo se mide el motor (984 casos + frases frescas) y los resultados de P1.
 - [[04-migraciones-supabase|Migraciones de Supabase]] — historial de la base de datos real y su estado actual.
 - [[05-bitacora-cambios|Bitácora de cambios]] — qué se construyó, en orden, y por qué.
 - [[06-pendientes|Pendientes y decisiones abiertas]] — lo que falta resolver o confirmar.

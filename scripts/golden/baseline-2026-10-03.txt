@@ -1,0 +1,56 @@
+# Línea base del motor local (antes de cambiar nada) — 2026-10-03
+# parser: commit 67fc2a3, catálogo: 864 palabras clave
+
+## split=all
+Casos evaluados: 989 (all) — pasan completos: 688 (69.6%)
+
+| Suite | Casos | Pasan | % |
+|---|---:|---:|---:|
+| clasificacion | 611 | 404 | 66.1% |
+| tipos | 60 | 23 | 38.3% |
+| gas | 24 | 20 | 83.3% |
+| typos | 69 | 66 | 95.7% |
+| sin_categoria | 40 | 36 | 90.0% |
+| monto | 59 | 46 | 78.0% |
+| multi_numero | 25 | 16 | 64.0% |
+| segmentos | 46 | 26 | 56.5% |
+| ajuste_cuenta | 55 | 51 | 92.7% |
+
+Clasificación — subcategoría correcta: 81.5% · categoría correcta: 83.8% · monto correcto: 81.3% · tipo: 99.8%
+Clasificación — sin respuesta (pregunta al usuario): 10.8% · respuesta equivocada con seguridad: 7.7%
+
+## split=dev
+Casos evaluados: 687 (dev) — pasan completos: 478 (69.6%)
+
+| Suite | Casos | Pasan | % |
+|---|---:|---:|---:|
+| clasificacion | 420 | 274 | 65.2% |
+| tipos | 44 | 17 | 38.6% |
+| gas | 17 | 15 | 88.2% |
+| typos | 48 | 45 | 93.8% |
+| sin_categoria | 28 | 27 | 96.4% |
+| monto | 41 | 32 | 78.0% |
+| multi_numero | 17 | 11 | 64.7% |
+| segmentos | 33 | 20 | 60.6% |
+| ajuste_cuenta | 39 | 37 | 94.9% |
+
+Clasificación — subcategoría correcta: 81.7% · categoría correcta: 83.8% · monto correcto: 80.0% · tipo: 99.8%
+Clasificación — sin respuesta (pregunta al usuario): 10.2% · respuesta equivocada con seguridad: 8.1%
+
+## split=holdout
+Casos evaluados: 302 (holdout) — pasan completos: 210 (69.5%)
+
+| Suite | Casos | Pasan | % |
+|---|---:|---:|---:|
+| clasificacion | 191 | 130 | 68.1% |
+| tipos | 16 | 6 | 37.5% |
+| gas | 7 | 5 | 71.4% |
+| typos | 21 | 21 | 100.0% |
+| sin_categoria | 12 | 9 | 75.0% |
+| monto | 18 | 14 | 77.8% |
+| multi_numero | 8 | 5 | 62.5% |
+| segmentos | 13 | 6 | 46.2% |
+| ajuste_cuenta | 16 | 14 | 87.5% |
+
+Clasificación — subcategoría correcta: 81.2% · categoría correcta: 83.8% · monto correcto: 84.3% · tipo: 100.0%
+Clasificación — sin respuesta (pregunta al usuario): 12.0% · respuesta equivocada con seguridad: 6.8%

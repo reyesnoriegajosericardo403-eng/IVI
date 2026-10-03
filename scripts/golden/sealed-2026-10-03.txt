@@ -1,0 +1,25 @@
+Casos evaluados: 118 (sealed) — pasan completos: 112 (94.9%)
+
+| Suite | Casos | Pasan | % |
+|---|---:|---:|---:|
+| fresco_2 | 118 | 112 | 94.9% |
+
+--- FALLAS ---
+[fresco_2-1108] «me corté el cabello 180»
+    esperado: categoryId=miscellaneous subcategoryId=misc_personal_care missing=
+    obtenido: categoryId=null subcategoryId=null missing=["category"]
+[fresco_2-1116] «compré vino para la cena 380»
+    esperado: subcategoryId=food_alcohol
+    obtenido: subcategoryId=food_restaurant
+[fresco_2-1129] «servicio de mi coche 1900»
+    esperado: categoryId=transport subcategoryId=trans_maintenance
+    obtenido: categoryId=food subcategoryId=food_restaurant
+[fresco_2-1144] «reparación de mi celular 900»
+    esperado: subcategoryId=misc_repairs
+    obtenido: subcategoryId=misc_electronics
+[fresco_2-1146] «frutas y verduras en el mercado 210»
+    esperado: subcategoryId=food_market
+    obtenido: subcategoryId=food_supermarket
+[fresco_2-1150] «compré una bici 4500»
+    esperado: categoryId=transport subcategoryId=trans_bike
+    obtenido: categoryId=miscellaneous subcategoryId=misc_shopping

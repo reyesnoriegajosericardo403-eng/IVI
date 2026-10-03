@@ -1,4 +1,5 @@
 import type { CategoryDef, SubcategoryDef } from './types';
+import { EXTRA_KEYWORDS } from './keywordExpansion';
 
 // Catálogo inicial de categorías (spec sección 10). El usuario puede
 // agregar, editar, eliminar y reordenar — esto es el set por defecto.
@@ -6,7 +7,7 @@ import type { CategoryDef, SubcategoryDef } from './types';
 // subcategoría nueva queda mapeada a un concepto real de Presupuesto en
 // src/data/budgetConcepts.ts (o marcada excludedFromBudget a propósito),
 // nunca huérfana en silencio.
-export const DEFAULT_CATEGORIES: CategoryDef[] = [
+const BASE_CATEGORIES: CategoryDef[] = [
   {
     id: 'miscellaneous',
     name: 'Miscelánea',
@@ -22,7 +23,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
       {
         id: 'misc_personal_care',
         name: 'Cuidado personal',
-        keywords: ['cuidado personal', 'barbería', 'salón', 'estética', 'corte de pelo', 'uñas', 'maquillaje', 'skincare', 'perfume', 'tinte', 'facial'],
+        keywords: ['cuidado personal', 'barbería', 'salón', 'estética', 'corte de pelo', 'maquillaje', 'skincare', 'perfume', 'tinte', 'facial'],
       },
       { id: 'misc_shopping', name: 'Compras', keywords: ['compras', 'compré', 'tienda', 'amazon', 'mercado libre'], excludedFromBudget: true },
       { id: 'misc_electronics', name: 'Electrónica', keywords: ['electrónica', 'celular', 'laptop', 'audífonos', 'cargador', 'cable usb', 'tablet', 'ipad'] },
@@ -94,7 +95,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
       {
         id: 'house_maintenance',
         name: 'Mantenimiento',
-        keywords: ['mantenimiento casa', 'cuota', 'predial', 'depósito', 'roomie', 'coperacha luz', 'reparación fuga', 'cerrajero', 'plomero', 'electricista'],
+        keywords: ['mantenimiento casa', 'cuota', 'predial', 'roomie', 'coperacha luz', 'reparación fuga', 'cerrajero', 'plomero', 'electricista'],
       },
       { id: 'house_services', name: 'Servicios', keywords: ['servicios'] },
       { id: 'house_condofees', name: 'Cuota de condominio', keywords: ['condominio', 'cuota de mantenimiento', 'administración', 'vigilancia edificio'] },
@@ -213,7 +214,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
       { id: 'life_pets', name: 'Mascotas', keywords: ['mascota', 'perro', 'gato', 'veterinario', 'croquetas', 'arena', 'estética canina'] },
       { id: 'life_donations', name: 'Donaciones', keywords: ['donación', 'donativo', 'colecta'] },
       { id: 'life_personal', name: 'Compras personales', keywords: ['compra personal'] },
-      { id: 'life_travel', name: 'Viajes', keywords: ['viaje', 'vuelo', 'hotel', 'airbnb'] },
+      { id: 'life_travel', name: 'Viajes', keywords: ['viaje', 'hotel', 'airbnb'] },
       { id: 'life_experiences', name: 'Experiencias', keywords: ['experiencia', 'tour', 'escapada'] },
       { id: 'life_other', name: 'Otros', keywords: [] },
       { id: 'life_family_support', name: 'Apoyo familiar', keywords: ['apoyo familiar', 'le di a mi mamá', 'le di a mi papá', 'ayuda familiar', 'dinero para la casa'] },
@@ -232,7 +233,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
       {
         id: 'health_doctor',
         name: 'Médico',
-        keywords: ['doctor', 'médico', 'consulta', 'análisis', 'laboratorio', 'pediatra', 'ginecólogo', 'urólogo', 'cardiólogo', 'gastroenterólogo', 'homeópata'],
+        keywords: ['doctor', 'médico', 'consulta', 'análisis', 'laboratorio', 'pediatra'],
       },
       {
         id: 'health_pharmacy',
@@ -387,6 +388,18 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
     ],
   },
 ];
+
+// Catálogo base + la ampliación de palabras clave (src/data/keywordExpansion.ts).
+// Las propias de cada subcategoría van primero; las ampliadas, después, sin duplicar.
+export const DEFAULT_CATEGORIES: CategoryDef[] = BASE_CATEGORIES.map((category) => ({
+  ...category,
+  subcategories: category.subcategories.map((sub) => {
+    const extra = EXTRA_KEYWORDS[sub.id];
+    if (!extra) return sub;
+    const seen = new Set(sub.keywords.map((k) => k.toLowerCase()));
+    return { ...sub, keywords: [...sub.keywords, ...extra.filter((k) => !seen.has(k.toLowerCase()))] };
+  }),
+}));
 
 export function findCategory(categoryId: string): CategoryDef | undefined {
   return DEFAULT_CATEGORIES.find((c) => c.id === categoryId);
