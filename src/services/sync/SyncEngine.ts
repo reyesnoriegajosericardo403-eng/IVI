@@ -6,7 +6,7 @@ import { repositoryByTable } from '@/services/supabase/repositories';
 import { useAppStore } from '@/store/useAppStore';
 import type { SyncTable } from './types';
 
-// Las 12 tablas de SyncTable, completas — un olvido aquí es una fuga
+// Las 13 tablas de SyncTable, completas — un olvido aquí es una fuga
 // silenciosa de una sola vía: pushPendingChanges() sí sube cualquier tabla
 // (usa repositoryByTable directo desde la cola), pero pullRemoteChanges()
 // solo trae de vuelta las que estén en esta lista. Encontrado en auditoría
@@ -26,7 +26,14 @@ const ALL_TABLES: SyncTable[] = [
   'liabilities',
   'net_worth_snapshots',
   'audit_log',
+  'category_mappings',
 ];
+
+// Tablas "opcionales": su migración puede no haberse corrido todavía en el Supabase de esta persona (o la
+// red fallar un momento). Un fallo aquí NUNCA debe frenar la sincronización de lo demás (cuentas, movimientos…).
+// Son tablas chicas (el tope local es de decenas de renglones por persona), así que se traen COMPLETAS en cada
+// ciclo en vez de usar `lastSyncedAt`: si un ciclo falla, el siguiente no deja huecos.
+const OPTIONAL_TABLES = new Set<SyncTable>(['category_mappings']);
 
 async function getUserId(): Promise<string | null> {
   if (!supabase) return null;
@@ -65,15 +72,19 @@ async function pushPendingChanges(userId: string): Promise<{ pushed: number; fai
   const { pendingSync, clearSyncQueueEntries } = useAppStore.getState();
   const succeeded: string[] = [];
   let failed = 0;
+  // Si una tabla opcional falla, se deja de insistir con ella en ESTE ciclo (sus entradas se quedan en la cola).
+  const skipTables = new Set<SyncTable>();
 
   for (const entry of pendingSync) {
     if (!entry.payload) continue;
+    if (skipTables.has(entry.table)) continue;
     try {
       const repo = repositoryByTable[entry.table];
       await repo.upsert(userId, entry.payload);
       succeeded.push(entry.id);
     } catch {
-      failed += 1;
+      if (OPTIONAL_TABLES.has(entry.table)) skipTables.add(entry.table);
+      else failed += 1;
     }
   }
 
@@ -151,6 +162,18 @@ async function pullRemoteChanges(userId: string): Promise<number> {
 
   for (const table of ALL_TABLES) {
     const repo = repositoryByTable[table];
+    if (OPTIONAL_TABLES.has(table)) {
+      try {
+        const records = await repo.list(userId);
+        if (records.length > 0) {
+          mergeRemoteRecords(table, records);
+          pulled += records.length;
+        }
+      } catch {
+        // tabla aún sin crear o red caída: se reintenta en el próximo ciclo, sin tumbar el resto
+      }
+      continue;
+    }
     const records = await repo.list(userId, lastSyncedAt ?? undefined);
     if (records.length > 0) {
       mergeRemoteRecords(table, records);

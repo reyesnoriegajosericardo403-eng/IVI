@@ -14,6 +14,14 @@ export interface SyncMeta {
   deletedAt?: string; // ISO — presente si el registro fue "eliminado" (soft delete)
 }
 
+// Una palabra que la persona le enseñó a VALU ("lo que aprendió de ti"). La llave es la propia palabra
+// (ya normalizada): `id` = `keyword`, así dos dispositivos que aprenden lo mismo nunca duplican.
+export interface CategoryMappingRecord extends SyncMeta {
+  keyword: string;
+  categoryId: string;
+  subcategoryId: string;
+}
+
 export type Currency = 'MXN' | 'USD' | 'EUR' | 'CAD' | 'GBP';
 
 export type TransactionType =

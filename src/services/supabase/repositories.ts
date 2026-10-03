@@ -4,6 +4,7 @@ import type {
   Budget,
   BudgetAssignment,
   BudgetTemplate,
+  CategoryMappingRecord,
   Goal,
   InvestmentPosition,
   Liability,
@@ -26,6 +27,8 @@ import {
   budgetTemplateFromRow,
   budgetTemplateToRow,
   budgetToRow,
+  categoryMappingFromRow,
+  categoryMappingToRow,
   goalFromRow,
   goalToRow,
   investmentFromRow,
@@ -49,7 +52,9 @@ import {
 function createSupabaseRepository<T>(
   table: string,
   toRow: (userId: string, record: T) => Record<string, unknown>,
-  fromRow: (row: any) => T
+  fromRow: (row: any) => T,
+  // Columnas que identifican un renglón al hacer upsert (por defecto, `id`).
+  onConflict = 'id'
 ): Repository<T> {
   return {
     async list(userId: string, updatedSince?: string): Promise<T[]> {
@@ -63,7 +68,7 @@ function createSupabaseRepository<T>(
     async upsert(userId: string, record: T): Promise<void> {
       if (!supabase) throw new Error('Supabase no está configurado todavía.');
       const row = toRow(userId, record);
-      const { error } = await supabase.from(table).upsert(row, { onConflict: 'id' });
+      const { error } = await supabase.from(table).upsert(row, { onConflict });
       if (error) throw error;
     },
   };
@@ -102,6 +107,14 @@ export const periodBudgetOverridesRepository: Repository<PeriodBudgetOverride> =
   periodBudgetOverrideFromRow
 );
 
+// La llave de esta tabla es (user_id, keyword), no un `id` aparte (ver migración 0022).
+export const categoryMappingsRepository: Repository<CategoryMappingRecord> = createSupabaseRepository(
+  'category_mappings',
+  categoryMappingToRow,
+  categoryMappingFromRow,
+  'user_id,keyword'
+);
+
 // Usado por el SyncEngine para resolver, a partir del nombre de tabla en
 // una entrada de la cola de sincronización, qué repositorio invocar.
 export const repositoryByTable: Record<SyncTable, Repository<any>> = {
@@ -117,4 +130,5 @@ export const repositoryByTable: Record<SyncTable, Repository<any>> = {
   liabilities: liabilitiesRepository,
   net_worth_snapshots: netWorthSnapshotsRepository,
   audit_log: auditLogRepository,
+  category_mappings: categoryMappingsRepository,
 };

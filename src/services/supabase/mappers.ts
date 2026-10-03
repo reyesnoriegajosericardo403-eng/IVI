@@ -6,6 +6,7 @@ import type {
   AuditLogEntry,
   Budget,
   BudgetAssignment,
+  CategoryMappingRecord,
   BudgetTemplate,
   Goal,
   InvestmentPosition,
@@ -465,6 +466,31 @@ export function periodBudgetOverrideFromRow(row: any): PeriodBudgetOverride {
     oneTimeDate: row.one_time_date ?? undefined,
     targetAccountId: row.target_account_id ?? undefined,
     includedAccountIds: row.included_account_ids && row.included_account_ids.length > 0 ? row.included_account_ids : undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+// ---------- Mapeo personal (palabra → categoría), migración 0022 ----------
+
+export function categoryMappingToRow(userId: string, m: CategoryMappingRecord) {
+  return {
+    user_id: userId,
+    keyword: m.keyword,
+    category_id: m.categoryId,
+    subcategory_id: m.subcategoryId,
+    created_at: m.createdAt,
+    deleted_at: m.deletedAt ?? null,
+  };
+}
+
+export function categoryMappingFromRow(row: any): CategoryMappingRecord {
+  return {
+    id: row.keyword,
+    keyword: row.keyword,
+    categoryId: row.category_id,
+    subcategoryId: row.subcategory_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at ?? undefined,

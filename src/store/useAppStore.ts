@@ -33,6 +33,7 @@ import type {
   Budget,
   BudgetAssignment,
   BudgetTemplate,
+  CategoryMappingRecord,
   Currency,
   Goal,
   PeriodBudgetOverride,
@@ -140,9 +141,13 @@ interface AppState {
   // "Memoria" de correcciones de categoría — cuando la persona le dice a
   // VALU cuál es la categoría correcta de algo que no supo clasificar
   // solo, se recuerda esa palabra para la próxima vez, sin depender de
-  // ningún proveedor de IA (spec: catálogo v7, "mapeo personal"). Solo
-  // vive en este dispositivo — no se sincroniza a Supabase todavía.
+  // ningún proveedor de IA (spec: catálogo v7, "mapeo personal"). Viaja con
+  // la cuenta (tabla `category_mappings`, migración 0022): se sincroniza como lo demás y solo la persona
+  // dueña lo ve (RLS). Es la capa PERSONAL de la red de palabras; el vocabulario común va en la app.
   customCategoryMappings: Record<string, CustomCategoryMapping>;
+  // true cuando las palabras que ya existían ANTES de la sincronización se encolaron una vez para subirse.
+  customMappingsSeeded: boolean;
+  seedMappingSync: () => void;
   learnCategoryMapping: (rawText: string, categoryId: string, subcategoryId: string) => void;
   clearCustomCategoryMappings: () => void;
 
@@ -306,6 +311,39 @@ interface AppState {
   resetAll: () => void;
 }
 
+// Un renglón de `category_mappings` a partir de una palabra aprendida (la llave es la propia palabra).
+function mappingRecord(keyword: string, m: CustomCategoryMapping, deletedAt?: string): CategoryMappingRecord {
+  return {
+    id: keyword,
+    keyword,
+    categoryId: m.categoryId,
+    subcategoryId: m.subcategoryId,
+    createdAt: m.createdAt ?? m.updatedAt,
+    updatedAt: deletedAt ?? m.updatedAt,
+    deletedAt,
+  };
+}
+
+// Mezcla lo que llegó de la nube con lo local: gana la corrección más reciente por palabra; un borrado
+// (deletedAt) quita la palabra local solo si no se volvió a aprender DESPUÉS.
+export function mergeRemoteMappings(
+  local: Record<string, CustomCategoryMapping>,
+  remote: CategoryMappingRecord[]
+): Record<string, CustomCategoryMapping> {
+  const next = { ...local };
+  for (const r of remote) {
+    const mine = next[r.keyword];
+    if (r.deletedAt) {
+      if (mine && mine.updatedAt <= r.updatedAt) delete next[r.keyword];
+      continue;
+    }
+    if (!mine || mine.updatedAt < r.updatedAt) {
+      next[r.keyword] = { categoryId: r.categoryId, subcategoryId: r.subcategoryId, updatedAt: r.updatedAt, createdAt: r.createdAt };
+    }
+  }
+  return next;
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => {
@@ -376,6 +414,7 @@ export const useAppStore = create<AppState>()(
         cetesRates: null,
         budgetPeriods: DEFAULT_BUDGET_PERIODS,
         customCategoryMappings: {},
+        customMappingsSeeded: false,
         conversations: [],
         chatMessages: [],
         activeConversationId: null,
@@ -389,9 +428,10 @@ export const useAppStore = create<AppState>()(
           const keywords = extractLearnableKeywords(rawText);
           if (keywords.length === 0) return;
           const updatedAt = new Date().toISOString();
+          const dropped: Array<[string, CustomCategoryMapping]> = [];
           set((s) => {
             const next = { ...s.customCategoryMappings };
-            for (const kw of keywords) next[kw] = { categoryId, subcategoryId, updatedAt };
+            for (const kw of keywords) next[kw] = { categoryId, subcategoryId, updatedAt, createdAt: next[kw]?.createdAt ?? updatedAt };
             // Tope de MAX_CUSTOM_MAPPINGS palabras por cuenta — si se pasa,
             // se olvidan primero las correcciones más viejas (por
             // updatedAt), nunca las más recientes.
@@ -399,12 +439,33 @@ export const useAppStore = create<AppState>()(
             if (entries.length > MAX_CUSTOM_MAPPINGS) {
               entries.sort((a, b) => a[1].updatedAt.localeCompare(b[1].updatedAt));
               const toDrop = entries.length - MAX_CUSTOM_MAPPINGS;
-              for (let i = 0; i < toDrop; i++) delete next[entries[i][0]];
+              for (let i = 0; i < toDrop; i++) {
+                dropped.push([entries[i][0], entries[i][1]]);
+                delete next[entries[i][0]];
+              }
             }
             return { customCategoryMappings: next };
           });
+          // A la cola de sincronización: lo aprendido sube; lo que el tope olvidó se marca borrado para que
+          // otro dispositivo no lo vuelva a traer.
+          const current = get().customCategoryMappings;
+          for (const kw of keywords) if (current[kw]) enqueue('category_mappings', kw, 'upsert', mappingRecord(kw, current[kw]) as unknown as Record<string, unknown>);
+          for (const [kw, m] of dropped) enqueue('category_mappings', kw, 'delete', mappingRecord(kw, m, updatedAt) as unknown as Record<string, unknown>);
         },
-        clearCustomCategoryMappings: () => set({ customCategoryMappings: {} }),
+        clearCustomCategoryMappings: () => {
+          const now = new Date().toISOString();
+          const before = get().customCategoryMappings;
+          set({ customCategoryMappings: {} });
+          // "Olvidar lo aprendido" también debe llegar a la nube y a los demás dispositivos.
+          for (const [kw, m] of Object.entries(before)) enqueue('category_mappings', kw, 'delete', mappingRecord(kw, m, now) as unknown as Record<string, unknown>);
+        },
+        seedMappingSync: () => {
+          if (get().customMappingsSeeded) return;
+          for (const [kw, m] of Object.entries(get().customCategoryMappings)) {
+            enqueue('category_mappings', kw, 'upsert', mappingRecord(kw, m) as unknown as Record<string, unknown>);
+          }
+          set({ customMappingsSeeded: true });
+        },
 
         setLiveQuotes: (quotes) =>
           set((s) => {
@@ -1188,6 +1249,8 @@ export const useAppStore = create<AppState>()(
                 return { netWorthHistory: mergeByUpdatedAt(s.netWorthHistory, records as NetWorthSnapshot[]) };
               case 'audit_log':
                 return { auditLog: mergeByUpdatedAt(s.auditLog, records as AuditLogEntry[]) };
+              case 'category_mappings':
+                return { customCategoryMappings: mergeRemoteMappings(s.customCategoryMappings, records as CategoryMappingRecord[]) };
               default:
                 return {};
             }
@@ -1224,6 +1287,7 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
         state?.recoverInterruptedPlans();
+        state?.seedMappingSync();
         state?.setHasHydrated(true);
       },
       // liveQuotes/lastQuotesFetchedAt/cetesRates quedan fuera a propósito

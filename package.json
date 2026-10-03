@@ -44,7 +44,7 @@
     "web": "expo start --web",
     "build:web": "expo export --platform web",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/golden/run-golden.cjs --min 100 && node scripts/golden/catalogo.cjs && node scripts/golden/planes.cjs && node scripts/golden/ejecutor.cjs && node scripts/golden/audit-budget.cjs && node scripts/golden/robustez.cjs",
+    "test": "node scripts/golden/run-golden.cjs --min 100 && node scripts/golden/catalogo.cjs && node scripts/golden/planes.cjs && node scripts/golden/ejecutor.cjs && node scripts/golden/sync-mapeo.cjs && node scripts/golden/audit-budget.cjs && node scripts/golden/robustez.cjs",
     "size": "node scripts/size-report.cjs"
   },
   "private": true

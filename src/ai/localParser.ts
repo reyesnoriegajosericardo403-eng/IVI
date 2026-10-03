@@ -765,6 +765,7 @@ export interface CustomCategoryMapping {
   categoryId: string;
   subcategoryId: string;
   updatedAt: string; // ISO — la corrección más reciente gana si dos se pisan
+  createdAt?: string; // ISO — cuándo se aprendió por primera vez (viaja con la sincronización)
 }
 
 // Conectores/verbos comunes que NUNCA deben aprenderse como pista de

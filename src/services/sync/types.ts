@@ -15,7 +15,8 @@ export type SyncTable =
   | 'investments'
   | 'liabilities'
   | 'net_worth_snapshots'
-  | 'audit_log';
+  | 'audit_log'
+  | 'category_mappings';
 
 export type SyncOp = 'upsert' | 'delete';
 
