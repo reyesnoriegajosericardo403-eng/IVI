@@ -1,6 +1,8 @@
 import type { CopilotContext } from '@/ai/localCopilot';
 import { buildBudgetLines, computeNetWorth, spendByCategory, spendInPeriod } from '@/utils/finance';
 
+import { toISODate } from '@/utils/date';
+
 import type { ActionAgentContext } from '../types';
 
 // Resumen compacto y curado de los datos reales del usuario — nunca se le
@@ -67,10 +69,12 @@ export function buildFinancialContextSummary(ctx: CopilotContext) {
 // texto adversario.
 export function buildActionContextSummary(ctx: ActionAgentContext) {
   return {
+    // para que el modelo pueda traducir "ayer" o "el viernes" a una fecha exacta
+    fecha_de_hoy: toISODate(new Date()),
     moneda_principal: ctx.profile.primaryCurrency,
     cuentas: ctx.accounts.map((a) => ({ id: a.id, nombre: a.name, tipo: a.type, saldo: a.balance, moneda: a.currency })),
-    metas: ctx.goals.map((g) => ({ id: g.id, nombre: g.name, actual: g.currentAmount, objetivo: g.targetAmount, moneda: g.currency })),
-    deudas: ctx.liabilities.map((l) => ({ id: l.id, institucion: l.institution, tipo: l.type, saldo: l.balance, moneda: l.currency })),
+    metas: ctx.goals.map((g) => ({ id: g.id, nombre: g.name, actual: g.currentAmount, objetivo: g.targetAmount, fecha_objetivo: g.targetDate, moneda: g.currency })),
+    deudas: ctx.liabilities.map((l) => ({ id: l.id, institucion: l.institution, tipo: l.type, saldo: l.balance, vencimiento: l.dueDate, moneda: l.currency })),
     presupuesto_actual: ctx.templateBudgetLines
       .filter((l) => !l.deletedAt)
       .map((l) => ({ id: l.id, categoria_id: l.categoryId, monto_mensual: l.monthlyAmount, moneda: l.currency })),

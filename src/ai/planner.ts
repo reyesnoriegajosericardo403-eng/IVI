@@ -15,7 +15,9 @@ import {
   type ResolveResult,
 } from './actionCatalog';
 import type { AIActionType, InterpretedMessage, MissingField, PendingClarification, PlanEffect, ResolvedAction } from './chatTypes';
+import { extractDate } from './dates';
 import { extractAmount, normalize, parseCaptureText } from './localParser';
+import { parseISODate } from '@/utils/date';
 import { accountDeltasForTransaction, reverseDeltas } from '@/utils/ledger';
 import { formatCurrency } from '@/utils/format';
 import type { Transaction } from '@/data/types';
@@ -48,12 +50,14 @@ const START_VERBS = [
   'gasté', 'gaste', 'pagué', 'pague', 'compré', 'compre', 'cobré', 'cobre', 'recibí', 'recibi', 'me depositaron', 'me pagaron',
 ];
 const START = `(?:${START_VERBS.map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?=\\s|$)`;
+// "…y el sábado compré…", "…y hoy pagué…": una instrucción nueva puede abrir con el día en que ocurrió
+const LEAD_DAY = '(?:(?:el\\s+(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)|el\\s+\\d{1,2}(?:\\s+de\\s+\\p{L}+)?|ayer|hoy|antier|anteayer|anoche|mañana)\\s+)?';
 const SPLIT_RE = new RegExp(
   [
     '\\s*[;\\n]+\\s*',
     `\\s*[.,]\\s+(?=(?:y\\s+|luego\\s+|después\\s+|despues\\s+)?${START})`,
     '\\s+(?:y\\s+)?(?:luego|después|despues|además|ademas|también|tambien|enseguida)\\s+(?:y\\s+)?',
-    `\\s+y\\s+(?=${START})`,
+    `\\s+y\\s+(?=${LEAD_DAY}${START})`,
   ].join('|'),
   'iu'
 );
@@ -68,6 +72,9 @@ export function splitPlanSegments(rawText: string): string[] {
 // Verbos que indican "anota esto que ya pasó / pídele al sistema que lo registre". Sin uno de estos, un
 // trozo que solo trae monto y tema ("la renta 8000") NO se vuelve un movimiento por su cuenta.
 const RECORD_VERB_RE = /\b(gaste|pague|compre|cobre|recibi|registra|registrame|registrar|anota|anotame|apunta|apuntame|me depositaron|me pagaron|me cayo)\b/;
+
+// "Hoy" del planificador: el de la propia validación (las pruebas lo fijan) o el del dispositivo.
+const nowOf = (ctx: ActionValidationContext): Date => (ctx.today ? parseISODate(ctx.today) : new Date());
 
 // ---------- Resolver cada trozo ----------
 
@@ -93,7 +100,7 @@ function accountHintFor(normalized: string, ctx: ActionValidationContext): strin
 function resolveRecordSegment(segment: string, ctx: ActionValidationContext): ResolveResult | null {
   const normalized = normalize(segment);
   if (!RECORD_VERB_RE.test(normalized)) return null;
-  const parsed = parseCaptureText(segment);
+  const parsed = parseCaptureText(segment, nowOf(ctx));
   if (parsed.type !== 'expense' && parsed.type !== 'income') return null; // ahorro/inversión: aún no son acciones del catálogo
   return resolveAddTransaction(
     {
@@ -102,13 +109,14 @@ function resolveRecordSegment(segment: string, ctx: ActionValidationContext): Re
       accountNameHint: accountHintFor(normalized, ctx),
       categoryId: parsed.categoryId ?? undefined,
       subcategoryId: parsed.subcategoryId ?? undefined,
+      date: parsed.dateIso, // "ayer", "el viernes"… (solo días pasados)
     },
     ctx
   );
 }
 
 function resolveSegment(segment: string, ctx: ActionValidationContext, allowRecord: boolean): ResolveResult | null {
-  const intent = detectChatIntent(segment, ctx);
+  const intent = detectChatIntent(segment, ctx, nowOf(ctx));
   if (intent) return intent;
   return allowRecord ? resolveRecordSegment(segment, ctx) : null;
 }
@@ -131,12 +139,32 @@ function fromSingle(r: ResolveResult | null): PlanOutcome {
 
 export function planFromText(rawText: string, ctx: ActionValidationContext): PlanOutcome {
   const segments = splitPlanSegments(rawText);
-  const whole = () => detectChatIntent(rawText, ctx);
-  if (segments.length <= 1) return fromSingle(whole());
+  const whole = () => detectChatIntent(rawText, ctx, nowOf(ctx));
+  if (segments.length <= 1) {
+    const single = fromSingle(whole());
+    // Respaldo: "Banorte vence el 25 y Coppel vence el 28" no trae un verbo tras la "y", pero cada lado es una
+    // instrucción COMPLETA. Si el mensaje entero no se entendió (o era ambiguo), se prueba partirlo en cada "y".
+    if (single.kind === 'none' || single.kind === 'reply') return splitOnAnd(rawText, ctx) ?? single;
+    return single;
+  }
   if (segments.length > MAX_PLAN_STEPS) {
     return { kind: 'reply', reply: `Son demasiadas instrucciones juntas (máximo ${MAX_PLAN_STEPS}). Mándalas en dos mensajes.` };
   }
   return combineResults(segments, segments.map((seg) => resolveSegment(seg, ctx, true)), whole);
+}
+
+// Parte el mensaje en una "y" (de las primeras 3) y exige que AMBOS lados sean una acción completa y válida.
+function splitOnAnd(rawText: string, ctx: ActionValidationContext): PlanOutcome | null {
+  const matches = [...rawText.matchAll(/\s+y\s+/gi)].slice(0, 3);
+  for (const m of matches) {
+    const left = rawText.slice(0, m.index).trim();
+    const right = rawText.slice(m.index! + m[0].length).trim();
+    if (left.length < 5 || right.length < 5) continue;
+    const a = resolveSegment(left, ctx, true);
+    const b = resolveSegment(right, ctx, true);
+    if (a?.ok && b?.ok) return { kind: 'plan', steps: [toStep(a), toStep(b)] };
+  }
+  return null;
 }
 
 // Junta los resultados de resolver cada instrucción (vengan de reglas locales o de un modelo de IA: el
@@ -210,7 +238,12 @@ export function answerClarification(pending: PendingClarification, answer: strin
   if (!missing) return null;
 
   const candidate = { ...pending.candidate };
-  if (missing.field === 'amount') {
+  if (missing.field === 'date') {
+    // un movimiento real solo puede ser de hoy o pasado; una fecha objetivo / vencimiento, futura
+    const day = extractDate(answer, nowOf(ctx), { prefer: pending.type === 'add_transaction' ? 'past' : 'future' });
+    if (!day || words.length > 8) return null;
+    candidate[missing.slot] = day.iso;
+  } else if (missing.field === 'amount') {
     const amount = extractAmount(answer);
     if (amount === null || words.length > 8) return null;
     candidate[missing.slot] = amount;
@@ -282,6 +315,14 @@ export function previewPlan(steps: PlannedStep[], ctx: ActionValidationContext):
       case 'contribute_to_goal': {
         const e = goals.get(args.goalId);
         if (e) e.now += args.amount;
+        break;
+      }
+      case 'withdraw_from_goal': {
+        const e = goals.get(args.goalId);
+        if (e) {
+          e.now -= args.amount;
+          if (e.now < 0) warnings.push(`La meta "${e.g.name}" quedaría en negativo después del paso ${n}.`);
+        }
         break;
       }
       case 'update_liability_balance': {

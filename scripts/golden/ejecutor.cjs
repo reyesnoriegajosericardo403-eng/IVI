@@ -118,7 +118,7 @@ const S = () => useAppStore.getState();
   S().addGoal({ name: 'Viaje', targetAmount: 20000, currentAmount: 3000, currency: 'MXN' });
   const accounts = () => S().accounts.filter((a) => !a.deletedAt);
   const bal = (n) => accounts().find((a) => a.name === n).balance;
-  const ctxNow = () => ({ accounts: S().accounts, goals: S().goals, liabilities: S().liabilities, templateBudgetLines: S().templateBudgetLines, recentTransactions: S().transactions.slice(0, 20), primaryCurrency: 'MXN' });
+  const ctxNow = () => ({ accounts: S().accounts, goals: S().goals, liabilities: S().liabilities, templateBudgetLines: S().templateBudgetLines, recentTransactions: S().transactions.slice(0, 20), primaryCurrency: 'MXN', today: '2026-10-03' });
 
   const makePlanMessage = (text) => {
     const o = planFromText(text, ctxNow());
@@ -184,6 +184,55 @@ const S = () => useAppStore.getState();
     useAppStore.setState((s) => ({ chatMessages: s.chatMessages.map((m) => (m.id === id ? { ...m, plan: { ...m.plan, status: 'applying' } } : m)) }));
     S().recoverInterruptedPlans();
     assert.strictEqual(S().chatMessages.find((m) => m.id === id).plan.status, 'partially_applied');
+  });
+
+  // ---- acciones nuevas (P2.3) con el store real ----
+  await t('store: retirar de meta + fecha de meta + gasto de AYER en un solo plan', () => {
+    S().resetAll();
+    S().addAccount({ name: 'BBVA', type: 'bank', currency: 'MXN', balance: 5000 });
+    S().addAccount({ name: 'Nu', type: 'savings', currency: 'MXN', balance: 1200 });
+    S().addGoal({ name: 'Viaje', targetAmount: 20000, currentAmount: 3000, currency: 'MXN', targetDate: '2026-12-01' });
+    const id = makePlanMessage('registra 200 de tacos ayer en BBVA; retira 100 de mi meta Viaje; cambia la fecha de mi meta Viaje al 15 de enero');
+    const r = S().aiApplyPlan(id);
+    assert.deepStrictEqual({ ok: r.ok, status: r.status }, { ok: true, status: 'applied' }, JSON.stringify(r));
+    const goal = S().goals[0];
+    assert.strictEqual(goal.currentAmount, 2900);
+    assert.strictEqual(goal.targetDate, '2027-01-15');
+    const tx = S().transactions[S().transactions.length - 1];
+    const d = new Date(tx.date);
+    const localDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    assert.strictEqual(localDay, '2026-10-02', `el gasto debió quedar en el día de ayer, quedó ${tx.date}`);
+    assert.strictEqual(accounts().find((a) => a.name === 'BBVA').balance, 4800);
+  });
+  await t('store: vencimiento de una deuda y meta nueva con fecha', () => {
+    S().addLiability({ institution: 'Banorte', type: 'credit_card', balance: 8000, currency: 'MXN', dueDate: '2026-10-20' });
+    const id = makePlanMessage('cambia el vencimiento de la deuda Banorte al 25 de octubre y crea la meta Laptop de 20000 para el 15 de diciembre');
+    assert.strictEqual(S().aiApplyPlan(id).status, 'applied');
+    assert.strictEqual(S().liabilities[0].dueDate, '2026-10-25');
+    const laptop = S().goals.find((g) => g.name === 'Laptop');
+    assert(laptop && laptop.targetAmount === 20000 && laptop.targetDate === '2026-12-15', JSON.stringify(laptop));
+  });
+  await t('store: retirar más de lo que la meta tiene AL APLICAR (cambió después de proponer) → falla ese paso, nada se inventa', () => {
+    const goalId = S().goals.find((g) => g.name === 'Viaje').id;
+    const id = makePlanMessage('aporta 10 a mi meta Viaje; retira 2000 de mi meta Viaje');
+    S().contributeToGoal(goalId, -(S().goals.find((g) => g.id === goalId).currentAmount - 500)); // la meta se vació mientras tanto
+    const before = S().goals.find((g) => g.id === goalId).currentAmount;
+    const r = S().aiApplyPlan(id);
+    assert.strictEqual(r.status, 'partially_applied');
+    const stored = S().chatMessages.find((m) => m.id === id).plan;
+    assert.deepStrictEqual(stored.steps.map((s) => s.status), ['applied', 'failed']);
+    assert(stored.steps[1].error.includes('ya solo tiene'), stored.steps[1].error);
+    assert.strictEqual(S().goals.find((g) => g.id === goalId).currentAmount, before + 10);
+  });
+  await t('store: auditoría de las acciones nuevas', () => {
+    const goalId = S().goals.find((g) => g.name === 'Viaje').id;
+    const n0 = S().auditLog.length;
+    const id = makePlanMessage('retira 20 de mi meta Viaje; cambia la fecha de mi meta Viaje al 20 de febrero');
+    S().aiApplyPlan(id);
+    const planId = S().chatMessages.find((m) => m.id === id).plan.id.slice(0, 8);
+    const mine = S().auditLog.slice(0, S().auditLog.length - n0).filter((e) => e.summary.includes(planId));
+    assert.strictEqual(mine.length, 2, JSON.stringify(mine.map((e) => e.summary)));
+    assert(mine.every((e) => e.entityType === 'goal' && e.entityId === goalId));
   });
 
   console.log(`\nEjecutor: ${ok} OK, ${fail} fallan`);

@@ -17,10 +17,13 @@ export type AIActionType =
   | 'delete_account'
   | 'add_goal'
   | 'contribute_to_goal'
+  | 'withdraw_from_goal'
   | 'update_goal_target'
+  | 'update_goal_date'
   | 'delete_goal'
   | 'add_liability'
   | 'update_liability_balance'
+  | 'update_liability_due_date'
   | 'delete_liability'
   | 'set_budget_line'
   | 'delete_budget_line'
@@ -40,6 +43,8 @@ export interface AddTransactionArgs {
   accountId: string;
   accountName: string;
   merchant?: string;
+  // Día PASADO (o hoy) en que ocurrió, como mediodía local en ISO; sin esto es "ahora".
+  date?: string;
 }
 export interface AddAccountArgs {
   name: string;
@@ -55,12 +60,29 @@ export interface AddGoalArgs {
   name: string;
   targetAmount: number;
   currency: Currency;
+  targetDate?: string; // AAAA-MM-DD
 }
 export interface ContributeToGoalArgs {
   goalId: string;
   goalName: string;
   amount: number;
   currency: Currency;
+}
+export interface WithdrawFromGoalArgs {
+  goalId: string;
+  goalName: string;
+  amount: number;
+  currency: Currency;
+}
+export interface UpdateGoalDateArgs {
+  goalId: string;
+  goalName: string;
+  targetDate: string; // AAAA-MM-DD
+}
+export interface UpdateLiabilityDueDateArgs {
+  liabilityId: string;
+  institution: string;
+  dueDate: string; // AAAA-MM-DD
 }
 export interface UpdateGoalTargetArgs {
   goalId: string;
@@ -121,10 +143,13 @@ export type ResolvedAction =
   | { type: 'delete_account'; args: DeleteAccountArgs }
   | { type: 'add_goal'; args: AddGoalArgs }
   | { type: 'contribute_to_goal'; args: ContributeToGoalArgs }
+  | { type: 'withdraw_from_goal'; args: WithdrawFromGoalArgs }
   | { type: 'update_goal_target'; args: UpdateGoalTargetArgs }
+  | { type: 'update_goal_date'; args: UpdateGoalDateArgs }
   | { type: 'delete_goal'; args: DeleteGoalArgs }
   | { type: 'add_liability'; args: AddLiabilityArgs }
   | { type: 'update_liability_balance'; args: UpdateLiabilityBalanceArgs }
+  | { type: 'update_liability_due_date'; args: UpdateLiabilityDueDateArgs }
   | { type: 'delete_liability'; args: DeleteLiabilityArgs }
   | { type: 'set_budget_line'; args: SetBudgetLineArgs }
   | { type: 'delete_budget_line'; args: DeleteBudgetLineArgs }

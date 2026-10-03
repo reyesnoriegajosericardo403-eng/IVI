@@ -1,0 +1,24 @@
+SELLADO planificador: 48/55 (87.3%) · single 26/29 · none 4/4 · clarification 7/7 · plan 11/15
+
+--- FALLAS ---
+«pásale 300 de BBVA a Nu»
+    esperado: {"kind":"single","type":"transfer_between_accounts","args":{"fromAccountName":"BBVA","toAccountName":"Nu","amount":300}}
+    obtenido: none
+«transfiérele 1000 a Nu desde BBVA»
+    esperado: {"kind":"single","type":"transfer_between_accounts","args":{"fromAccountName":"BBVA","toAccountName":"Nu","amount":1000}}
+    obtenido: none
+«crea una meta de ahorro llamada Casa con 200000»
+    esperado: {"kind":"single","type":"add_goal","args":{"name":"Casa","targetAmount":200000}}
+    obtenido: single add_goal {"name":"ahorro llamada Casa","targetAmount":200000,"currency":"MXN"}
+«agrega la meta Cámara de 12000 y aporta 500 a la meta Cámara»
+    esperado: {"kind":"plan","types":["add_goal","contribute_to_goal"],"args":[]}
+    obtenido: clarification ask goal
+«Banorte vence el 25 y Coppel vence el 28»
+    esperado: {"kind":"plan","types":["update_liability_due_date","update_liability_due_date"],"args":[{"institution":"Banorte","dueDate":"2026-10-25"},{"institution":"Coppel","dueDate":"2026-10-28"}]}
+    obtenido: reply Mencionaste más de una deuda. Mándame un vencimiento por mensaje, o escríbelos s
+«el viernes pagué 450 de luz en BBVA y el sábado compré 120 de pan en Morralla»
+    esperado: {"kind":"plan","types":["add_transaction","add_transaction"],"args":[{"amount":450,"subcategoryId":"house_electricity"},{"amount":120,"accountName":"Morralla"}]}
+    obtenido: none
+«ayer pagué 300 de gasolina en BBVA y hoy compré 90 de café en Morralla»
+    esperado: {"kind":"plan","types":["add_transaction","add_transaction"],"args":[{"amount":300,"date":"yesterday"},{"amount":90}]}
+    obtenido: none

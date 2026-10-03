@@ -21,8 +21,11 @@ import {
   type DeleteTransactionArgs,
   type SetBudgetLineArgs,
   type TransferBetweenAccountsArgs,
+  type UpdateGoalDateArgs,
   type UpdateGoalTargetArgs,
   type UpdateLiabilityBalanceArgs,
+  type UpdateLiabilityDueDateArgs,
+  type WithdrawFromGoalArgs,
 } from '@/ai/chatTypes';
 import { executePlan, recoverInterruptedPlan } from '@/ai/planExecutor';
 import { extractLearnableKeywords, type CustomCategoryMapping } from '@/ai/localParser';
@@ -1007,7 +1010,7 @@ export const useAppStore = create<AppState>()(
                 subcategoryId: args.subcategoryId,
                 accountId: args.accountId,
                 merchant: args.merchant,
-                date: new Date().toISOString(),
+                date: args.date ?? new Date().toISOString(),
                 origin: 'manual',
                 notes: 'Agregado desde el chat de IA',
               });
@@ -1048,7 +1051,7 @@ export const useAppStore = create<AppState>()(
             }
             case 'add_goal': {
               const args = action.args as unknown as AddGoalArgs;
-              state.addGoal({ name: args.name, targetAmount: args.targetAmount, currentAmount: 0, currency: args.currency });
+              state.addGoal({ name: args.name, targetAmount: args.targetAmount, currentAmount: 0, currency: args.currency, targetDate: args.targetDate });
               return { ok: true };
             }
             case 'contribute_to_goal': {
@@ -1056,6 +1059,29 @@ export const useAppStore = create<AppState>()(
               const goal = state.goals.find((g) => g.id === args.goalId && !g.deletedAt);
               if (!goal) return { ok: false, error: `La meta "${args.goalName}" ya no existe.` };
               state.contributeToGoal(args.goalId, args.amount);
+              return { ok: true };
+            }
+            case 'withdraw_from_goal': {
+              const args = action.args as unknown as WithdrawFromGoalArgs;
+              const goal = state.goals.find((g) => g.id === args.goalId && !g.deletedAt);
+              if (!goal) return { ok: false, error: `La meta "${args.goalName}" ya no existe.` };
+              // La propuesta pudo armarse hace rato: se vuelve a comprobar contra lo que la meta tiene AHORA.
+              if (args.amount > goal.currentAmount) return { ok: false, error: `La meta "${args.goalName}" ya solo tiene ${goal.currentAmount}: no alcanza para retirar ${args.amount}.` };
+              state.contributeToGoal(args.goalId, -args.amount);
+              return { ok: true };
+            }
+            case 'update_goal_date': {
+              const args = action.args as unknown as UpdateGoalDateArgs;
+              const goal = state.goals.find((g) => g.id === args.goalId && !g.deletedAt);
+              if (!goal) return { ok: false, error: `La meta "${args.goalName}" ya no existe.` };
+              state.updateGoal(args.goalId, { targetDate: args.targetDate });
+              return { ok: true };
+            }
+            case 'update_liability_due_date': {
+              const args = action.args as unknown as UpdateLiabilityDueDateArgs;
+              const liability = state.liabilities.find((l) => l.id === args.liabilityId && !l.deletedAt);
+              if (!liability) return { ok: false, error: `La deuda "${args.institution}" ya no existe.` };
+              state.updateLiability(args.liabilityId, { dueDate: args.dueDate });
               return { ok: true };
             }
             case 'update_goal_target': {
@@ -1178,6 +1204,15 @@ export const useAppStore = create<AppState>()(
                   break;
                 case 'update_goal_target':
                   logAudit({ entityType: 'goal', entityId: a.goalId, action: 'update', summary: label, newValue: a.targetAmount });
+                  break;
+                case 'withdraw_from_goal':
+                  logAudit({ entityType: 'goal', entityId: a.goalId, action: 'update', summary: label, newValue: -a.amount });
+                  break;
+                case 'update_goal_date':
+                  logAudit({ entityType: 'goal', entityId: a.goalId, action: 'update', summary: label });
+                  break;
+                case 'update_liability_due_date':
+                  logAudit({ entityType: 'liability', entityId: a.liabilityId, action: 'update', summary: label });
                   break;
                 case 'delete_goal':
                   logAudit({ entityType: 'goal', entityId: a.goalId, action: 'delete', summary: label });

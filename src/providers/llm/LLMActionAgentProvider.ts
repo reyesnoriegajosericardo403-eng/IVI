@@ -11,8 +11,11 @@ import {
   resolveDeleteTransaction,
   resolveSetBudgetLine,
   resolveTransferBetweenAccounts,
+  resolveUpdateGoalDate,
   resolveUpdateGoalTarget,
   resolveUpdateLiabilityBalance,
+  resolveUpdateLiabilityDueDate,
+  resolveWithdrawFromGoal,
   type ActionValidationContext,
   type ResolveResult,
 } from '@/ai/actionCatalog';
@@ -40,15 +43,18 @@ Si el mensaje es una pregunta o no pide modificar nada: "actions" es [], y "repl
 
 Si el mensaje pide agregar, quitar o cambiar datos, cada elemento de "actions" debe ser EXACTAMENTE uno de estos tipos (nunca inventes otro tipo; una acción por cada cosa distinta que se pidió, en orden; usa el "id" real que aparece en los datos de abajo cuando se pida, nunca inventes uno):
 
-- {"type":"add_transaction","transactionType":"expense"|"income","amount":number,"accountNameHint":"string","categoryId":"id del catálogo o null","subcategoryId":"id del catálogo o null"} — categoryId/subcategoryId deben ser de este catálogo (o null si no aplica): ${JSON.stringify(CATEGORY_CATALOG)}
+- {"type":"add_transaction","transactionType":"expense"|"income","amount":number,"accountNameHint":"string","categoryId":"id del catálogo o null","subcategoryId":"id del catálogo o null","date":"AAAA-MM-DD o null"} — "date" solo si la persona dijo un día pasado ("ayer", "el viernes"); calcúlalo con "fecha_de_hoy" de los datos, nunca de futuro; categoryId/subcategoryId deben ser de este catálogo (o null si no aplica): ${JSON.stringify(CATEGORY_CATALOG)}
 - {"type":"add_account","name":"string","accountTypeHint":"banco"|"efectivo"|"tarjeta"|"ahorro"|"inversion","balance":number}
 - {"type":"delete_account","accountNameHint":"string"}
-- {"type":"add_goal","name":"string","targetAmount":number}
+- {"type":"add_goal","name":"string","targetAmount":number,"targetDate":"AAAA-MM-DD o null"}
 - {"type":"contribute_to_goal","goalNameHint":"string","amount":number}
+- {"type":"withdraw_from_goal","goalNameHint":"string","amount":number} — sacar dinero ahorrado en una meta
 - {"type":"update_goal_target","goalNameHint":"string","targetAmount":number}
+- {"type":"update_goal_date","goalNameHint":"string","targetDate":"AAAA-MM-DD"} — cambiar la fecha objetivo de una meta (de hoy en adelante; calcúlala con "fecha_de_hoy")
 - {"type":"delete_goal","goalNameHint":"string"}
 - {"type":"add_liability","institution":"string","liabilityTypeHint":"string","balance":number}
 - {"type":"update_liability_balance","institutionHint":"string","balance":number}
+- {"type":"update_liability_due_date","institutionHint":"string","dueDate":"AAAA-MM-DD"} — cambiar el día de vencimiento/pago de una deuda (de hoy en adelante)
 - {"type":"delete_liability","institutionHint":"string"}
 - {"type":"set_budget_line","categoryHint":"string","monthlyAmount":number}
 - {"type":"delete_budget_line","categoryHint":"string"}
@@ -67,7 +73,7 @@ function resolveModelAction(raw: unknown, ctx: ActionValidationContext): Resolve
   switch (a.type) {
     case 'add_transaction':
       return resolveAddTransaction(
-        { transactionType: a.transactionType === 'income' ? 'income' : 'expense', amount: a.amount, accountNameHint: String(a.accountNameHint ?? ''), categoryId: a.categoryId, subcategoryId: a.subcategoryId },
+        { transactionType: a.transactionType === 'income' ? 'income' : 'expense', amount: a.amount, accountNameHint: String(a.accountNameHint ?? ''), categoryId: a.categoryId, subcategoryId: a.subcategoryId, date: a.date },
         ctx
       );
     case 'add_account':
@@ -75,9 +81,15 @@ function resolveModelAction(raw: unknown, ctx: ActionValidationContext): Resolve
     case 'delete_account':
       return resolveDeleteAccount({ accountNameHint: String(a.accountNameHint ?? '') }, ctx);
     case 'add_goal':
-      return resolveAddGoal({ name: a.name, targetAmount: a.targetAmount }, ctx);
+      return resolveAddGoal({ name: a.name, targetAmount: a.targetAmount, targetDate: a.targetDate }, ctx);
     case 'contribute_to_goal':
       return resolveContributeToGoal({ goalNameHint: String(a.goalNameHint ?? ''), amount: a.amount }, ctx);
+    case 'withdraw_from_goal':
+      return resolveWithdrawFromGoal({ goalNameHint: String(a.goalNameHint ?? ''), amount: a.amount }, ctx);
+    case 'update_goal_date':
+      return resolveUpdateGoalDate({ goalNameHint: String(a.goalNameHint ?? ''), targetDate: a.targetDate }, ctx);
+    case 'update_liability_due_date':
+      return resolveUpdateLiabilityDueDate({ institutionHint: String(a.institutionHint ?? ''), dueDate: a.dueDate }, ctx);
     case 'update_goal_target':
       return resolveUpdateGoalTarget({ goalNameHint: String(a.goalNameHint ?? ''), targetAmount: a.targetAmount }, ctx);
     case 'delete_goal':

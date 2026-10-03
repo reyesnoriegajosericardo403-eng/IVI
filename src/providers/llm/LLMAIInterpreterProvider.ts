@@ -51,7 +51,13 @@ export function createLLMAIInterpreterProvider(client: LLMClient, providerName: 
         if (json.amount === null || json.amount === undefined) missing.push('amount');
         if (!validSubcategory && json.type === 'expense') missing.push('category');
 
+        // La fecha dicha ("ayer", "el viernes") se lee con el detector local: es determinista y no gasta al modelo.
+        const dated = parseLocally(text);
         return {
+          date: dated.date,
+          dateIso: dated.dateIso,
+          dateText: dated.dateText,
+          futureDate: dated.futureDate,
           type: json.type ?? 'expense',
           amount: typeof json.amount === 'number' ? json.amount : null,
           currency: json.currency === 'USD' ? 'USD' : 'MXN',

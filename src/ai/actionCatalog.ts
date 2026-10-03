@@ -3,8 +3,10 @@ import { BUDGET_CONCEPTS, findBudgetConcept, type BudgetConcept } from '@/data/b
 import { findSubcategory } from '@/data/categories';
 import type { Account, AccountType, Currency, Goal, Liability, LiabilityType, TemplateBudgetLine, Transaction } from '@/data/types';
 import { resolveAccountByNameHint, resolveByNameHint, resolveGoalByNameHint, resolveLiabilityByNameHint } from '@/utils/accounts';
+import { formatDateDMY, parseISODate, todayISO } from '@/utils/date';
 import { formatCurrency } from '@/utils/format';
 
+import { describeDateEs, isoDateToTimestamp } from './dates';
 import { normalize } from './localParser';
 import type {
   AddAccountArgs,
@@ -22,8 +24,11 @@ import type {
   ResolvedAction,
   SetBudgetLineArgs,
   TransferBetweenAccountsArgs,
+  UpdateGoalDateArgs,
   UpdateGoalTargetArgs,
   UpdateLiabilityBalanceArgs,
+  UpdateLiabilityDueDateArgs,
+  WithdrawFromGoalArgs,
 } from './chatTypes';
 
 // Catálogo de acciones: el único lugar donde una propuesta cruda (venga de
@@ -46,6 +51,8 @@ export interface ActionValidationContext {
   // financialContext.ts) — nunca la lista completa.
   recentTransactions: Transaction[];
   primaryCurrency: Currency;
+  // Hoy (AAAA-MM-DD) para validar fechas; solo las pruebas lo fijan, en la app es el día del dispositivo.
+  today?: string;
 }
 
 export interface ResolveOk {
@@ -97,6 +104,22 @@ const askLiability = (hint: string, ctx: ActionValidationContext): MissingField 
   prompt: `No encontré ninguna deuda con "${hint}". ¿Cuál es?${listNames(ctx.liabilities.filter((l) => !l.deletedAt).map((l) => l.institution))}`,
 });
 
+// ---------- Fechas ----------
+
+// Fecha AAAA-MM-DD válida (acepta también un timestamp ISO) o null.
+function dateOnly(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const y = +m[1];
+  const mo = +m[2];
+  const d = +m[3];
+  const date = new Date(y, mo - 1, d);
+  return date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+const todayOf = (ctx: ActionValidationContext): string => ctx.today ?? todayISO();
+const askDate = (slot: string, prompt: string): MissingField => ({ field: 'date', slot, prompt });
+
 function positiveAmount(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
 }
@@ -124,6 +147,8 @@ export interface AddTransactionCandidate {
   // un movimiento categorizado de verdad.
   categoryId?: unknown;
   subcategoryId?: unknown;
+  // Día dicho (AAAA-MM-DD o ISO). Solo hoy o pasado: un movimiento real no puede ser del futuro.
+  date?: unknown;
 }
 export interface AddAccountCandidate {
   name: unknown;
@@ -138,10 +163,23 @@ export interface AddGoalCandidate {
   name: unknown;
   targetAmount: unknown;
   currency?: unknown;
+  targetDate?: unknown; // AAAA-MM-DD, hoy o futura
 }
 export interface ContributeToGoalCandidate {
   goalNameHint: string;
   amount: unknown;
+}
+export interface WithdrawFromGoalCandidate {
+  goalNameHint: string;
+  amount: unknown;
+}
+export interface UpdateGoalDateCandidate {
+  goalNameHint: string;
+  targetDate: unknown;
+}
+export interface UpdateLiabilityDueDateCandidate {
+  institutionHint: string;
+  dueDate: unknown;
 }
 export interface UpdateGoalTargetCandidate {
   goalNameHint: string;
@@ -291,6 +329,20 @@ export function resolveAddTransaction(candidate: AddTransactionCandidate, ctx: A
   const categoryId = hasValidCategory ? candidateCategoryId : transactionType === 'income' ? 'income' : 'miscellaneous';
   const subcategoryId = hasValidCategory ? candidateSubcategoryId : transactionType === 'income' ? 'inc_other' : 'misc_other';
 
+  // Día en que ocurrió (solo hoy o pasado). Hoy = "ahora", igual que sin decir nada.
+  let dateIso: string | undefined;
+  let dayShown: string | undefined;
+  if (candidate.date !== undefined && candidate.date !== null && candidate.date !== '') {
+    const day = dateOnly(candidate.date);
+    const today = todayOf(ctx);
+    if (!day) return ask('add_transaction', candidate, [askDate('date', '¿De qué día fue? Dime "hoy", "ayer" o una fecha.')]);
+    if (day > today) return ask('add_transaction', candidate, [askDate('date', 'Ese día todavía no llega: un movimiento real solo puede ser de hoy o de un día pasado. ¿De qué día fue?')]);
+    if (day < `${+today.slice(0, 4) - 5}${today.slice(4)}`) return ask('add_transaction', candidate, [askDate('date', 'Esa fecha es de hace más de 5 años. ¿De qué día fue?')]);
+    if (day < today) {
+      dateIso = isoDateToTimestamp(day);
+      dayShown = day;
+    }
+  }
   const args: AddTransactionArgs = {
     transactionType,
     amount,
@@ -299,10 +351,12 @@ export function resolveAddTransaction(candidate: AddTransactionCandidate, ctx: A
     subcategoryId,
     accountId: account.id,
     accountName: account.name,
+    ...(dateIso ? { date: dateIso } : {}),
   };
+  const when = dayShown ? ` · ${describeDateEs(dayShown, parseISODate(todayOf(ctx)))}` : '';
   const summary = hasValidCategory
-    ? `Agregar ${transactionType === 'income' ? 'ingreso' : 'gasto'} de ${formatCurrency(amount, account.currency)} (${findSubcategory(categoryId, subcategoryId)?.name ?? 'sin categoría'}) en "${account.name}"`
-    : `${transactionType === 'income' ? 'Agregar' : 'Quitar'} ${formatCurrency(amount, account.currency)} ${transactionType === 'income' ? 'a' : 'de'} "${account.name}"`;
+    ? `Agregar ${transactionType === 'income' ? 'ingreso' : 'gasto'} de ${formatCurrency(amount, account.currency)} (${findSubcategory(categoryId, subcategoryId)?.name ?? 'sin categoría'}) en "${account.name}"${when}`
+    : `${transactionType === 'income' ? 'Agregar' : 'Quitar'} ${formatCurrency(amount, account.currency)} ${transactionType === 'income' ? 'a' : 'de'} "${account.name}"${when}`;
   return { ok: true, action: { type: 'add_transaction', args }, summary };
 }
 
@@ -365,8 +419,18 @@ export function resolveAddGoal(candidate: AddGoalCandidate, ctx: ActionValidatio
   const targetAmount = positiveAmount(candidate.targetAmount);
   if (targetAmount === null) return ask('add_goal', candidate, [askAmount('targetAmount', 'Necesito un monto objetivo claro para la meta.')]);
   const currency = resolveCurrency(candidate.currency, ctx.primaryCurrency);
-  const args: AddGoalArgs = { name, targetAmount, currency };
-  return { ok: true, action: { type: 'add_goal', args }, summary: `Crear la meta "${name}" con objetivo de ${formatCurrency(targetAmount, currency)}` };
+  let targetDate: string | undefined;
+  if (candidate.targetDate !== undefined && candidate.targetDate !== null && candidate.targetDate !== '') {
+    const day = dateOnly(candidate.targetDate);
+    if (!day || day < todayOf(ctx)) return ask('add_goal', candidate, [askDate('targetDate', 'La fecha de la meta debe ser de hoy en adelante. ¿Para qué fecha? Por ejemplo "el 15 de diciembre".')]);
+    targetDate = day;
+  }
+  const args: AddGoalArgs = { name, targetAmount, currency, ...(targetDate ? { targetDate } : {}) };
+  return {
+    ok: true,
+    action: { type: 'add_goal', args },
+    summary: `Crear la meta "${name}" con objetivo de ${formatCurrency(targetAmount, currency)}${targetDate ? ` para el ${formatDateDMY(targetDate)}` : ''}`,
+  };
 }
 
 export function resolveContributeToGoal(candidate: ContributeToGoalCandidate, ctx: ActionValidationContext): ResolveResult {
@@ -389,6 +453,35 @@ export function resolveUpdateGoalTarget(candidate: UpdateGoalTargetCandidate, ct
     action: { type: 'update_goal_target', args },
     summary: `Cambiar el objetivo de "${goal.name}": ${formatCurrency(goal.targetAmount, goal.currency)} → ${formatCurrency(targetAmount, goal.currency)}`,
   };
+}
+
+export function resolveWithdrawFromGoal(candidate: WithdrawFromGoalCandidate, ctx: ActionValidationContext): ResolveResult {
+  const amount = positiveAmount(candidate.amount);
+  if (amount === null) return ask('withdraw_from_goal', candidate, [askAmount('amount', 'No reconocí un monto claro para retirar.')]);
+  const goal = resolveGoalByNameHint(candidate.goalNameHint, ctx.goals);
+  if (!goal) return ask('withdraw_from_goal', candidate, [askGoal(candidate.goalNameHint, ctx)]);
+  if (amount > goal.currentAmount) {
+    return ask('withdraw_from_goal', candidate, [
+      askAmount('amount', `La meta "${goal.name}" solo tiene ${formatCurrency(goal.currentAmount, goal.currency)}: no puedo retirar ${formatCurrency(amount, goal.currency)}. ¿Cuánto retiras?`),
+    ]);
+  }
+  const args: WithdrawFromGoalArgs = { goalId: goal.id, goalName: goal.name, amount, currency: goal.currency };
+  return {
+    ok: true,
+    action: { type: 'withdraw_from_goal', args },
+    summary: `Retirar ${formatCurrency(amount, goal.currency)} de la meta "${goal.name}" (quedaría en ${formatCurrency(goal.currentAmount - amount, goal.currency)})`,
+  };
+}
+
+export function resolveUpdateGoalDate(candidate: UpdateGoalDateCandidate, ctx: ActionValidationContext): ResolveResult {
+  const goal = resolveGoalByNameHint(candidate.goalNameHint, ctx.goals);
+  if (!goal) return ask('update_goal_date', candidate, [askGoal(candidate.goalNameHint, ctx)]);
+  const day = dateOnly(candidate.targetDate);
+  if (!day) return ask('update_goal_date', candidate, [askDate('targetDate', `¿Para qué fecha quieres la meta "${goal.name}"? Por ejemplo "el 15 de diciembre".`)]);
+  if (day < todayOf(ctx)) return ask('update_goal_date', candidate, [askDate('targetDate', 'Esa fecha ya pasó. ¿Para qué fecha futura quieres la meta?')]);
+  const args: UpdateGoalDateArgs = { goalId: goal.id, goalName: goal.name, targetDate: day };
+  const before = goal.targetDate ? formatDateDMY(goal.targetDate) : 'sin fecha';
+  return { ok: true, action: { type: 'update_goal_date', args }, summary: `Fecha objetivo de "${goal.name}": ${before} → ${formatDateDMY(day)}` };
 }
 
 export function resolveDeleteGoal(candidate: DeleteGoalCandidate, ctx: ActionValidationContext): ResolveResult {
@@ -426,6 +519,17 @@ export function resolveUpdateLiabilityBalance(candidate: UpdateLiabilityBalanceC
     action: { type: 'update_liability_balance', args },
     summary: `Saldo de "${liability.institution}": ${formatCurrency(liability.balance, liability.currency)} → ${formatCurrency(balance, liability.currency)}`,
   };
+}
+
+export function resolveUpdateLiabilityDueDate(candidate: UpdateLiabilityDueDateCandidate, ctx: ActionValidationContext): ResolveResult {
+  const liability = resolveLiabilityByNameHint(candidate.institutionHint, ctx.liabilities);
+  if (!liability) return ask('update_liability_due_date', candidate, [askLiability(candidate.institutionHint, ctx)]);
+  const day = dateOnly(candidate.dueDate);
+  if (!day) return ask('update_liability_due_date', candidate, [askDate('dueDate', `¿Qué día vence "${liability.institution}"? Por ejemplo "el 20 de octubre".`)]);
+  if (day < todayOf(ctx)) return ask('update_liability_due_date', candidate, [askDate('dueDate', 'Esa fecha ya pasó. ¿Qué fecha de vencimiento le pongo?')]);
+  const args: UpdateLiabilityDueDateArgs = { liabilityId: liability.id, institution: liability.institution, dueDate: day };
+  const before = liability.dueDate ? formatDateDMY(liability.dueDate) : 'sin fecha';
+  return { ok: true, action: { type: 'update_liability_due_date', args }, summary: `Vencimiento de "${liability.institution}": ${before} → ${formatDateDMY(day)}` };
 }
 
 export function resolveDeleteLiability(candidate: DeleteLiabilityCandidate, ctx: ActionValidationContext): ResolveResult {
@@ -478,7 +582,7 @@ export function resolveCandidate(type: AIActionType, c: Record<string, unknown>,
   const s = (k: string) => (typeof c[k] === 'string' ? (c[k] as string) : '');
   switch (type) {
     case 'add_transaction':
-      return resolveAddTransaction({ transactionType: c.transactionType === 'income' ? 'income' : 'expense', amount: c.amount, accountNameHint: s('accountNameHint'), categoryId: c.categoryId, subcategoryId: c.subcategoryId }, ctx);
+      return resolveAddTransaction({ transactionType: c.transactionType === 'income' ? 'income' : 'expense', amount: c.amount, accountNameHint: s('accountNameHint'), categoryId: c.categoryId, subcategoryId: c.subcategoryId, date: c.date }, ctx);
     case 'transfer_between_accounts':
       return resolveTransferBetweenAccounts({ fromAccountNameHint: s('fromAccountNameHint'), toAccountNameHint: s('toAccountNameHint'), amount: c.amount }, ctx);
     case 'add_account':
@@ -486,9 +590,15 @@ export function resolveCandidate(type: AIActionType, c: Record<string, unknown>,
     case 'delete_account':
       return resolveDeleteAccount({ accountNameHint: s('accountNameHint') }, ctx);
     case 'add_goal':
-      return resolveAddGoal({ name: c.name, targetAmount: c.targetAmount, currency: c.currency }, ctx);
+      return resolveAddGoal({ name: c.name, targetAmount: c.targetAmount, currency: c.currency, targetDate: c.targetDate }, ctx);
     case 'contribute_to_goal':
       return resolveContributeToGoal({ goalNameHint: s('goalNameHint'), amount: c.amount }, ctx);
+    case 'withdraw_from_goal':
+      return resolveWithdrawFromGoal({ goalNameHint: s('goalNameHint'), amount: c.amount }, ctx);
+    case 'update_goal_date':
+      return resolveUpdateGoalDate({ goalNameHint: s('goalNameHint'), targetDate: c.targetDate }, ctx);
+    case 'update_liability_due_date':
+      return resolveUpdateLiabilityDueDate({ institutionHint: s('institutionHint'), dueDate: c.dueDate }, ctx);
     case 'update_goal_target':
       return resolveUpdateGoalTarget({ goalNameHint: s('goalNameHint'), targetAmount: c.targetAmount }, ctx);
     case 'delete_goal':
