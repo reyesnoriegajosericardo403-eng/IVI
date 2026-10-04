@@ -29,9 +29,17 @@ const state = {
     { ...meta, id: '44444444-4444-4444-8444-444444444444', name: 'Morralla', type: 'cash', currency: 'MXN', balance: 300 },
   ],
   goals: [{ ...meta, id: '33333333-3333-4333-8333-333333333333', name: 'Viaje', targetAmount: 20000, currentAmount: 3000, currency: 'MXN' }],
+  // P3: previstos (uno ya pasó, otro viene), una regla recurrente, un aviso y sus ocurrencias
+  transactions: [
+    { ...meta, id: '66666666-6666-4666-8666-666666666661', type: 'expense', amount: 8000, currency: 'MXN', categoryId: 'housing', subcategoryId: 'house_rent', merchant: 'Renta', accountId: '11111111-1111-4111-8111-111111111111', date: new Date(Date.now() - 86400000).toISOString(), origin: 'automatic', status: 'forecast', recurringRuleId: '77777777-7777-4777-8777-777777777771' },
+    { ...meta, id: '66666666-6666-4666-8666-666666666662', type: 'expense', amount: 199, currency: 'MXN', categoryId: 'entertainment', subcategoryId: 'ent_streaming', merchant: 'Netflix', accountId: '11111111-1111-4111-8111-111111111111', date: new Date(Date.now() + 2 * 86400000).toISOString(), origin: 'manual', status: 'forecast' },
+  ],
+  recurringRules: [{ ...meta, id: '77777777-7777-4777-8777-777777777771', kind: 'transaction', name: 'Renta', status: 'active', recurrence: { frequency: 'monthly', interval: 1, startDate: '2026-01-05', dayOfMonth: 5 }, amount: 8000, currency: 'MXN', txType: 'expense', accountId: '11111111-1111-4111-8111-111111111111' }],
+  reminders: [{ ...meta, id: '88888888-8888-4888-8888-888888888881', kind: 'custom', title: 'Pagar la luz', date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), timeOfDay: '09:00', advanceDays: [1], maxAttempts: 2, attemptIntervalMinutes: 120, push: true, status: 'active' }],
+  reminderOccurrences: [{ ...meta, id: '99999999-9999-4999-8999-999999999991', reminderId: '88888888-8888-4888-8888-888888888881', eventDate: new Date(Date.now() - 3600000).toISOString().slice(0, 10), offsetDays: 0, scheduledFor: new Date(Date.now() - 3600000).toISOString(), status: 'pending', attemptsMade: 0, maxAttempts: 2, attemptIntervalMinutes: 120, title: 'Pagar la luz', push: true }],
   liabilities: [{ ...meta, id: '55555555-5555-4555-8555-555555555555', institution: 'Banorte', type: 'credit_card', balance: 8000, currency: 'MXN', dueDate: '2026-10-20' }],
 };
-const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inversiones', '/metas', '/ia', '/capture', '/transaction/new', '/settings', '/appearance', '/salud-financiera', '/privacidad', '/perfil', '/notificaciones', '/ai-settings', '/terminos', '/instalar', '/auth', '/onboarding'];
+const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inversiones', '/metas', '/ia', '/capture', '/transaction/new', '/settings', '/appearance', '/salud-financiera', '/privacidad', '/perfil', '/notificaciones', '/avisos', '/recurrentes', '/ai-settings', '/terminos', '/instalar', '/auth', '/onboarding'];
 
 (async () => {
   const browser = await playwright.chromium.launch();
@@ -47,6 +55,54 @@ const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inve
     await page.waitForTimeout(1800);
     const len = (await page.locator('body').innerText()).trim().length;
     if (errors.length || len < 20) { bad++; console.log('✗', r, 'texto:', len, errors.slice(0, 2)); } else console.log('✓', r);
+    await page.close();
+  }
+  // P3: la pestaña «Previstos» de Movimientos muestra los previstos y confirmar uno cambia el saldo una sola vez.
+  {
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message.slice(0, 160)));
+    await page.goto(`http://localhost:${port}/movimientos`, { waitUntil: 'load' }).catch(() => {});
+    await page.waitForTimeout(1800);
+    await page.getByText(/Previstos/).first().click();
+    await page.waitForTimeout(600);
+    const body = await page.locator('body').innerText();
+    const okForecast = /Netflix/.test(body) && /Renta/.test(body) && /Pasaron de fecha/i.test(body);
+    await page.getByText('Ya ocurrió').first().click();
+    await page.waitForTimeout(600);
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('valu-app-storage')).state);
+    const confirmed = saved.transactions.filter((t) => t.status === 'posted' || !t.status);
+    const bbva = saved.accounts.find((a) => a.name === 'BBVA').balance;
+    if (errors.length || !okForecast || confirmed.length !== 1 || bbva !== 5000 - 8000) { bad++; console.log('✗ previstos: confirmar desde la pestaña', { errors, okForecast, confirmed: confirmed.length, bbva }); } else console.log('✓ previstos: se ven, se confirman y el saldo cambia una sola vez');
+    await page.close();
+  }
+  // P3: crear un pago recurrente y un aviso desde sus pantallas (formularios reales).
+  {
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message.slice(0, 160)));
+    await page.goto(`http://localhost:${port}/recurrentes`, { waitUntil: 'load' }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await page.getByText('Nuevo pago recurrente').first().click();
+    await page.getByPlaceholder(/Renta, Netflix/).fill('Gimnasio');
+    await page.getByPlaceholder('0.00').first().fill('500');
+    await page.getByRole('button', { name: 'BBVA' }).first().click();
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+    await page.waitForTimeout(800);
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('valu-app-storage')).state);
+    const rule = (saved.recurringRules || []).find((r) => r.name === 'Gimnasio');
+    const fcs = (saved.transactions || []).filter((t) => t.recurringRuleId === rule?.id && t.status === 'forecast');
+    const rem = (saved.reminders || []).find((r) => r.sourceId === rule?.id);
+    const okRule = !!rule && fcs.length >= 3 && !!rem;
+    await page.goto(`http://localhost:${port}/avisos`, { waitUntil: 'load' }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await page.getByRole('button', { name: 'Nuevo aviso' }).first().click();
+    await page.getByPlaceholder(/Pagar la luz/).fill('Predial');
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+    await page.waitForTimeout(800);
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('valu-app-storage')).state);
+    const okRem = (saved.reminders || []).some((r) => r.title === 'Predial');
+    if (errors.length || !okRule || !okRem) { bad++; console.log('✗ formularios P3', { errors, okRule, okRem, rule: !!rule, fcs: fcs.length, rem: !!rem }); } else console.log('✓ formularios P3: pago recurrente (con previstos y aviso) y aviso propio');
     await page.close();
   }
   // Gesto: deslizar de lado entre secciones con eventos TÁCTILES reales (PanResponder de React Native).

@@ -5,6 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { DateField } from '@/components/DateField';
+import { ChipRow } from '@/components/p3/Chips';
 import { ACCOUNT_TYPE_ICONS } from '@/data/accountMeta';
 import { DEFAULT_CATEGORIES, fallbackSubcategoryId, findCategory, findSubcategory, isExcludedFromBudgetByDefault } from '@/data/categories';
 import type { Currency, TransactionType } from '@/data/types';
@@ -13,7 +15,10 @@ import { selectActiveAccounts, selectActiveBudgets } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { accountsForCategory, resolveDefaultAccountId } from '@/utils/accounts';
+import { todayIsoLocal } from '@/utils/forecast';
 import { formatCurrency } from '@/utils/format';
+import { describeRecurrence } from '@/utils/recurrence';
+import { buildRecurrence, RECURRENCE_PRESETS, type RecurrencePreset } from '@/utils/recurrencePresets';
 
 const TYPES: Array<{ id: TransactionType; label: string }> = [
   { id: 'expense', label: 'Gasto' },
@@ -42,6 +47,8 @@ interface SearchEntry {
 export default function NewTransaction() {
   const { colors, typography, spacing, radius } = useTheme();
   const addTransaction = useAppStore((s) => s.addTransaction);
+  const addForecast = useAppStore((s) => s.addForecast);
+  const createRule = useAppStore((s) => s.createRule);
   const ensureCashAccount = useAppStore((s) => s.ensureCashAccount);
   const primaryCurrency = useAppStore((s) => s.profile.primaryCurrency);
   const rawAccounts = useAppStore((s) => s.accounts);
@@ -70,6 +77,11 @@ export default function NewTransaction() {
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | undefined>(undefined);
   const [accountTouched, setAccountTouched] = useState(false);
+  // P3: ¿ya ocurrió o está previsto? ¿y se repite?
+  const [when, setWhen] = useState<'now' | 'planned'>('now');
+  const [plannedDate, setPlannedDate] = useState(todayIsoLocal());
+  const [repeatPreset, setRepeatPreset] = useState<RecurrencePreset | 'none'>('none');
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Cuentas válidas para esta categoría (quita las que el usuario excluyó
   // en Presupuesto) y la cuenta que se preselecciona sola — tarjeta de
@@ -168,12 +180,59 @@ export default function NewTransaction() {
   const handleSave = () => {
     const value = parseFloat(amount.replace(',', '.'));
     if (Number.isNaN(value) || value <= 0) return;
+    const resolvedSub = subcategoryId || fallbackSubcategoryId(categoryId);
+    setFormError(null);
+
+    if (when === 'planned') {
+      const today = todayIsoLocal();
+      if (!plannedDate || plannedDate < today) {
+        setFormError('La fecha de algo previsto debe ser de hoy en adelante. Si ya pasó, regístralo como «Ya ocurrió».');
+        return;
+      }
+      if (repeatPreset !== 'none') {
+        const name = merchant.trim() || findSubcategory(categoryId, resolvedSub)?.name || findCategory(categoryId)?.name || 'Pago recurrente';
+        const res = createRule({
+          kind: 'transaction',
+          name,
+          amount: value,
+          currency,
+          txType: type as 'expense' | 'income' | 'saving',
+          categoryId,
+          subcategoryId: resolvedSub,
+          merchant: merchant.trim() || undefined,
+          accountId,
+          notes: note.trim() || undefined,
+          recurrence: buildRecurrence(repeatPreset, plannedDate),
+        });
+        if (!res.ok) {
+          setFormError(res.error ?? 'No se pudo guardar.');
+          return;
+        }
+      } else {
+        addForecast({
+          type,
+          amount: value,
+          currency,
+          categoryId,
+          subcategoryId: resolvedSub,
+          merchant: merchant.trim() || undefined,
+          accountId,
+          date: new Date(`${plannedDate}T12:00:00`).toISOString(),
+          notes: note.trim() || undefined,
+          origin: 'manual',
+          excludeFromBudget: excludeFromBudget || undefined,
+        });
+      }
+      router.back();
+      return;
+    }
+
     addTransaction({
       type,
       amount: value,
       currency,
       categoryId,
-      subcategoryId: subcategoryId || fallbackSubcategoryId(categoryId),
+      subcategoryId: resolvedSub,
       merchant: merchant.trim() || undefined,
       accountId,
       date: new Date().toISOString(),
@@ -190,7 +249,7 @@ export default function NewTransaction() {
         <Pressable onPress={() => router.back()}>
           <Ionicons name="close" size={26} color={colors.textSecondary} />
         </Pressable>
-        <Text style={[typography.headline, { color: colors.textPrimary }]}>Registro manual</Text>
+        <Text style={[typography.headline, { color: colors.textPrimary }]}>{when === 'planned' ? 'Movimiento previsto' : 'Registro manual'}</Text>
         <Pressable onPress={handleSave} disabled={!canSave}>
           <Text style={[typography.headline, { color: canSave ? colors.accentFrom : colors.textTertiary }]}>Guardar</Text>
         </Pressable>
@@ -399,6 +458,42 @@ export default function NewTransaction() {
               })}
             </View>
           )}
+        </View>
+
+        {/* ---------- P3: ¿ya ocurrió o está previsto? ¿se repite? ---------- */}
+        <View style={{ gap: spacing.sm }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>¿CUÁNDO?</Text>
+          <ChipRow
+            options={[
+              { id: 'now', label: 'Ya ocurrió' },
+              { id: 'planned', label: 'Está previsto' },
+            ]}
+            value={when}
+            onChange={(w) => {
+              setWhen(w as 'now' | 'planned');
+              setFormError(null);
+            }}
+          />
+          {when === 'planned' && (
+            <View style={{ gap: spacing.sm }}>
+              <Text style={[typography.caption, { color: colors.textTertiary }]}>
+                Un movimiento previsto no cambia tus saldos hasta que confirmes que ya pasó; VALU te avisa cuando llegue el día.
+              </Text>
+              <DateField value={plannedDate} onChange={setPlannedDate} placeholder="¿Qué día?" />
+              <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.xs }]}>¿SE REPITE?</Text>
+              <ChipRow
+                options={[{ id: 'none', label: 'No' }, ...RECURRENCE_PRESETS]}
+                value={repeatPreset}
+                onChange={(p) => setRepeatPreset(p as RecurrencePreset | 'none')}
+              />
+              {repeatPreset !== 'none' && (
+                <Text style={[typography.caption, { color: colors.textTertiary }]}>
+                  Se repetirá {describeRecurrence(buildRecurrence(repeatPreset, plannedDate))}. Lo administras en Movimientos → Previstos → Pagos recurrentes.
+                </Text>
+              )}
+            </View>
+          )}
+          {formError && <Text style={[typography.caption, { color: colors.danger }]}>{formError}</Text>}
         </View>
 
         <View style={{ gap: spacing.sm }}>

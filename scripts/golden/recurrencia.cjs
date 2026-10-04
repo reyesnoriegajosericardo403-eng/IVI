@@ -243,5 +243,34 @@ t('rendimiento: diaria durante 10 años y consulta de un mes lejano < 100 ms', (
   assert(ms < 100, `${ms.toFixed(0)} ms`);
 });
 
+// ---------- presets de la interfaz ----------
+const P = require('@/utils/recurrencePresets');
+t('presets: cada preset arma una repetición válida y presetOf lo reconoce de vuelta', () => {
+  for (const { id } of P.RECURRENCE_PRESETS) {
+    const r = P.buildRecurrence(id, '2026-10-05');
+    assert.strictEqual(R.validateRecurrence(r), null, id);
+    assert.strictEqual(P.presetOf(r), id, id);
+    assert(R.nextOccurrence(r, '2026-10-05'), id);
+  }
+});
+t('presets: mensual el 31 cae en el último día de cada mes; semanal usa el día de la semana de la primera fecha', () => {
+  const m = P.buildRecurrence('monthly', '2026-01-31');
+  assert.deepStrictEqual(R.occurrencesBetween(m, '2026-01-01', '2026-04-30'), ['2026-01-31', '2026-02-28', '2026-03-31', '2026-04-30']);
+  const w = P.buildRecurrence('weekly', '2026-10-05'); // lunes
+  assert.deepStrictEqual(R.occurrencesBetween(w, '2026-10-01', '2026-10-20'), ['2026-10-05', '2026-10-12', '2026-10-19']);
+});
+t('presets: fin por fecha o por número de veces, y validación del formulario', () => {
+  const u = P.buildRecurrence('monthly', '2026-10-05', { mode: 'until', endDate: '2026-12-31' });
+  assert.deepStrictEqual(R.occurrencesBetween(u, '2026-10-01', '2027-06-01'), ['2026-10-05', '2026-11-05', '2026-12-05']);
+  const c = P.buildRecurrence('weekly', '2026-10-05', { mode: 'count', count: 2 });
+  assert.strictEqual(R.occurrencesBetween(c, '2026-10-01', '2027-06-01').length, 2);
+  assert.deepStrictEqual(P.endOf(u), { mode: 'until', endDate: '2026-12-31' });
+  assert(P.validateRecurrenceForm(null, '2026-10-05', { mode: 'never' }));
+  assert(P.validateRecurrenceForm('monthly', '', { mode: 'never' }));
+  assert(P.validateRecurrenceForm('monthly', '2026-10-05', { mode: 'count', count: 0 }));
+  assert(P.validateRecurrenceForm('monthly', '2026-10-05', { mode: 'until', endDate: '2026-01-01' }));
+  assert.strictEqual(P.validateRecurrenceForm('monthly', '2026-10-05', { mode: 'never' }), null);
+});
+
 console.log(`\nRecurrencia: ${ok} OK, ${fail} fallan`);
 process.exit(fail ? 1 : 0);

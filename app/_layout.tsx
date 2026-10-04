@@ -14,6 +14,7 @@ import { registerMarketDataProvider } from '@/providers/market/registerMarketDat
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { usePushProfileOnChange } from '@/services/auth/useProfileReconciliation';
 import { useMarketDataRefresh } from '@/services/market/useMarketDataRefresh';
+import { useMaterialization } from '@/services/p3/useMaterialization';
 import { useSyncEngine } from '@/services/sync/useSyncEngine';
 import { useAppStore } from '@/store/useAppStore';
 import { selectActiveAccounts, selectActiveInvestments, selectActiveLiabilities } from '@/store/selectors';
@@ -33,6 +34,7 @@ function RootStack() {
   const { colors, scheme } = useTheme();
   const { userId } = useAuthSession();
   useSyncEngine();
+  useMaterialization();
   usePushProfileOnChange(userId);
   useMarketDataRefresh();
   useRemoteVisualStyles(userId);

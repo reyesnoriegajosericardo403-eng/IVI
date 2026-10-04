@@ -76,6 +76,8 @@ export function AccountDropdown() {
     // (el chat) — "Copiloto IA" queda para la sección de Ajustes que
     // configura el proveedor, son cosas distintas.
     { key: 'ai', label: 'Chat con IA', icon: 'sparkles-outline', onPress: () => go('/(tabs)/ia') },
+    { key: 'reminders', label: 'Avisos', icon: 'notifications-outline', onPress: () => go('/avisos') },
+    { key: 'recurring', label: 'Pagos recurrentes', icon: 'repeat-outline', onPress: () => go('/recurrentes') },
     { key: 'privacy', label: 'Privacidad y datos', icon: 'shield-checkmark-outline', onPress: () => go('/privacidad') },
     { key: 'install', label: 'Instalar VALU', icon: 'download-outline', onPress: () => go('/instalar') },
   ];

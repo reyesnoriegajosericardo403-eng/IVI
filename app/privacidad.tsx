@@ -62,8 +62,8 @@ export default function Privacidad() {
         <GlassCard style={{ gap: spacing.sm }}>
           <Text style={[typography.headline, { color: colors.textPrimary }]}>Qué guardamos y dónde</Text>
           <Text style={[typography.body, { color: colors.textSecondary }]}>
-            Guardamos exactamente lo que tú ingresas: cuentas, movimientos, presupuestos, metas, inversiones y
-            deudas. {isSupabaseConfigured
+            Guardamos exactamente lo que tú ingresas: cuentas, movimientos (los que ya ocurrieron y los previstos), pagos
+            recurrentes, avisos, presupuestos, metas, inversiones y deudas. {isSupabaseConfigured
               ? 'Vive en tu propio proyecto de Supabase, protegido para que solo tu cuenta pueda leerlo o modificarlo.'
               : 'Ahora mismo vive solo en este dispositivo — todavía no conectas una cuenta en la nube.'}
             {' '}No vendemos ni compartimos tu información con anunciantes ni con nadie más.

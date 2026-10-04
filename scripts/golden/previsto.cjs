@@ -277,5 +277,18 @@ t('dueOccurrences / upcomingOccurrences', () => {
   assert.deepStrictEqual(M.upcomingOccurrences(fresh, at('2026-10-10', '09:00'), 15).map((o) => o.offsetDays), [1, 0]);
 });
 
+
+// ---------- textos de la interfaz ----------
+const L = require('@/utils/p3Labels');
+t('textos: relativos a hoy y titulares de avisos', () => {
+  assert.deepStrictEqual(['2026-10-03', '2026-10-04', '2026-10-02', '2026-10-08', '2026-09-29'].map((d) => L.relativeDayEs('2026-10-03', d)), ['hoy', 'mañana', 'ayer', 'en 5 días', 'hace 4 días']);
+  assert.strictEqual(L.occurrenceHeadline({ eventDate: '2026-10-06', offsetDays: 3 }, '2026-10-03'), 'Faltan 3 días');
+  assert.strictEqual(L.occurrenceHeadline({ eventDate: '2026-10-03', offsetDays: 0 }, '2026-10-03'), 'Es hoy');
+  assert.strictEqual(L.occurrenceHeadline({ eventDate: '2026-10-01', offsetDays: 0 }, '2026-10-03'), 'Era hace 2 días');
+  assert.strictEqual(L.advanceLabel([1, 3]), '3 días antes y 1 día antes');
+  assert.strictEqual(L.advanceLabel([]), 'Sin aviso previo');
+  assert.strictEqual(L.dayWithRelativeEs('2026-10-03', '2026-10-05'), '5 oct 2026 (en 2 días)');
+});
+
 console.log(`\nPrevisto: ${ok} OK, ${fail} fallan`);
 process.exit(fail ? 1 : 0);

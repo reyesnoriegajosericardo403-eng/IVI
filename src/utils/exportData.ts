@@ -31,6 +31,9 @@ export function exportAllDataAsJson(): { ok: boolean; message: string } {
     excepcionesDePeriodo: state.periodBudgetOverrides,
     // Lo que VALU aprendió de ti (palabra → categoría) y el historial de tus chats con el asistente.
     loQueVALUAprendioDeTi: state.customCategoryMappings,
+    pagosRecurrentes: state.recurringRules,
+    avisos: state.reminders,
+    ocurrenciasDeAvisos: state.reminderOccurrences,
     conversacionesDelChat: state.conversations,
     mensajesDelChat: state.chatMessages,
   };

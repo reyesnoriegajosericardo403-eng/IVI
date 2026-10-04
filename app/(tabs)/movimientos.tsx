@@ -14,8 +14,10 @@ import { SectionToggle } from '@/components/SectionToggle';
 import { findIncomeConcept } from '@/data/budgetConcepts';
 import { findCategory, findSubcategory } from '@/data/categories';
 import type { Transaction } from '@/data/types';
+import { ChipRow } from '@/components/p3/Chips';
+import { ForecastView } from '@/components/p3/ForecastView';
 import { useContentMaxWidth } from '@/hooks/useBreakpoint';
-import { selectActiveBudgets, selectActiveTransactions } from '@/store/selectors';
+import { selectActiveBudgets, selectActiveTransactions, selectForecastTransactions } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDateDMY, todayISO } from '@/utils/date';
@@ -49,6 +51,8 @@ export default function Movimientos() {
   const transactions = useMemo(() => selectActiveTransactions(rawTransactions), [rawTransactions]);
   const budgets = useMemo(() => selectActiveBudgets(rawBudgets), [rawBudgets]);
 
+  const [view, setView] = useState<'real' | 'forecast'>('real');
+  const forecastCount = useMemo(() => selectForecastTransactions(rawTransactions).length, [rawTransactions]);
   const [showCalendar, setShowCalendar] = useState(false);
   const [monthIso, setMonthIso] = useState(todayISO());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -87,7 +91,7 @@ export default function Movimientos() {
       <View style={[{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }, maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <ScreenHeader title="Movimientos" subtitle={`${visibleTransactions.length} registrados`} />
+            <ScreenHeader title="Movimientos" subtitle={view === 'real' ? `${visibleTransactions.length} registrados` : `${forecastCount} previstos`} />
           </View>
           <Pressable
             accessibilityLabel={showCalendar ? 'Ocultar calendario' : 'Ver calendario'}
@@ -98,7 +102,18 @@ export default function Movimientos() {
           </Pressable>
         </View>
 
-        {showCalendar && (
+        <View style={{ marginBottom: spacing.sm }}>
+          <ChipRow
+            options={[
+              { id: 'real', label: 'Registrados' },
+              { id: 'forecast', label: forecastCount > 0 ? `Previstos (${forecastCount})` : 'Previstos' },
+            ]}
+            value={view}
+            onChange={(v) => setView(v as 'real' | 'forecast')}
+          />
+        </View>
+
+        {view === 'real' && showCalendar && (
           <GlassCard style={{ marginTop: spacing.md }}>
             <CalendarPicker
               monthIso={monthIso}
@@ -110,7 +125,7 @@ export default function Movimientos() {
           </GlassCard>
         )}
 
-        {selectedDay && (
+        {view === 'real' && selectedDay && (
           <Pressable onPress={() => setSelectedDay(null)} style={[styles.filterChip, { borderColor: colors.accentFrom, borderRadius: radius.pill }]}>
             <Text style={[typography.caption, { color: colors.accentFrom, fontWeight: '700' }]}>
               {formatDateDMY(selectedDay)}
@@ -120,7 +135,9 @@ export default function Movimientos() {
         )}
       </View>
 
-      {visibleTransactions.length === 0 ? (
+      {view === 'forecast' ? (
+        <ForecastView />
+      ) : visibleTransactions.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name={selectedDay ? 'calendar-outline' : 'mic-outline'} size={40} color={colors.textTertiary} />
           <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center', marginTop: spacing.md }]}>

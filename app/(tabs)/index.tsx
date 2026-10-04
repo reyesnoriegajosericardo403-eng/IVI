@@ -11,6 +11,7 @@ import { DonutChart } from '@/components/DonutChart';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassSheen } from '@/components/GlassSheen';
 import { NetWorthTrendChart } from '@/components/NetWorthTrendChart';
+import { AttentionWidget } from '@/components/p3/AttentionWidget';
 import { CASH_ACCOUNT_COLOR } from '@/data/accountColors';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS } from '@/data/accountMeta';
 import { budgetConceptsByGroup, findBudgetConcept, findIncomeConcept, parseSubBudgetId, type BudgetGroupId } from '@/data/budgetConcepts';
@@ -426,6 +427,8 @@ export default function Dashboard() {
             </View>
           </Pressable>
         )}
+
+        <AttentionWidget />
 
         <View style={[styles.tipCard, { backgroundColor: colors.accentSoft, borderRadius: radius.md }]}>
           <Ionicons name="bulb-outline" size={16} color={colors.accentFrom} />
