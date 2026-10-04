@@ -24,6 +24,16 @@
 // Despliegue: npx supabase functions deploy push-notify --no-verify-jwt
 
 import { sendWebPush, type PushSubscriptionKeys, type VapidKeys } from '../_shared/webpush.ts';
+import {
+  afterAttempt,
+  attemptDedupeKey,
+  buildMessage,
+  decideOccurrence,
+  DUE_TOLERANCE_MS,
+  localHourOf,
+  pushTag,
+  type OccurrenceRow,
+} from '../_shared/reminderCron.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -151,6 +161,24 @@ async function claimOnce(env: Env, userId: string, kind: string, dedupeKey: stri
   return Array.isArray(rows) && rows.length > 0;
 }
 
+// Como claimOnce, pero distingue "ya estaba registrado" de "falló la llamada": un fallo de red NO debe contarse como
+// "ya se mandó", porque entonces el aviso se perdería para siempre.
+async function claimAttempt(env: Env, userId: string, kind: string, dedupeKey: string): Promise<'claimed' | 'duplicate' | 'error'> {
+  const res = await rest(env, 'notification_log?on_conflict=user_id,dedupe_key', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation,resolution=ignore-duplicates' },
+    body: JSON.stringify({ user_id: userId, kind, dedupe_key: dedupeKey }),
+  });
+  if (!res.ok) return 'error';
+  const rows = await res.json().catch(() => null);
+  if (!Array.isArray(rows)) return 'error';
+  return rows.length > 0 ? 'claimed' : 'duplicate';
+}
+
+async function releaseClaim(env: Env, userId: string, dedupeKey: string): Promise<void> {
+  await rest(env, `notification_log?user_id=eq.${userId}&dedupe_key=eq.${encodeURIComponent(dedupeKey)}`, { method: 'DELETE' }).catch(() => undefined);
+}
+
 // Fecha y hora local del usuario, en su zona horaria.
 function localNow(timeZone: string, now: Date): { ymd: string; hour: number; midnightUtcIso: string } {
   let tz = timeZone;
@@ -203,8 +231,65 @@ interface LiabilityRow {
 
 const DEBT_OFFSETS = new Set([3, 1, 0]);
 
+// Avisos programados (P3): recordatorios propios, pagos recurrentes, corte y pago de tarjeta... Cada ocurrencia lleva copiado lo
+// que hace falta (título, intentos), así que no hay que juntar tablas. Ver _shared/reminderCron.ts para las reglas.
+async function runReminders(
+  env: Env,
+  settings: SettingsRow[],
+  subsByUser: Map<string, SubscriptionRow[]>,
+  now: Date,
+  stats: Record<string, number>
+): Promise<void> {
+  const users = settings.filter((s) => subsByUser.has(s.user_id));
+  if (users.length === 0) return;
+  const dueIso = new Date(now.getTime() + DUE_TOLERANCE_MS).toISOString();
+  let rows: OccurrenceRow[];
+  try {
+    rows = await restJson<OccurrenceRow>(
+      env,
+      `reminder_occurrences?user_id=in.(${users.map((u) => u.user_id).join(',')})&status=in.(pending,sent)&deleted_at=is.null&push=eq.true` +
+        `&next_attempt_at=lte.${encodeURIComponent(dueIso)}&order=next_attempt_at.asc&limit=200&select=*`
+    );
+  } catch {
+    return; // la migración 0023 todavía no se corrió: no hay avisos que mandar (y no debe romper lo demás)
+  }
+  const tzByUser = new Map(users.map((u) => [u.user_id, u.timezone]));
+  const nowMs = now.getTime();
+  for (const o of rows) {
+    const decision = decideOccurrence(o, nowMs, localHourOf(tzByUser.get(o.user_id) ?? 'America/Mexico_City', now));
+    if (!decision.send) {
+      if (decision.expire) {
+        // demasiado viejo para sonar: deja de insistir por push (sigue visible dentro de la app)
+        await rest(env, `reminder_occurrences?id=eq.${o.id}&status=in.(pending,sent)`, { method: 'PATCH', body: JSON.stringify({ next_attempt_at: null }) });
+        stats.reminderExpired++;
+      }
+      continue;
+    }
+    const key = attemptDedupeKey(o);
+    const claim = await claimAttempt(env, o.user_id, 'reminder', key);
+    if (claim === 'error') {
+      stats.reminderErrors++;
+      continue; // se reintenta en la próxima corrida
+    }
+    if (claim === 'claimed') {
+      const msg = buildMessage(o);
+      const delivered = await deliver(env, subsByUser.get(o.user_id) ?? [], { title: msg.title, body: msg.body, url: '/avisos', tag: pushTag(o) });
+      if (delivered === 0) {
+        await releaseClaim(env, o.user_id, key); // no llegó a ningún dispositivo: que se reintente, no que se pierda
+        stats.reminderErrors++;
+        continue;
+      }
+      stats.reminderSent++;
+    } else {
+      stats.skippedDuplicates++; // ya se mandó (el estado se había quedado atrás): solo se pone al día, sin volver a sonar
+    }
+    // Solo si la ocurrencia sigue abierta: si la persona la confirmó mientras tanto, no se pisa.
+    await rest(env, `reminder_occurrences?id=eq.${o.id}&status=in.(pending,sent)`, { method: 'PATCH', body: JSON.stringify(afterAttempt(o, nowMs)) });
+  }
+}
+
 async function runCron(env: Env): Promise<Record<string, number>> {
-  const stats = { users: 0, debtSent: 0, dailySent: 0, skippedDuplicates: 0 };
+  const stats = { users: 0, debtSent: 0, dailySent: 0, skippedDuplicates: 0, reminderSent: 0, reminderErrors: 0, reminderExpired: 0 };
   const settings = await restJson<SettingsRow>(env, 'notification_settings?enabled=eq.true&select=*');
   if (settings.length === 0) return stats;
 
@@ -223,6 +308,7 @@ async function runCron(env: Env): Promise<Record<string, number>> {
     : [];
 
   const now = new Date();
+  await runReminders(env, settings, subsByUser, now, stats);
   for (const s of settings) {
     const userSubs = subsByUser.get(s.user_id);
     if (!userSubs?.length) continue;

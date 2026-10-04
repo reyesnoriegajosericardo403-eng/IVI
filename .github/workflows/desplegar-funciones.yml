@@ -1,0 +1,58 @@
+name: Desplegar funciones de Supabase
+
+# Despliega las Edge Functions SIN terminal (pensado para quien trabaja desde el iPad): en GitHub → Actions →
+# «Desplegar funciones de Supabase» → Run workflow. También corre solo cuando cambia algo en supabase/functions
+# de la rama principal, para que lo que está en el repositorio sea lo que está en producción.
+#
+# Requiere UN secreto del repositorio (Settings → Secrets and variables → Actions → New repository secret):
+#   SUPABASE_ACCESS_TOKEN  → se crea en https://supabase.com/dashboard/account/tokens
+# Los secretos de las funciones (VAPID_*, CRON_SECRET) ya viven en Supabase; este flujo no los toca.
+on:
+  workflow_dispatch:
+    inputs:
+      funcion:
+        description: 'Qué función desplegar (push-notify, ai-relay, market-data, delete-account o todas)'
+        default: 'push-notify'
+        required: true
+  push:
+    branches: [main, master]
+    paths:
+      - 'supabase/functions/**'
+
+env:
+  SUPABASE_PROJECT_REF: utgwmwlqepevyzgoaato
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Comprobar el secreto
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Falta el secreto SUPABASE_ACCESS_TOKEN (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+      - name: Desplegar
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FUNCION: ${{ github.event.inputs.funcion || 'push-notify' }}
+        run: |
+          set -euo pipefail
+          deploy() {
+            case "$1" in
+              push-notify) supabase functions deploy "$1" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt ;;
+              *) supabase functions deploy "$1" --project-ref "$SUPABASE_PROJECT_REF" ;;
+            esac
+          }
+          if [ "$FUNCION" = "todas" ]; then
+            for f in push-notify ai-relay market-data delete-account; do deploy "$f"; done
+          else
+            deploy "$FUNCION"
+          fi
