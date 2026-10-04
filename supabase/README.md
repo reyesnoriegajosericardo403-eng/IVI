@@ -49,7 +49,7 @@ Sin desplegar esta función, la app sigue funcionando normal: en nativo tu IA fu
 Envía avisos push reales a la PWA instalada (Android con Chrome; iPhone con iOS 16.4+ y VALU agregada a la pantalla de inicio). Requiere la migración `0020_push_notifications.sql`.
 
 1. **Secretos** (Supabase → Edge Functions → Secrets): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:tu@correo`), `CRON_SECRET` (cualquier texto largo y aleatorio). Las llaves VAPID se generan una sola vez; si las cambias, cada teléfono tiene que volver a activar los avisos.
-2. **Desplegar** (sin verificación de JWT, porque `config` y `cron` no traen sesión; las acciones de usuario validan el token por dentro):
+2. **Desplegar** — sin terminal: GitHub → Actions → «Desplegar funciones de Supabase» → Run workflow (necesita el secreto `SUPABASE_ACCESS_TOKEN`, ver `docs/memoria-proyecto/06-pendientes.md`). Con terminal (sin verificación de JWT, porque `config` y `cron` no traen sesión; las acciones de usuario validan el token por dentro):
    ```bash
    npx supabase functions deploy push-notify --no-verify-jwt
    ```
@@ -69,4 +69,4 @@ Envía avisos push reales a la PWA instalada (Android con Chrome; iPhone con iOS
    ```
    Corre cada hora (minuto 5). Cada aviso tiene una llave única en `notification_log`, así que aunque el cron corra de más nunca llega duplicado. Para quitarlo: `select cron.unschedule('valu-push-hourly');`.
 
-Qué avisa hoy: pagos de deudas (3 días antes, 1 día antes y el día; entre 9:00 y 21:59 hora local) y un recordatorio diario opcional para registrar gastos (solo si ese día no hay movimientos). Nunca incluye montos.
+Qué avisa hoy: **tus avisos y pagos recurrentes de P3** (migración 0023: hasta 3 intentos, sin reintentos de 22:00 a 6:59, nunca con montos; ver `docs/memoria-proyecto/10-p3-previsto-recurrentes-avisos-deudas.md`), pagos de deudas (3 días antes, 1 día antes y el día; entre 9:00 y 21:59 hora local) y un recordatorio diario opcional para registrar gastos (solo si ese día no hay movimientos). Nunca incluye montos.

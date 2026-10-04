@@ -8,6 +8,23 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-04 — P3: previsto vs. real, pagos recurrentes, avisos, deudas y dividendos
+
+Pedido: «hazlo todo de golpe pero cuidando que todo sea correcto» (con permiso de arreglar lo que apareciera) y, antes, revisar
+que P0–P2 funcionaran. Detalle completo en [[10-p3-previsto-recurrentes-avisos-deudas]].
+
+- **Revisión previa (V0):** pruebas adversariales (fuzz + rendimiento) que encontraron y corrigieron textos que congelaban el
+  clasificador, y un **error de contabilidad real**: gastar con una tarjeta de crédito *reducía* la deuda (ahora la sube y pagarla la
+  baja; los movimientos viejos en tarjeta conservan el signo anterior y hay que ajustar el saldo a mano).
+- **Previsto vs. real:** un previsto nunca mueve saldos; confirmar / «no ocurrió» / posponer, pestaña «Previstos» en Movimientos, formulario con «¿Cuándo?».
+- **Pagos recurrentes** (renta, sueldo, suscripciones, ahorro a una meta) con previstos y avisos generados por adelantado, de forma idempotente (ids deterministas).
+- **Avisos** con hasta 3 intentos, silencio nocturno para reintentos, posponer, y fase nueva en `push-notify`; respaldo `.ics`; flujo de GitHub Actions para desplegar funciones sin terminal.
+- **Deudas ampliadas** (me deben / yo debo, cuotas, pagar, cobrar, saldar) y **dividendos**; el patrimonio cuenta lo que te deben como activo.
+- **Chat:** 15 acciones nuevas y **ids virtuales** («crea la cuenta X y transfiere a X» ya es un plan de 2 pasos).
+- **Migración 0023** probada en un Postgres real; **falta correrla en Supabase** y desplegar `push-notify`.
+- **Medición honesta:** chat sellado 88.4 % y 84.4 % en la primera corrida (luego contaminados al corregir); más de 220 pruebas nuevas en `npm test`.
+- **Peso:** 793 → 835 KB; presupuesto del paquete inicial subido de 850 a 880 KB por decisión.
+
 ## 2026-10-03/04 — P2: planificador multi-acción, fechas, catálogo en segundo plano y lo aprendido en la nube
 
 Pedido: seguir con P2, y que el vocabulario grande no se descargue completo con la app («un túnel … conectado a cada

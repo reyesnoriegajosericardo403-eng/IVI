@@ -249,8 +249,22 @@ texto** (para no tener dos verdades). Detalle y cifras: `docs/memoria-proyecto/0
 | 3 | `ActionPlan` | ✅ | `chatTypes.ts`, `planner.ts`, `ChatPlanCard.tsx` | Mismos estados (`proposed/applying/applied/partially_applied/dismissed/failed`). El plan guarda además `effects` y `warnings`. `AIActionStatus` ganó `'skipped'` para los pasos que no se ejecutaron porque uno anterior falló. Tope de 6 pasos por mensaje (no estaba en el contrato). |
 | 4 | Efectos y presentación | ✅ | `planner.ts` (`previewPlan`) | Se calcula con el mismo libro contable de la app (`accountDeltasForTransaction`), no con `computeNetWorth`. Cubre cuentas, metas y deudas; avisa de saldo negativo (cuentas que no son tarjeta) y pasos idénticos. |
 | 5 | Confirmación e idempotencia | ✅ | `planExecutor.ts`, `aiApplyPlan` en `useAppStore.ts` | `aiApplyPlan` recibe el **id del mensaje**, no el plan: la verdad es el estado guardado (más fuerte que mirar el objeto de la pantalla). **Auditoría:** la tabla `audit_log` tiene un `check` que no admite un tipo de entidad «plan», así que cada paso se audita bajo su entidad real (movimiento, meta, cuenta, deuda, presupuesto) con el id del plan en el resumen; `update_liability_balance` usa la entrada que `updateLiability` ya genera. Recuperación tras cierre inesperado al rehidratar. |
-| 6 | Previsto vs. real | ⏳ P3 | — | Sin cambios. Base lista: las fechas se interpretan (`src/ai/dates.ts`) y un día futuro dicho en una captura se conserva en `futureDate` sin usarse como fecha del movimiento. |
+| 6 | Previsto vs. real | ✅ P3 (2026-10-04) | `types.ts` (`Transaction.status`), `ledger.ts`, `forecast.ts`, `materialize.ts`, store (`confirmForecast`…), migración `0023` | Se cumple tal cual: misma tabla, `status: 'forecast'`, nunca toca saldos y confirmar transiciona **la misma fila**. Añadidos: `skipped` («no ocurrió», reabrible), `paused`, `plannedDate` (al posponer), `confirmedAt`, `recurringRuleId`, `liabilityId`. Detalle: `docs/memoria-proyecto/10-p3-previsto-recurrentes-avisos-deudas.md`. |
 | 7 | Adaptadores | sin cambios | — | Las cuatro interfaces nuevas siguen siendo solo contrato. |
 | 8 | Compatibilidad hacia atrás | ✅ | — | Todo es aditivo; el guardia de `aiApplyAction` sigue igual. |
 
 **Acciones del catálogo hoy: 17** (las 14 originales + `withdraw_from_goal`, `update_goal_date`, `update_liability_due_date`).
+
+## Estado de implementación (P3, 2026-10-04)
+
+- **Acciones del catálogo hoy: 32** (las 17 de P2 + 15 de P3: `add_forecast`, `confirm_forecast`, `skip_forecast`, `postpone_forecast`,
+  `add_recurring`, `add_recurring_contribution`, `update_recurring_amount`, `pause_recurring`, `resume_recurring`, `end_recurring`,
+  `add_reminder`, `cancel_reminder`, `pay_liability`, `settle_liability`, `register_dividend`). Viven en `src/ai/actionCatalogP3.ts`
+  y se despachan por `resolveCandidate` (mismo reintento con la respuesta, §2).
+- **Ids virtuales (§3):** un paso puede referirse a una cuenta, meta o deuda que crea un paso anterior del MISMO plan
+  (`virtual:account:<nombre>`, `src/ai/virtualIds.ts`). Se validan en orden contra una copia del contexto y `aiApplyPlan` los cambia por los reales
+  al ejecutar; si el paso creador falla, el dependiente no corre. `MissingField.field` ganó `forecast`, `rule`, `reminder`,
+  `investment` y `recurrence`.
+- **Auditoría (§5):** reglas y avisos no tienen entidad en `audit_log` (su `check` no los admite): el plan guardado en el chat es el
+  rastro; confirmar un previsto, pagar una deuda o registrar un dividendo dejan su propia entrada con el monto.
+
