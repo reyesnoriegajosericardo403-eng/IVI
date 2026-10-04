@@ -16,8 +16,11 @@ export interface AccountDelta {
 }
 
 export function accountDeltasForTransaction(
-  tx: Pick<Transaction, 'type' | 'amount' | 'accountId' | 'toAccountId'>
+  tx: Pick<Transaction, 'type' | 'amount' | 'accountId' | 'toAccountId'> & { status?: Transaction['status'] }
 ): AccountDelta[] {
+  // Un previsto (o uno omitido/en pausa) NO es dinero que se movió: no toca ningún saldo. Al confirmarlo pasa a 'posted'
+  // y recién entonces el ledger lo aplica (updateTransaction revierte lo anterior —nada— y aplica lo nuevo).
+  if (tx.status && tx.status !== 'posted') return [];
   if (OUTFLOW_TYPES.includes(tx.type)) {
     return tx.accountId ? [{ accountId: tx.accountId, delta: -tx.amount }] : [];
   }

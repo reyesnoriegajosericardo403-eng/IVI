@@ -40,6 +40,9 @@ import type {
   Currency,
   Goal,
   PeriodBudgetOverride,
+  RecurringRule,
+  Reminder,
+  ReminderOccurrence,
   TemplateBudgetLine,
   InvestmentPosition,
   Liability,
@@ -55,6 +58,21 @@ import { nextAssignmentsOfTemplate } from '@/utils/finance';
 import { makeRangeKey } from '@/utils/budgetPeriods';
 import { generateId } from '@/utils/id';
 import { accountDeltasForTransaction, mergeDeltas, reverseDeltas, signedDeltaForAccount } from '@/utils/ledger';
+import { noonIso } from '@/utils/forecast';
+import {
+  forecastIdFor,
+  forecastsToPause,
+  forecastsToResume,
+  occurrencesToPause,
+  occurrencesToResume,
+  planReminderOccurrences,
+  planRuleForecasts,
+  reconcileReminderOccurrences,
+  reconcileRuleForecasts,
+  todayOf,
+} from '@/utils/materialize';
+import { addDaysIso, validateRecurrence } from '@/utils/recurrence';
+import { normalizeAdvanceDays, normalizeIntervalMinutes, REMINDER_DEFAULTS, validateReminderDraft, validateRuleDraft, type ReminderDraft, type RuleDraft } from '@/utils/p3Validation';
 
 // Color de la plantilla "Mi presupuesto" — neutro a propósito: es la que
 // aplica cuando un periodo no tiene ninguna otra asignada, así que no
@@ -115,6 +133,31 @@ function mergeByUpdatedAt<T extends SyncMeta>(local: T[], remote: T[]): T[] {
 }
 
 export type Draft<T> = Omit<T, keyof SyncMeta>;
+
+// Resultado de una acción del store que puede fallar por una regla de negocio (el mensaje se muestra tal cual).
+export interface StoreResult {
+  ok: boolean;
+  error?: string;
+}
+
+// Cómo se avisa de una regla recurrente (por defecto: un aviso el día a las 9:00).
+export interface RuleReminderOptions {
+  remind?: boolean;
+  advanceDays?: number[];
+  timeOfDay?: string;
+  maxAttempts?: number;
+  push?: boolean;
+}
+const OK: StoreResult = { ok: true };
+const fail = (error: string): StoreResult => ({ ok: false, error });
+
+function upsertById<T extends { id: string }>(list: T[], record: T): T[] {
+  const i = list.findIndex((x) => x.id === record.id);
+  if (i === -1) return [...list, record];
+  const next = list.slice();
+  next[i] = record;
+  return next;
+}
 
 interface AppState {
   profile: UserProfile;
@@ -201,9 +244,46 @@ interface AppState {
   // redondo inútil.
   adoptRemoteProfile: (profile: Partial<UserProfile>) => void;
 
-  addTransaction: (draft: Draft<Transaction>) => void;
+  addTransaction: (draft: Draft<Transaction>) => Transaction;
   updateTransaction: (id: string, patch: Partial<Draft<Transaction>>) => void;
   deleteTransaction: (id: string) => void;
+
+  // ---------- P3: previsto vs. real ----------
+  // Un previsto NUNCA mueve saldos ni cuenta en nada real (ver utils/ledger.ts); confirmarlo lo vuelve real.
+  addForecast: (draft: Draft<Transaction>) => Transaction;
+  confirmForecast: (id: string, opts?: { date?: string; amount?: number; accountId?: string }) => StoreResult;
+  skipForecast: (id: string) => StoreResult; // "no ocurrió"
+  reopenForecast: (id: string) => StoreResult; // deshacer un "no ocurrió"
+  postponeForecast: (id: string, newDateIso: string) => StoreResult;
+
+  // ---------- P3: movimientos recurrentes ----------
+  recurringRules: RecurringRule[];
+  createRule: (draft: RuleDraft, opts?: RuleReminderOptions) => StoreResult & { rule?: RecurringRule };
+  updateRule: (id: string, patch: Partial<RuleDraft>) => StoreResult;
+  pauseRule: (id: string) => StoreResult;
+  resumeRule: (id: string) => StoreResult;
+  endRule: (id: string) => StoreResult; // termina la regla: ya no genera y se quitan sus previstos futuros
+  deleteRule: (id: string) => StoreResult;
+
+  // ---------- P3: avisos ----------
+  reminders: Reminder[];
+  reminderOccurrences: ReminderOccurrence[];
+  createReminder: (draft: ReminderDraft) => StoreResult & { reminder?: Reminder };
+  updateReminder: (id: string, patch: Partial<ReminderDraft>) => StoreResult;
+  pauseReminder: (id: string) => StoreResult;
+  resumeReminder: (id: string) => StoreResult;
+  cancelReminder: (id: string) => StoreResult;
+  confirmOccurrence: (id: string) => StoreResult; // "ya ocurrió"
+  markOccurrenceNotHappened: (id: string) => StoreResult; // "no ocurrió"
+  skipOccurrence: (id: string) => StoreResult; // omitir ESTA vez de una serie
+  postponeOccurrence: (id: string, to: { minutes?: number; untilIso?: string }) => StoreResult;
+  dismissOccurrence: (id: string) => StoreResult; // "enterado" (aviso previo)
+  // Genera los previstos y las ocurrencias que falten (idempotente). Se llama al abrir la app, al volver a primer plano y tras
+  // cada cambio en reglas o avisos.
+  runMaterialization: (now?: Date) => { forecasts: number; occurrences: number };
+  // Marca por tabla opcional del motor de sincronización (ver SyncEngine).
+  optionalSyncedAt: Record<string, string>;
+  setOptionalSyncedAt: (table: string, iso: string) => void;
 
   addAccount: (draft: Draft<Account>) => void;
   updateAccount: (id: string, patch: Partial<Draft<Account>>) => void;
@@ -367,6 +447,193 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ pendingSync: [...s.pendingSync, entry] }));
       }
 
+      // Encola varios registros de una misma tabla con UN solo cambio de estado (generar 90 días de previstos no debe
+      // copiar la cola 90 veces).
+      function enqueueMany(table: SyncTable, records: Array<SyncMeta & { isDemo?: boolean }>) {
+        if (records.length === 0) return;
+        const queuedAt = new Date().toISOString();
+        const entries: SyncQueueEntry[] = records
+          .filter((r) => !r.isDemo)
+          .map((r) => ({ id: generateId(), table, recordId: r.id, op: 'upsert' as const, payload: r as unknown as Record<string, unknown>, queuedAt, attempts: 0 }));
+        if (entries.length) set((s) => ({ pendingSync: [...s.pendingSync, ...entries] }));
+      }
+
+      const parseOk = (day: string) => /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(new Date(`${day}T12:00:00`).getTime());
+
+      function patchTransaction(id: string, patch: Partial<Transaction>): Transaction | undefined {
+        const cur = get().transactions.find((x) => x.id === id);
+        if (!cur) return undefined;
+        const next = touch(cur, patch as Partial<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>>);
+        set((s) => ({ transactions: s.transactions.map((x) => (x.id === id ? next : x)) }));
+        enqueue('transactions', id, 'upsert', next as unknown as Record<string, unknown>, next.isDemo);
+        return next;
+      }
+      function putRule(rule: RecurringRule) {
+        set((s) => ({ recurringRules: upsertById(s.recurringRules, rule) }));
+        enqueue('recurring_rules', rule.id, 'upsert', rule as unknown as Record<string, unknown>);
+      }
+      function patchRule(id: string, patch: Partial<RecurringRule>): RecurringRule | undefined {
+        const cur = get().recurringRules.find((x) => x.id === id);
+        if (!cur) return undefined;
+        const next = touch(cur, patch as Partial<Omit<RecurringRule, 'id' | 'createdAt' | 'updatedAt'>>);
+        putRule(next);
+        return next;
+      }
+      function putReminder(reminder: Reminder) {
+        set((s) => ({ reminders: upsertById(s.reminders, reminder) }));
+        enqueue('reminders', reminder.id, 'upsert', reminder as unknown as Record<string, unknown>);
+      }
+      function patchReminder(id: string, patch: Partial<Reminder>): Reminder | undefined {
+        const cur = get().reminders.find((x) => x.id === id);
+        if (!cur) return undefined;
+        const next = touch(cur, patch as Partial<Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>>);
+        putReminder(next);
+        return next;
+      }
+      function putOccurrence(o: ReminderOccurrence) {
+        set((s) => ({ reminderOccurrences: upsertById(s.reminderOccurrences, o) }));
+        enqueue('reminder_occurrences', o.id, 'upsert', o as unknown as Record<string, unknown>);
+      }
+      function patchOccurrence(id: string, patch: Partial<ReminderOccurrence>): ReminderOccurrence | undefined {
+        const cur = get().reminderOccurrences.find((x) => x.id === id);
+        if (!cur) return undefined;
+        const next = touch(cur, patch as Partial<Omit<ReminderOccurrence, 'id' | 'createdAt' | 'updatedAt'>>);
+        putOccurrence(next);
+        return next;
+      }
+
+      // Aplica lo que devuelve reconcileRuleForecasts (crear / actualizar / quitar previstos).
+      function applyForecastDiff(diff: ReturnType<typeof reconcileRuleForecasts>) {
+        const nowIso = new Date().toISOString();
+        if (diff.create.length) {
+          set((s) => ({ transactions: [...diff.create, ...s.transactions] }));
+          enqueueMany('transactions', diff.create);
+        }
+        for (const u of diff.update) patchTransaction(u.id, u.patch);
+        for (const id of diff.remove) patchTransaction(id, { deletedAt: nowIso } as Partial<Transaction>);
+      }
+
+      // Cancela lo que quede abierto de una serie.
+      function cancelOpenOccurrences(reminderId: string) {
+        const nowIso = new Date().toISOString();
+        for (const o of get().reminderOccurrences) {
+          if (o.reminderId === reminderId && !o.deletedAt && ['pending', 'sent', 'paused'].includes(o.status)) {
+            patchOccurrence(o.id, { status: 'cancelled', nextAttemptAt: undefined, resolvedAt: nowIso });
+          }
+        }
+      }
+
+      // Después de cambiar horario/fechas/avisos de una serie: reconcilia sus ocurrencias futuras.
+      function resyncReminderOccurrences(reminderId: string) {
+        const s = get();
+        const rem = s.reminders.find((r) => r.id === reminderId);
+        if (!rem) return;
+        const nowD = new Date();
+        const diff = reconcileReminderOccurrences(rem, new Map(s.recurringRules.map((r) => [r.id, r])), s.reminderOccurrences, todayOf(nowD), nowD.toISOString());
+        const nowIso = nowD.toISOString();
+        for (const id of diff.cancel) patchOccurrence(id, { status: 'cancelled', nextAttemptAt: undefined, resolvedAt: nowIso });
+        for (const r of diff.revive) patchOccurrence(r.id, r.patch);
+        for (const u of diff.update) patchOccurrence(u.id, u.patch);
+        if (diff.create.length) {
+          set((st) => ({ reminderOccurrences: [...st.reminderOccurrences, ...diff.create] }));
+          enqueueMany('reminder_occurrences', diff.create);
+        }
+      }
+
+      function endOrDeleteRule(id: string, remove: boolean): StoreResult {
+        const cur = get().recurringRules.find((r) => r.id === id && !r.deletedAt);
+        if (!cur) return fail('Esa regla ya no existe.');
+        const nowIso = new Date().toISOString();
+        const todayIso = todayOf(new Date());
+        patchRule(id, remove ? ({ status: 'ended', endedAt: cur.endedAt ?? nowIso, deletedAt: nowIso } as Partial<RecurringRule>) : { status: 'ended', endedAt: nowIso });
+        // los previstos que faltaban por ocurrir nunca fueron dinero: se quitan; lo ya confirmado/omitido queda como historia
+        for (const t of get().transactions) {
+          if (t.recurringRuleId === id && !t.deletedAt && (t.status === 'forecast' || t.status === 'paused') && t.date.slice(0, 10) >= todayIso) {
+            patchTransaction(t.id, { deletedAt: nowIso } as Partial<Transaction>);
+          }
+        }
+        for (const rem of get().reminders.filter((r) => r.sourceType === 'rule' && r.sourceId === id && !r.deletedAt)) {
+          patchReminder(rem.id, { status: 'cancelled' });
+          cancelOpenOccurrences(rem.id);
+        }
+        return OK;
+      }
+
+      // Confirmar un previsto: pasa a real y el ledger recién ahí mueve los saldos.
+      function confirmForecastInternal(id: string, opts?: { date?: string; amount?: number; accountId?: string }): StoreResult {
+        const s = get();
+        const tx = s.transactions.find((x) => x.id === id);
+        if (!tx || tx.deletedAt) return fail('Ese movimiento previsto ya no existe.');
+        if (tx.status !== 'forecast') return fail(tx.status === 'posted' || !tx.status ? 'Ese movimiento ya está registrado.' : 'Ese movimiento ya no está previsto.');
+        const todayIso = todayOf(new Date());
+        const plannedDay = tx.date.slice(0, 10);
+        const day = (opts?.date ?? (plannedDay <= todayIso ? plannedDay : todayIso)).slice(0, 10);
+        if (!parseOk(day)) return fail('La fecha no es válida.');
+        if (day > todayIso) return fail('Un movimiento real no puede ser de una fecha futura: si todavía no pasa, déjalo como previsto.');
+        const amount = opts?.amount ?? tx.amount;
+        if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) return fail('El monto debe ser un número mayor que cero.');
+        const accountId = opts?.accountId ?? tx.accountId;
+        if (accountId && !s.accounts.some((a) => a.id === accountId && !a.deletedAt)) return fail('La cuenta de ese movimiento ya no existe.');
+        if (tx.type === 'transfer' && tx.toAccountId && !s.accounts.some((a) => a.id === tx.toAccountId && !a.deletedAt)) return fail('La cuenta destino ya no existe.');
+        // updateTransaction revierte el efecto anterior (ninguno: era previsto) y aplica el nuevo
+        get().updateTransaction(id, { status: 'posted', date: noonIso(day), amount, accountId, confirmedAt: new Date().toISOString() } as Partial<Draft<Transaction>>);
+        logAudit({ entityType: 'transaction', entityId: id, action: 'create', summary: `Previsto confirmado: ${tx.merchant ?? tx.subcategoryId} (${amount})`, newValue: amount });
+        return OK;
+      }
+
+      // Cuando un previsto se confirma / omite / pospone por su cuenta, su aviso de la misma fecha se cierra (así no sigue insistiendo).
+      function settleOccurrencesForForecast(tx: Transaction | undefined, status: 'confirmed' | 'not_occurred' | 'skipped') {
+        if (!tx?.recurringRuleId) return;
+        const planned = (tx.plannedDate ?? tx.date).slice(0, 10);
+        const nowIso = new Date().toISOString();
+        for (const o of get().reminderOccurrences) {
+          if (!o.deletedAt && o.sourceType === 'rule' && o.sourceId === tx.recurringRuleId && o.eventDate === planned && ['pending', 'sent'].includes(o.status)) {
+            patchOccurrence(o.id, { status: o.offsetDays === 0 ? status : 'dismissed', nextAttemptAt: undefined, resolvedAt: nowIso });
+          }
+        }
+      }
+
+      function openOccurrence(id: string): ReminderOccurrence | string {
+        const occ = get().reminderOccurrences.find((x) => x.id === id && !x.deletedAt);
+        if (!occ) return 'Ese aviso ya no existe.';
+        if (!['pending', 'sent'].includes(occ.status)) return 'Ese aviso ya fue atendido.';
+        return occ;
+      }
+
+      // Cierra una ocurrencia y los avisos previos del mismo evento que ya no hacen falta.
+      function resolveOccurrence(occ: ReminderOccurrence, status: ReminderOccurrence['status']) {
+        const nowIso = new Date().toISOString();
+        patchOccurrence(occ.id, { status, nextAttemptAt: undefined, resolvedAt: nowIso });
+        if (occ.offsetDays === 0) {
+          for (const o of get().reminderOccurrences) {
+            if (o.reminderId === occ.reminderId && o.eventDate === occ.eventDate && o.offsetDays > 0 && !o.deletedAt && ['pending', 'sent'].includes(o.status)) {
+              patchOccurrence(o.id, { status: 'dismissed', nextAttemptAt: undefined, resolvedAt: nowIso });
+            }
+          }
+        }
+      }
+
+      // Lo que una ocurrencia HACE además de cerrarse, según de dónde venga: una regla de movimientos confirma/omite su previsto;
+      // una aportación periódica a una meta aporta al confirmar. Si el efecto falla, la ocurrencia NO se cierra.
+      function applyOccurrenceEffect(occ: ReminderOccurrence, what: 'confirm' | 'not_occurred' | 'skip'): StoreResult {
+        if (occ.sourceType !== 'rule' || !occ.sourceId) return OK;
+        const rule = get().recurringRules.find((r) => r.id === occ.sourceId);
+        if (!rule) return OK;
+        if (rule.kind === 'goal_contribution') {
+          if (what !== 'confirm') return OK;
+          const goal = get().goals.find((g) => g.id === rule.goalId && !g.deletedAt);
+          if (!goal) return fail('La meta de esa aportación ya no existe.');
+          get().contributeToGoal(goal.id, rule.amount);
+          logAudit({ entityType: 'goal', entityId: goal.id, action: 'update', summary: `Aportación periódica confirmada: ${rule.name}`, newValue: rule.amount });
+          return OK;
+        }
+        const fc = get().transactions.find((x) => x.id === forecastIdFor(rule.id, occ.eventDate));
+        if (!fc || fc.deletedAt || fc.status !== 'forecast') return OK; // ya no hay previsto que tocar
+        if (what === 'confirm') return confirmForecastInternal(fc.id);
+        patchTransaction(fc.id, { status: 'skipped' });
+        return OK;
+      }
+
       function logAudit(entry: Omit<AuditLogEntry, keyof SyncMeta>) {
         const record = withNewMeta(entry);
         set((s) => ({ auditLog: [record, ...s.auditLog] }));
@@ -418,6 +685,10 @@ export const useAppStore = create<AppState>()(
         budgetPeriods: DEFAULT_BUDGET_PERIODS,
         customCategoryMappings: {},
         customMappingsSeeded: false,
+        recurringRules: [],
+        reminders: [],
+        reminderOccurrences: [],
+        optionalSyncedAt: {},
         conversations: [],
         chatMessages: [],
         activeConversationId: null,
@@ -528,6 +799,7 @@ export const useAppStore = create<AppState>()(
           set((s) => ({ transactions: [tx, ...s.transactions] }));
           enqueue('transactions', tx.id, 'upsert', tx as unknown as Record<string, unknown>, tx.isDemo);
           applyAccountDeltas(accountDeltasForTransaction(tx));
+          return tx;
         },
         updateTransaction: (id, patch) => {
           const current = get().transactions.find((t) => t.id === id);
@@ -1260,6 +1532,320 @@ export const useAppStore = create<AppState>()(
           }));
         },
 
+        // =====================================================================================================
+        // P3 — previsto vs. real, movimientos recurrentes y avisos. La lógica de fechas y generación vive en utils/*
+        // (pura y probada); aquí solo se aplican los cambios, se encolan para sincronizar y se auditan.
+        // =====================================================================================================
+        addForecast: (draft) => {
+          const tx = withNewMeta({ ...draft, status: 'forecast' as const, plannedDate: draft.plannedDate ?? draft.date, origin: draft.origin ?? 'manual' });
+          set((s) => ({ transactions: [tx, ...s.transactions] }));
+          enqueue('transactions', tx.id, 'upsert', tx as unknown as Record<string, unknown>, tx.isDemo);
+          return tx;
+        },
+        confirmForecast: (id, opts) => {
+          const res = confirmForecastInternal(id, opts);
+          if (res.ok) settleOccurrencesForForecast(get().transactions.find((x) => x.id === id), 'confirmed');
+          return res;
+        },
+        skipForecast: (id) => {
+          const tx = get().transactions.find((x) => x.id === id);
+          if (!tx || tx.deletedAt) return fail('Ese movimiento previsto ya no existe.');
+          if (tx.status !== 'forecast' && tx.status !== 'paused') return fail('Ese movimiento ya no está previsto.');
+          patchTransaction(id, { status: 'skipped' });
+          settleOccurrencesForForecast(tx, 'not_occurred');
+          return OK;
+        },
+        reopenForecast: (id) => {
+          const tx = get().transactions.find((x) => x.id === id);
+          if (!tx || tx.deletedAt) return fail('Ese movimiento previsto ya no existe.');
+          if (tx.status !== 'skipped') return fail('Solo se puede reabrir un previsto marcado como "no ocurrió".');
+          patchTransaction(id, { status: 'forecast' });
+          return OK;
+        },
+        postponeForecast: (id, newDateIso) => {
+          const tx = get().transactions.find((x) => x.id === id);
+          if (!tx || tx.deletedAt) return fail('Ese movimiento previsto ya no existe.');
+          if (tx.status !== 'forecast') return fail('Ese movimiento ya no está previsto.');
+          const day = newDateIso.slice(0, 10);
+          if (!parseOk(day)) return fail('La fecha no es válida.');
+          if (day < todayOf(new Date())) return fail('Para posponerlo elige una fecha de hoy en adelante.');
+          patchTransaction(id, { date: noonIso(day), plannedDate: tx.plannedDate ?? tx.date });
+          settleOccurrencesForForecast(tx, 'skipped'); // el aviso de la fecha vieja ya no aplica
+          return OK;
+        },
+
+        createRule: (draft, opts) => {
+          const s = get();
+          const error = validateRuleDraft(draft, { accounts: s.accounts, goals: s.goals });
+          if (error) return fail(error);
+          const rule = withNewMeta<Omit<RecurringRule, keyof SyncMeta>>({
+            kind: draft.kind,
+            name: draft.name.trim(),
+            status: 'active',
+            recurrence: draft.recurrence,
+            amount: draft.amount,
+            currency: draft.currency,
+            txType: draft.txType,
+            categoryId: draft.categoryId,
+            subcategoryId: draft.subcategoryId,
+            merchant: draft.merchant,
+            accountId: draft.accountId,
+            toAccountId: draft.toAccountId,
+            goalId: draft.goalId,
+            notes: draft.notes,
+          });
+          putRule(rule);
+          if (opts?.remind !== false) {
+            const goalName = rule.kind === 'goal_contribution' ? s.goals.find((g) => g.id === rule.goalId)?.name : undefined;
+            const reminder = withNewMeta<Omit<Reminder, keyof SyncMeta>>({
+              kind: 'rule',
+              title: goalName ? `Aportar a ${goalName}` : rule.name,
+              sourceType: 'rule',
+              sourceId: rule.id,
+              timeOfDay: opts?.timeOfDay ?? REMINDER_DEFAULTS.timeOfDay,
+              advanceDays: normalizeAdvanceDays(opts?.advanceDays),
+              maxAttempts: Math.max(1, Math.min(3, opts?.maxAttempts ?? REMINDER_DEFAULTS.maxAttempts)),
+              attemptIntervalMinutes: REMINDER_DEFAULTS.attemptIntervalMinutes,
+              push: opts?.push ?? REMINDER_DEFAULTS.push,
+              status: 'active',
+            });
+            putReminder(reminder);
+          }
+          get().runMaterialization();
+          return { ok: true, rule: get().recurringRules.find((r) => r.id === rule.id) };
+        },
+        updateRule: (id, patch) => {
+          const s = get();
+          const cur = s.recurringRules.find((r) => r.id === id && !r.deletedAt);
+          if (!cur) return fail('Esa regla ya no existe.');
+          if (cur.status === 'ended') return fail('Esa regla ya terminó.');
+          const merged = { ...cur, ...patch } as RecurringRule;
+          const error = validateRuleDraft(merged, { accounts: s.accounts, goals: s.goals });
+          if (error) return fail(error);
+          // si cambió cuándo ocurre, el avance de generación se reinicia: reconcile se encarga de lo que sobre/falte
+          const next = patchRule(id, { ...patch, name: patch.name ? patch.name.trim() : cur.name } as Partial<RecurringRule>)!;
+          const todayIso = todayOf(new Date());
+          const nowIso = new Date().toISOString();
+          const diff = reconcileRuleForecasts(next, get().transactions, todayIso, nowIso);
+          applyForecastDiff(diff);
+          // el aviso de la regla sigue su nombre y sus fechas
+          for (const rem of get().reminders.filter((r) => r.sourceType === 'rule' && r.sourceId === id && !r.deletedAt)) {
+            if (patch.name && rem.kind === 'rule' && next.kind === 'transaction') patchReminder(rem.id, { title: next.name });
+            resyncReminderOccurrences(rem.id);
+          }
+          return OK;
+        },
+        pauseRule: (id) => {
+          const cur = get().recurringRules.find((r) => r.id === id && !r.deletedAt);
+          if (!cur) return fail('Esa regla ya no existe.');
+          if (cur.status !== 'active') return fail(cur.status === 'paused' ? 'Esa regla ya está en pausa.' : 'Esa regla ya terminó.');
+          const todayIso = todayOf(new Date());
+          patchRule(id, { status: 'paused', pausedAt: new Date().toISOString() });
+          for (const txId of forecastsToPause(get().transactions, id, todayIso)) patchTransaction(txId, { status: 'paused' });
+          for (const rem of get().reminders.filter((r) => r.sourceType === 'rule' && r.sourceId === id && !r.deletedAt && r.status === 'active')) {
+            for (const oid of occurrencesToPause(get().reminderOccurrences, rem.id, todayIso)) patchOccurrence(oid, { status: 'paused', nextAttemptAt: undefined });
+          }
+          return OK;
+        },
+        resumeRule: (id) => {
+          const cur = get().recurringRules.find((r) => r.id === id && !r.deletedAt);
+          if (!cur) return fail('Esa regla ya no existe.');
+          if (cur.status !== 'paused') return fail(cur.status === 'active' ? 'Esa regla ya está activa.' : 'Esa regla ya terminó.');
+          const todayIso = todayOf(new Date());
+          // lo que cayó durante la pausa no se genera: la generación retoma desde hoy
+          patchRule(id, { status: 'active', pausedAt: undefined, generatedUntil: addDaysIso(todayIso, -1) });
+          const res = forecastsToResume(get().transactions, id, todayIso);
+          for (const txId of res.reopen) patchTransaction(txId, { status: 'forecast' });
+          for (const txId of res.skip) patchTransaction(txId, { status: 'skipped' });
+          for (const rem of get().reminders.filter((r) => r.sourceType === 'rule' && r.sourceId === id && !r.deletedAt && r.status === 'active')) {
+            const o = occurrencesToResume(get().reminderOccurrences, rem.id, todayIso);
+            const nowIso = new Date().toISOString();
+            for (const oid of o.reopen) {
+              const occ = get().reminderOccurrences.find((x) => x.id === oid)!;
+              const stale = new Date(occ.scheduledFor).getTime() < Date.now() - 48 * 3600_000;
+              patchOccurrence(oid, { status: 'pending', nextAttemptAt: occ.push && !stale ? occ.scheduledFor : undefined });
+            }
+            for (const oid of o.skip) patchOccurrence(oid, { status: 'skipped', resolvedAt: nowIso });
+          }
+          get().runMaterialization();
+          return OK;
+        },
+        endRule: (id) => endOrDeleteRule(id, false),
+        deleteRule: (id) => endOrDeleteRule(id, true),
+
+        createReminder: (draft) => {
+          const error = validateReminderDraft(draft);
+          if (error) return fail(error);
+          const reminder = withNewMeta<Omit<Reminder, keyof SyncMeta>>({
+            kind: draft.kind ?? 'custom',
+            title: draft.title.trim(),
+            note: draft.note,
+            sourceType: draft.sourceType,
+            sourceId: draft.sourceId,
+            recurrence: draft.recurrence,
+            date: draft.recurrence ? undefined : draft.date,
+            timeOfDay: draft.timeOfDay ?? REMINDER_DEFAULTS.timeOfDay,
+            advanceDays: normalizeAdvanceDays(draft.advanceDays),
+            maxAttempts: draft.maxAttempts ?? REMINDER_DEFAULTS.maxAttempts,
+            attemptIntervalMinutes: normalizeIntervalMinutes(draft.attemptIntervalMinutes),
+            push: draft.push ?? REMINDER_DEFAULTS.push,
+            status: 'active',
+          });
+          putReminder(reminder);
+          get().runMaterialization();
+          return { ok: true, reminder };
+        },
+        updateReminder: (id, patch) => {
+          const cur = get().reminders.find((r) => r.id === id && !r.deletedAt);
+          if (!cur) return fail('Ese aviso ya no existe.');
+          if (cur.status === 'cancelled') return fail('Ese aviso ya está cancelado.');
+          const merged = { ...cur, ...patch } as Reminder;
+          const error = validateReminderDraft(merged);
+          if (error) return fail(error);
+          const next: Partial<Reminder> = { ...patch };
+          if (patch.title !== undefined) next.title = patch.title.trim();
+          if (patch.advanceDays !== undefined) next.advanceDays = normalizeAdvanceDays(patch.advanceDays);
+          if (patch.attemptIntervalMinutes !== undefined) next.attemptIntervalMinutes = normalizeIntervalMinutes(patch.attemptIntervalMinutes);
+          if (patch.recurrence) next.date = undefined;
+          if (patch.date && !patch.recurrence) next.recurrence = undefined;
+          patchReminder(id, next);
+          resyncReminderOccurrences(id);
+          return OK;
+        },
+        pauseReminder: (id) => {
+          const cur = get().reminders.find((r) => r.id === id && !r.deletedAt);
+          if (!cur) return fail('Ese aviso ya no existe.');
+          if (cur.status !== 'active') return fail(cur.status === 'paused' ? 'Ese aviso ya está en pausa.' : 'Ese aviso ya está cancelado.');
+          patchReminder(id, { status: 'paused' });
+          for (const oid of occurrencesToPause(get().reminderOccurrences, id, todayOf(new Date()))) patchOccurrence(oid, { status: 'paused', nextAttemptAt: undefined });
+          return OK;
+        },
+        resumeReminder: (id) => {
+          const cur = get().reminders.find((r) => r.id === id && !r.deletedAt);
+          if (!cur) return fail('Ese aviso ya no existe.');
+          if (cur.status !== 'paused') return fail(cur.status === 'active' ? 'Ese aviso ya está activo.' : 'Ese aviso ya está cancelado.');
+          const todayIso = todayOf(new Date());
+          patchReminder(id, { status: 'active', generatedUntil: addDaysIso(todayIso, -1) });
+          const res = occurrencesToResume(get().reminderOccurrences, id, todayIso);
+          const nowIso = new Date().toISOString();
+          for (const oid of res.reopen) {
+            const occ = get().reminderOccurrences.find((x) => x.id === oid)!;
+            const stale = new Date(occ.scheduledFor).getTime() < Date.now() - 48 * 3600_000;
+            patchOccurrence(oid, { status: 'pending', nextAttemptAt: occ.push && !stale ? occ.scheduledFor : undefined });
+          }
+          for (const oid of res.skip) patchOccurrence(oid, { status: 'skipped', resolvedAt: nowIso });
+          get().runMaterialization();
+          return OK;
+        },
+        cancelReminder: (id) => {
+          const cur = get().reminders.find((r) => r.id === id && !r.deletedAt);
+          if (!cur) return fail('Ese aviso ya no existe.');
+          if (cur.status === 'cancelled') return fail('Ese aviso ya está cancelado.');
+          patchReminder(id, { status: 'cancelled' });
+          cancelOpenOccurrences(id);
+          return OK;
+        },
+        confirmOccurrence: (id) => {
+          const occ = openOccurrence(id);
+          if (typeof occ === 'string') return fail(occ);
+          // Un aviso previo ("faltan 3 días") solo se da por enterado: no tiene nada que confirmar.
+          if (occ.offsetDays > 0) return get().dismissOccurrence(id);
+          const effect = applyOccurrenceEffect(occ, 'confirm');
+          if (!effect.ok) return effect;
+          resolveOccurrence(occ, 'confirmed');
+          return OK;
+        },
+        markOccurrenceNotHappened: (id) => {
+          const occ = openOccurrence(id);
+          if (typeof occ === 'string') return fail(occ);
+          if (occ.offsetDays > 0) return fail('Eso es un aviso previo: confírmalo cuando llegue el día.');
+          const effect = applyOccurrenceEffect(occ, 'not_occurred');
+          if (!effect.ok) return effect;
+          resolveOccurrence(occ, 'not_occurred');
+          return OK;
+        },
+        skipOccurrence: (id) => {
+          const occ = openOccurrence(id);
+          if (typeof occ === 'string') return fail(occ);
+          if (occ.offsetDays > 0) return get().dismissOccurrence(id);
+          const effect = applyOccurrenceEffect(occ, 'skip');
+          if (!effect.ok) return effect;
+          resolveOccurrence(occ, 'skipped');
+          return OK;
+        },
+        postponeOccurrence: (id, to) => {
+          const occ = openOccurrence(id);
+          if (typeof occ === 'string') return fail(occ);
+          let when: number;
+          if (to.untilIso) when = new Date(to.untilIso).getTime();
+          else if (to.minutes && to.minutes > 0) when = Date.now() + to.minutes * 60_000;
+          else return fail('Dime hasta cuándo lo pospongo.');
+          if (!Number.isFinite(when) || when <= Date.now()) return fail('Elige un momento que todavía no haya pasado.');
+          if (when > Date.now() + 366 * 86400_000) return fail('No puedo posponerlo más de un año.');
+          const iso = new Date(when).toISOString();
+          patchOccurrence(id, {
+            scheduledFor: iso,
+            status: 'pending',
+            attemptsMade: 0,
+            nextAttemptAt: occ.push ? iso : undefined,
+            postponedCount: (occ.postponedCount ?? 0) + 1,
+            resolvedAt: undefined,
+          });
+          return OK;
+        },
+        dismissOccurrence: (id) => {
+          const occ = openOccurrence(id);
+          if (typeof occ === 'string') return fail(occ);
+          resolveOccurrence(occ, 'dismissed');
+          return OK;
+        },
+
+        runMaterialization: (nowArg) => {
+          const nowD = nowArg ?? new Date();
+          const nowIso = nowD.toISOString();
+          const todayIso = todayOf(nowD);
+          const s = get();
+          if (s.recurringRules.length === 0 && s.reminders.length === 0) return { forecasts: 0, occurrences: 0 };
+          const existingTx = new Set(s.transactions.map((x) => x.id));
+          const newTx: Transaction[] = [];
+          const rulePatches = new Map<string, string>();
+          for (const rule of s.recurringRules) {
+            const g = planRuleForecasts(rule, existingTx, todayIso, nowIso);
+            for (const f of g.forecasts) {
+              existingTx.add(f.id);
+              newTx.push(f);
+            }
+            if (g.generatedUntil && g.generatedUntil !== rule.generatedUntil) rulePatches.set(rule.id, g.generatedUntil);
+          }
+          const rulesMap = new Map(s.recurringRules.map((r) => [r.id, r]));
+          const existingOcc = new Set(s.reminderOccurrences.map((o) => o.id));
+          const newOcc: ReminderOccurrence[] = [];
+          const reminderPatches = new Map<string, string>();
+          for (const rem of s.reminders) {
+            const g = planReminderOccurrences(rem, rulesMap, existingOcc, todayIso, nowIso);
+            for (const o of g.occurrences) {
+              existingOcc.add(o.id);
+              newOcc.push(o);
+            }
+            if (g.generatedUntil && g.generatedUntil !== rem.generatedUntil) reminderPatches.set(rem.id, g.generatedUntil);
+          }
+          if (newTx.length === 0 && newOcc.length === 0 && rulePatches.size === 0 && reminderPatches.size === 0) return { forecasts: 0, occurrences: 0 };
+          const patchedRules = s.recurringRules.filter((r) => rulePatches.has(r.id)).map((r) => touch(r, { generatedUntil: rulePatches.get(r.id) }));
+          const patchedReminders = s.reminders.filter((r) => reminderPatches.has(r.id)).map((r) => touch(r, { generatedUntil: reminderPatches.get(r.id) }));
+          set((st) => ({
+            transactions: newTx.length ? [...newTx, ...st.transactions] : st.transactions,
+            recurringRules: st.recurringRules.map((r) => patchedRules.find((p) => p.id === r.id) ?? r),
+            reminders: st.reminders.map((r) => patchedReminders.find((p) => p.id === r.id) ?? r),
+            reminderOccurrences: newOcc.length ? [...st.reminderOccurrences, ...newOcc] : st.reminderOccurrences,
+          }));
+          enqueueMany('transactions', newTx);
+          enqueueMany('recurring_rules', patchedRules);
+          enqueueMany('reminders', patchedReminders);
+          enqueueMany('reminder_occurrences', newOcc);
+          return { forecasts: newTx.length, occurrences: newOcc.length };
+        },
+        setOptionalSyncedAt: (table, iso) => set((st) => ({ optionalSyncedAt: { ...st.optionalSyncedAt, [table]: iso } })),
+
         clearSyncQueueEntries: (ids) =>
           set((s) => ({ pendingSync: s.pendingSync.filter((e) => !ids.includes(e.id)) })),
 
@@ -1286,6 +1872,12 @@ export const useAppStore = create<AppState>()(
                 return { auditLog: mergeByUpdatedAt(s.auditLog, records as AuditLogEntry[]) };
               case 'category_mappings':
                 return { customCategoryMappings: mergeRemoteMappings(s.customCategoryMappings, records as CategoryMappingRecord[]) };
+              case 'recurring_rules':
+                return { recurringRules: mergeByUpdatedAt(s.recurringRules, records as RecurringRule[]) };
+              case 'reminders':
+                return { reminders: mergeByUpdatedAt(s.reminders, records as Reminder[]) };
+              case 'reminder_occurrences':
+                return { reminderOccurrences: mergeByUpdatedAt(s.reminderOccurrences, records as ReminderOccurrence[]) };
               default:
                 return {};
             }
@@ -1311,6 +1903,10 @@ export const useAppStore = create<AppState>()(
             lastSyncedAt: null,
             budgetPeriods: DEFAULT_BUDGET_PERIODS,
             customCategoryMappings: {},
+            recurringRules: [],
+            reminders: [],
+            reminderOccurrences: [],
+            optionalSyncedAt: {},
             conversations: [],
             chatMessages: [],
             activeConversationId: null,

@@ -10,6 +10,9 @@ import type {
   Liability,
   NetWorthSnapshot,
   PeriodBudgetOverride,
+  RecurringRule,
+  Reminder,
+  ReminderOccurrence,
   TemplateBudgetLine,
   Transaction,
 } from '@/data/types';
@@ -39,6 +42,12 @@ import {
   netWorthSnapshotToRow,
   periodBudgetOverrideFromRow,
   periodBudgetOverrideToRow,
+  recurringRuleFromRow,
+  recurringRuleToRow,
+  reminderFromRow,
+  reminderOccurrenceFromRow,
+  reminderOccurrenceToRow,
+  reminderToRow,
   templateBudgetLineFromRow,
   templateBudgetLineToRow,
   transactionFromRow,
@@ -115,6 +124,11 @@ export const categoryMappingsRepository: Repository<CategoryMappingRecord> = cre
   'user_id,keyword'
 );
 
+// P3 (migración 0023)
+export const recurringRulesRepository: Repository<RecurringRule> = createSupabaseRepository('recurring_rules', recurringRuleToRow, recurringRuleFromRow);
+export const remindersRepository: Repository<Reminder> = createSupabaseRepository('reminders', reminderToRow, reminderFromRow);
+export const reminderOccurrencesRepository: Repository<ReminderOccurrence> = createSupabaseRepository('reminder_occurrences', reminderOccurrenceToRow, reminderOccurrenceFromRow);
+
 // Usado por el SyncEngine para resolver, a partir del nombre de tabla en
 // una entrada de la cola de sincronización, qué repositorio invocar.
 export const repositoryByTable: Record<SyncTable, Repository<any>> = {
@@ -131,4 +145,7 @@ export const repositoryByTable: Record<SyncTable, Repository<any>> = {
   net_worth_snapshots: netWorthSnapshotsRepository,
   audit_log: auditLogRepository,
   category_mappings: categoryMappingsRepository,
+  recurring_rules: recurringRulesRepository,
+  reminders: remindersRepository,
+  reminder_occurrences: reminderOccurrencesRepository,
 };

@@ -13,6 +13,9 @@ import type {
   Liability,
   NetWorthSnapshot,
   PeriodBudgetOverride,
+  RecurringRule,
+  Reminder,
+  ReminderOccurrence,
   TemplateBudgetLine,
   Transaction,
 } from '@/data/types';
@@ -71,6 +74,13 @@ export function transactionToRow(userId: string, t: Transaction) {
     is_demo: t.isDemo ?? false,
     created_at: t.createdAt,
     deleted_at: t.deletedAt ?? null,
+    // P3 (migración 0023): solo se mandan si tienen valor, así un movimiento normal sigue sincronizando aunque la migración
+    // todavía no se haya corrido. `status` se manda también cuando es 'posted' (un previsto confirmado debe pisar 'forecast').
+    ...(t.status !== undefined ? { status: t.status } : {}),
+    ...(t.plannedDate !== undefined ? { planned_date: t.plannedDate } : {}),
+    ...(t.confirmedAt !== undefined ? { confirmed_at: t.confirmedAt } : {}),
+    ...(t.recurringRuleId !== undefined ? { recurring_rule_id: t.recurringRuleId } : {}),
+    ...(t.liabilityId !== undefined ? { liability_id: t.liabilityId } : {}),
   };
 }
 
@@ -89,6 +99,11 @@ export function transactionFromRow(row: any): Transaction {
     notes: row.notes ?? undefined,
     origin: row.origin,
     isDemo: row.is_demo,
+    status: row.status ?? undefined,
+    plannedDate: row.planned_date ?? undefined,
+    confirmedAt: row.confirmed_at ?? undefined,
+    recurringRuleId: row.recurring_rule_id ?? undefined,
+    liabilityId: row.liability_id ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at ?? undefined,
@@ -244,6 +259,15 @@ export function liabilityToRow(userId: string, l: Liability) {
     is_demo: l.isDemo ?? false,
     created_at: l.createdAt,
     deleted_at: l.deletedAt ?? null,
+    // P3 (migración 0023): solo si tienen valor (ver transactionToRow)
+    ...(l.direction !== undefined ? { direction: l.direction } : {}),
+    ...(l.counterparty !== undefined ? { counterparty: l.counterparty } : {}),
+    ...(l.status !== undefined ? { status: l.status } : {}),
+    ...(l.settledAt !== undefined ? { settled_at: l.settledAt } : {}),
+    ...(l.installmentCount !== undefined ? { installment_count: l.installmentCount } : {}),
+    ...(l.installmentAmount !== undefined ? { installment_amount: l.installmentAmount } : {}),
+    ...(l.installmentStartDate !== undefined ? { installment_start_date: l.installmentStartDate } : {}),
+    ...(l.installmentsPaid !== undefined ? { installments_paid: l.installmentsPaid } : {}),
   };
 }
 
@@ -262,6 +286,14 @@ export function liabilityFromRow(row: any): Liability {
     currency: row.currency,
     notes: row.notes ?? undefined,
     isDemo: row.is_demo,
+    direction: row.direction ?? undefined,
+    counterparty: row.counterparty ?? undefined,
+    status: row.status ?? undefined,
+    settledAt: row.settled_at ?? undefined,
+    installmentCount: row.installment_count != null ? Number(row.installment_count) : undefined,
+    installmentAmount: row.installment_amount != null ? Number(row.installment_amount) : undefined,
+    installmentStartDate: row.installment_start_date ?? undefined,
+    installmentsPaid: row.installments_paid != null ? Number(row.installments_paid) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at ?? undefined,
@@ -491,6 +523,156 @@ export function categoryMappingFromRow(row: any): CategoryMappingRecord {
     keyword: row.keyword,
     categoryId: row.category_id,
     subcategoryId: row.subcategory_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+// ---------- P3: movimientos recurrentes, avisos y sus ocurrencias (migración 0023) ----------
+
+export function recurringRuleToRow(userId: string, r: RecurringRule) {
+  return {
+    id: r.id,
+    user_id: userId,
+    kind: r.kind,
+    name: r.name,
+    status: r.status,
+    recurrence: r.recurrence,
+    amount: r.amount,
+    currency: r.currency,
+    tx_type: r.txType ?? null,
+    category_id: r.categoryId ?? null,
+    subcategory_id: r.subcategoryId ?? null,
+    merchant: r.merchant ?? null,
+    account_id: r.accountId ?? null,
+    to_account_id: r.toAccountId ?? null,
+    goal_id: r.goalId ?? null,
+    paused_at: r.pausedAt ?? null,
+    ended_at: r.endedAt ?? null,
+    generated_until: r.generatedUntil ?? null,
+    notes: r.notes ?? null,
+    created_at: r.createdAt,
+    deleted_at: r.deletedAt ?? null,
+  };
+}
+
+export function recurringRuleFromRow(row: any): RecurringRule {
+  return {
+    id: row.id,
+    kind: row.kind,
+    name: row.name,
+    status: row.status,
+    recurrence: row.recurrence,
+    amount: Number(row.amount),
+    currency: row.currency,
+    txType: row.tx_type ?? undefined,
+    categoryId: row.category_id ?? undefined,
+    subcategoryId: row.subcategory_id ?? undefined,
+    merchant: row.merchant ?? undefined,
+    accountId: row.account_id ?? undefined,
+    toAccountId: row.to_account_id ?? undefined,
+    goalId: row.goal_id ?? undefined,
+    pausedAt: row.paused_at ?? undefined,
+    endedAt: row.ended_at ?? undefined,
+    generatedUntil: row.generated_until ?? undefined,
+    notes: row.notes ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+export function reminderToRow(userId: string, r: Reminder) {
+  return {
+    id: r.id,
+    user_id: userId,
+    kind: r.kind,
+    title: r.title,
+    note: r.note ?? null,
+    source_type: r.sourceType ?? null,
+    source_id: r.sourceId ?? null,
+    recurrence: r.recurrence ?? null,
+    date: r.date ?? null,
+    time_of_day: r.timeOfDay,
+    advance_days: r.advanceDays,
+    max_attempts: r.maxAttempts,
+    attempt_interval_minutes: r.attemptIntervalMinutes,
+    push: r.push,
+    status: r.status,
+    generated_until: r.generatedUntil ?? null,
+    created_at: r.createdAt,
+    deleted_at: r.deletedAt ?? null,
+  };
+}
+
+export function reminderFromRow(row: any): Reminder {
+  return {
+    id: row.id,
+    kind: row.kind,
+    title: row.title,
+    note: row.note ?? undefined,
+    sourceType: row.source_type ?? undefined,
+    sourceId: row.source_id ?? undefined,
+    recurrence: row.recurrence ?? undefined,
+    date: row.date ?? undefined,
+    timeOfDay: row.time_of_day,
+    advanceDays: Array.isArray(row.advance_days) ? row.advance_days.map(Number) : [],
+    maxAttempts: Number(row.max_attempts),
+    attemptIntervalMinutes: Number(row.attempt_interval_minutes),
+    push: !!row.push,
+    status: row.status,
+    generatedUntil: row.generated_until ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at ?? undefined,
+  };
+}
+
+export function reminderOccurrenceToRow(userId: string, o: ReminderOccurrence) {
+  return {
+    id: o.id,
+    user_id: userId,
+    reminder_id: o.reminderId,
+    event_date: o.eventDate,
+    offset_days: o.offsetDays,
+    scheduled_for: o.scheduledFor,
+    status: o.status,
+    attempts_made: o.attemptsMade,
+    max_attempts: o.maxAttempts,
+    attempt_interval_minutes: o.attemptIntervalMinutes,
+    next_attempt_at: o.nextAttemptAt ?? null,
+    last_sent_at: o.lastSentAt ?? null,
+    resolved_at: o.resolvedAt ?? null,
+    postponed_count: o.postponedCount ?? 0,
+    title: o.title,
+    push: o.push,
+    source_type: o.sourceType ?? null,
+    source_id: o.sourceId ?? null,
+    created_at: o.createdAt,
+    deleted_at: o.deletedAt ?? null,
+  };
+}
+
+export function reminderOccurrenceFromRow(row: any): ReminderOccurrence {
+  return {
+    id: row.id,
+    reminderId: row.reminder_id,
+    eventDate: row.event_date,
+    offsetDays: Number(row.offset_days),
+    scheduledFor: row.scheduled_for,
+    status: row.status,
+    attemptsMade: Number(row.attempts_made),
+    maxAttempts: Number(row.max_attempts),
+    attemptIntervalMinutes: Number(row.attempt_interval_minutes),
+    nextAttemptAt: row.next_attempt_at ?? undefined,
+    lastSentAt: row.last_sent_at ?? undefined,
+    resolvedAt: row.resolved_at ?? undefined,
+    postponedCount: row.postponed_count != null ? Number(row.postponed_count) : undefined,
+    title: row.title,
+    push: !!row.push,
+    sourceType: row.source_type ?? undefined,
+    sourceId: row.source_id ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at ?? undefined,

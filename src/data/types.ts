@@ -34,6 +34,16 @@ export type TransactionType =
 
 export type TransactionOrigin = 'voice' | 'manual' | 'import' | 'broker' | 'automatic';
 
+// Estado de un movimiento (P3, contrato §6 de docs/03_fase2_contratos_v1.md). Sin valor = 'posted' (real), así todo lo
+// guardado antes de P3 sigue siendo real sin migrar nada.
+//  - 'posted'   real: mueve saldos y cuenta en gasto/ingreso/presupuesto.
+//  - 'forecast' previsto: NUNCA mueve saldos ni cuenta en nada real; solo aparece en proyecciones y avisos.
+//  - 'skipped'  un previsto que NO ocurrió (o una ocurrencia omitida): se conserva como historia, no cuenta.
+//  - 'paused'   un previsto de una regla recurrente en pausa: vuelve a 'forecast' al reanudar la regla.
+export type TransactionStatus = 'posted' | 'forecast' | 'skipped' | 'paused';
+import type { Recurrence } from '@/utils/recurrence';
+export type { Recurrence };
+
 export interface CategoryDef {
   id: string;
   name: string;
@@ -75,6 +85,13 @@ export interface Transaction extends SyncMeta {
   // — sigue apareciendo en Movimientos, solo no cuenta en sumas/gráficas de
   // presupuesto.
   excludeFromBudget?: boolean;
+  // ---- P3: previsto vs. real ----
+  status?: TransactionStatus; // sin valor = 'posted'
+  // Fecha en que se había previsto (un previsto que se pospone cambia `date` pero conserva la original aquí).
+  plannedDate?: string; // ISO
+  confirmedAt?: string; // ISO — cuándo se confirmó que ocurrió (previsto → real)
+  recurringRuleId?: string; // la regla recurrente que lo generó
+  liabilityId?: string; // el pago de deuda al que corresponde (pagar una deuda)
 }
 
 export type AccountType = 'cash' | 'bank' | 'credit_card' | 'investment' | 'savings';
@@ -272,10 +289,22 @@ export interface InvestmentPosition extends SyncMeta {
 
 export type LiabilityType = 'credit_card' | 'student_loan' | 'personal_loan' | 'mortgage' | 'other';
 
+// 'owe' = tú debes; 'owed_to_me' = te deben a ti (un amigo te pidió prestado).
+export type LiabilityDirection = 'owe' | 'owed_to_me';
+
 export interface Liability extends SyncMeta {
   type: LiabilityType;
   institution: string;
   balance: number;
+  // ---- P3: deudas ampliadas ----
+  direction?: LiabilityDirection; // sin valor = 'owe'
+  counterparty?: string; // a quién le debes / quién te debe (nombre libre)
+  status?: 'active' | 'settled'; // sin valor = 'active'
+  settledAt?: string; // ISO
+  installmentCount?: number; // plan de cuotas: cuántas
+  installmentAmount?: number; // de cuánto es cada una
+  installmentStartDate?: string; // AAAA-MM-DD de la primera
+  installmentsPaid?: number; // cuántas van pagadas
   interestRate?: number;
   minPayment?: number;
   dueDate?: string;
@@ -373,4 +402,81 @@ export interface AuditLogEntry extends SyncMeta {
   summary: string; // ej. "Saldo de cuenta: $20,000 → $25,000"
   previousValue?: number;
   newValue?: number;
+}
+
+// ---------- P3: movimientos recurrentes ----------
+
+// Una regla que genera movimientos PREVISTOS cada cierto tiempo (la renta, el sueldo, un streaming) o recuerda una
+// aportación periódica a una meta. Los previstos se generan por adelantado con identificadores deterministas
+// (src/utils/ids.ts), así dos dispositivos que generan lo mismo no duplican.
+export type RecurringRuleKind = 'transaction' | 'goal_contribution';
+export type RecurringRuleStatus = 'active' | 'paused' | 'ended';
+
+export interface RecurringRule extends SyncMeta {
+  kind: RecurringRuleKind;
+  name: string; // "Renta", "Netflix", "Aportación al viaje"
+  status: RecurringRuleStatus;
+  recurrence: Recurrence;
+  amount: number;
+  currency: Currency;
+  // plantilla del movimiento (kind 'transaction')
+  txType?: 'expense' | 'income' | 'transfer' | 'saving';
+  categoryId?: string;
+  subcategoryId?: string;
+  merchant?: string;
+  accountId?: string;
+  toAccountId?: string;
+  // aportación periódica (kind 'goal_contribution')
+  goalId?: string;
+  pausedAt?: string;
+  endedAt?: string;
+  generatedUntil?: string; // AAAA-MM-DD hasta donde ya se generaron previstos
+  notes?: string;
+}
+
+// ---------- P3: avisos (recordatorios) ----------
+
+export type ReminderKind = 'custom' | 'rule' | 'goal' | 'liability' | 'card_cutoff' | 'card_due';
+export type ReminderStatus = 'active' | 'paused' | 'cancelled';
+
+// Una SERIE de avisos: una vez, o repetida con una regla de recurrencia.
+export interface Reminder extends SyncMeta {
+  kind: ReminderKind;
+  title: string; // lo que se ve en la notificación: nunca lleva montos ni saldos
+  note?: string;
+  sourceType?: 'rule' | 'goal' | 'liability' | 'account';
+  sourceId?: string;
+  recurrence?: Recurrence; // sin valor = una sola vez, en `date`
+  date?: string; // AAAA-MM-DD (aviso de una sola vez)
+  timeOfDay: string; // 'HH:MM' hora local
+  advanceDays: number[]; // avisos previos: [3, 1] = 3 días antes y 1 día antes
+  maxAttempts: number; // 1..3 intentos si no se confirma
+  attemptIntervalMinutes: number; // entre intentos (múltiplos de 60: el servidor corre cada hora)
+  push: boolean; // también como notificación al teléfono
+  status: ReminderStatus;
+  generatedUntil?: string;
+}
+
+// pending → sent (ya se avisó al menos una vez) → confirmed | not_occurred | skipped | dismissed | cancelled | paused
+export type OccurrenceStatus = 'pending' | 'sent' | 'confirmed' | 'not_occurred' | 'skipped' | 'dismissed' | 'cancelled' | 'paused';
+
+// Una vez concreta de un aviso. Lleva copia de lo que el servidor necesita (título, intentos) para mandar la
+// notificación sin tener que juntar tablas.
+export interface ReminderOccurrence extends SyncMeta {
+  reminderId: string;
+  eventDate: string; // AAAA-MM-DD del evento (el pago, el corte…)
+  offsetDays: number; // 0 = el día del evento; 3 = aviso previo "faltan 3 días"
+  scheduledFor: string; // ISO — cuándo debe sonar
+  status: OccurrenceStatus;
+  attemptsMade: number;
+  maxAttempts: number;
+  attemptIntervalMinutes: number;
+  nextAttemptAt?: string; // ISO — el servidor lo mueve tras cada intento
+  lastSentAt?: string;
+  resolvedAt?: string;
+  postponedCount?: number;
+  title: string;
+  push: boolean;
+  sourceType?: 'rule' | 'goal' | 'liability' | 'account';
+  sourceId?: string;
 }

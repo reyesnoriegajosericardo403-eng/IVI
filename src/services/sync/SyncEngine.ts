@@ -27,13 +27,23 @@ const ALL_TABLES: SyncTable[] = [
   'net_worth_snapshots',
   'audit_log',
   'category_mappings',
+  'recurring_rules',
+  'reminders',
+  'reminder_occurrences',
 ];
 
 // Tablas "opcionales": su migración puede no haberse corrido todavía en el Supabase de esta persona (o la
 // red fallar un momento). Un fallo aquí NUNCA debe frenar la sincronización de lo demás (cuentas, movimientos…).
 // Son tablas chicas (el tope local es de decenas de renglones por persona), así que se traen COMPLETAS en cada
 // ciclo en vez de usar `lastSyncedAt`: si un ciclo falla, el siguiente no deja huecos.
-const OPTIONAL_TABLES = new Set<SyncTable>(['category_mappings']);
+// `incremental`: las tablas chicas se traen completas en cada ciclo; las que pueden crecer (ocurrencias de avisos) se traen desde
+// la última fila recibida (marca propia POR TABLA, para que un fallo de una no deje huecos en las demás).
+const OPTIONAL_TABLES = new Map<SyncTable, { incremental: boolean }>([
+  ['category_mappings', { incremental: false }],
+  ['recurring_rules', { incremental: true }],
+  ['reminders', { incremental: true }],
+  ['reminder_occurrences', { incremental: true }],
+]);
 
 async function getUserId(): Promise<string | null> {
   if (!supabase) return null;
@@ -162,12 +172,20 @@ async function pullRemoteChanges(userId: string): Promise<number> {
 
   for (const table of ALL_TABLES) {
     const repo = repositoryByTable[table];
-    if (OPTIONAL_TABLES.has(table)) {
+    const optional = OPTIONAL_TABLES.get(table);
+    if (optional) {
       try {
-        const records = await repo.list(userId);
+        const { optionalSyncedAt, setOptionalSyncedAt } = useAppStore.getState();
+        const since = optional.incremental ? optionalSyncedAt[table] : undefined;
+        const records = await repo.list(userId, since);
         if (records.length > 0) {
           mergeRemoteRecords(table, records);
           pulled += records.length;
+          if (optional.incremental) {
+            // se avanza hasta lo último que de verdad llegó (menos 1 s de traslape: mezclar dos veces es inofensivo)
+            const latest = records.reduce((m: string, r: { updatedAt: string }) => (r.updatedAt > m ? r.updatedAt : m), '');
+            if (latest) setOptionalSyncedAt(table, new Date(Date.parse(latest) - 1000).toISOString());
+          }
         }
       } catch {
         // tabla aún sin crear o red caída: se reintenta en el próximo ciclo, sin tumbar el resto
