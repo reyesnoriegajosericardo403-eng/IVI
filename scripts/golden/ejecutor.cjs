@@ -235,6 +235,39 @@ const S = () => useAppStore.getState();
     assert(mine.every((e) => e.entityType === 'goal' && e.entityId === goalId));
   });
 
+  // ---- tarjeta de crédito: contabilidad correcta (el saldo es lo que se debe) ----
+  await t('store: gastar con la tarjeta sube la deuda; pagarla la baja; el patrimonio es coherente', () => {
+    const { computeNetWorth } = require('@/utils/finance');
+    S().resetAll();
+    S().addAccount({ name: 'BBVA', type: 'bank', currency: 'MXN', balance: 10000 });
+    S().addAccount({ name: 'Tarjeta', type: 'credit_card', currency: 'MXN', balance: 5000, isLiability: true });
+    const card = () => S().accounts.find((a) => a.name === 'Tarjeta');
+    const bank = () => S().accounts.find((a) => a.name === 'BBVA');
+    const nw = () => computeNetWorth(S().accounts, [], [], 'MXN').netWorth;
+    assert.strictEqual(nw(), 5000);
+    S().addTransaction({ type: 'expense', amount: 1000, currency: 'MXN', categoryId: 'food', subcategoryId: 'food_restaurant', accountId: card().id, date: new Date().toISOString(), origin: 'manual' });
+    assert.strictEqual(card().balance, 6000, 'gastar con la tarjeta debe subir la deuda');
+    assert.strictEqual(nw(), 4000, 'el patrimonio baja lo que se gastó');
+    S().addTransaction({ type: 'transfer', amount: 2000, currency: 'MXN', categoryId: 'transfer', subcategoryId: 'transfer_own', accountId: bank().id, toAccountId: card().id, date: new Date().toISOString(), origin: 'manual' });
+    assert.strictEqual(card().balance, 4000, 'pagar la tarjeta debe bajar la deuda');
+    assert.strictEqual(bank().balance, 8000);
+    assert.strictEqual(nw(), 4000, 'pagar la tarjeta no cambia el patrimonio');
+    // un reembolso a la tarjeta baja la deuda; borrar el gasto la devuelve
+    const tx = S().transactions.find((x) => x.type === 'expense');
+    S().deleteTransaction(tx.id);
+    assert.strictEqual(card().balance, 3000, 'borrar el gasto deshace su efecto en la deuda');
+    S().addTransaction({ type: 'income', amount: 500, currency: 'MXN', categoryId: 'income', subcategoryId: 'inc_reimbursement', accountId: card().id, date: new Date().toISOString(), origin: 'manual' });
+    assert.strictEqual(card().balance, 2500, 'un reembolso baja la deuda');
+  });
+  await t('store: editar un gasto de la tarjeta (monto) ajusta la deuda en la diferencia', () => {
+    const card = () => S().accounts.find((a) => a.name === 'Tarjeta');
+    S().addTransaction({ type: 'expense', amount: 300, currency: 'MXN', categoryId: 'food', subcategoryId: 'food_restaurant', accountId: card().id, date: new Date().toISOString(), origin: 'manual' });
+    const before = card().balance;
+    const tx = S().transactions.find((x) => x.type === 'expense' && x.amount === 300);
+    S().updateTransaction(tx.id, { amount: 500 });
+    assert.strictEqual(card().balance, before + 200);
+  });
+
   console.log(`\nEjecutor: ${ok} OK, ${fail} fallan`);
   process.exit(fail ? 1 : 0);
 })();

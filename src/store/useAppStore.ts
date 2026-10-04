@@ -54,7 +54,7 @@ import type { CetesRates, MarketQuote } from '@/providers/types';
 import { nextAssignmentsOfTemplate } from '@/utils/finance';
 import { makeRangeKey } from '@/utils/budgetPeriods';
 import { generateId } from '@/utils/id';
-import { accountDeltasForTransaction, mergeDeltas, reverseDeltas } from '@/utils/ledger';
+import { accountDeltasForTransaction, mergeDeltas, reverseDeltas, signedDeltaForAccount } from '@/utils/ledger';
 
 // Color de la plantilla "Mi presupuesto" — neutro a propósito: es la que
 // aplica cuando un periodo no tiene ninguna otra asignada, así que no
@@ -383,7 +383,7 @@ export const useAppStore = create<AppState>()(
         if (merged.size === 0) return;
         set((s) => ({
           accounts: s.accounts.map((a) =>
-            merged.has(a.id) ? touch(a, { balance: a.balance + (merged.get(a.id) ?? 0) } as Partial<Account>) : a
+            merged.has(a.id) ? touch(a, { balance: a.balance + signedDeltaForAccount(a, merged.get(a.id) ?? 0) } as Partial<Account>) : a
           ),
         }));
         const accounts = get().accounts;

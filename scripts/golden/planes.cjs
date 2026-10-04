@@ -9,7 +9,7 @@ const NOW = '2026-10-03T00:00:00.000Z';
 const base = { createdAt: NOW, updatedAt: NOW, version: 1 };
 const acc = (id, name, type, balance, extra = {}) => ({ ...base, id, name, type, balance, currency: 'MXN', ...extra });
 const ctx = {
-  accounts: [acc('a1', 'BBVA', 'bank', 5000), acc('a2', 'Nu', 'savings', 1200), acc('a3', 'Morralla', 'cash', 300), acc('a4', 'Liverpool', 'credit_card', -2000, { isLiability: true })],
+  accounts: [acc('a1', 'BBVA', 'bank', 5000), acc('a2', 'Nu', 'savings', 1200), acc('a3', 'Morralla', 'cash', 300), acc('a4', 'Liverpool', 'credit_card', 2000, { isLiability: true })],
   goals: [{ ...base, id: 'g1', name: 'Viaje', targetAmount: 20000, currentAmount: 3000, currency: 'MXN', targetDate: '2026-12-01' }],
   liabilities: [
     { ...base, id: 'l1', institution: 'Banorte', type: 'credit_card', balance: 8000, currency: 'MXN', dueDate: '2026-10-20' },
@@ -217,6 +217,15 @@ t('un movimiento de hoy no lleva fecha aparte (es "ahora")', () => {
 t('agrégale/sácale a una cuenta con fecha pasada la guarda', () => {
   const o = planFromText('sácale 200 a mi Morralla ayer', ctx);
   assert(o.kind === 'single' && o.step.action.args.date, JSON.stringify(o));
+});
+
+// ---- tarjeta de crédito: el saldo es lo que se DEBE ----
+t('vista previa: gastar con la tarjeta SUBE la deuda y pagarla la BAJA', () => {
+  const o = planFromText('registra 100 de tacos en Liverpool y transfiere 500 de BBVA a Liverpool', ctx);
+  assert.strictEqual(o.kind, 'plan');
+  const e = previewPlan(o.steps, ctx).effects.find((x) => x.id === 'a4');
+  assert.strictEqual(e.before, 2000);
+  assert.strictEqual(e.after, 1600); // 2000 + 100 (gasto) - 500 (pago)
 });
 
 console.log(`\nPlanificador: ${ok} OK, ${fail} fallan`);

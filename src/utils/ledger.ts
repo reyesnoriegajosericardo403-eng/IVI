@@ -33,6 +33,14 @@ export function accountDeltasForTransaction(
   return [];
 }
 
+// Convención de saldos: en una cuenta normal el saldo es "lo que tienes" (gastar lo baja, cobrar lo sube); en una cuenta
+// de PASIVO (tarjeta de crédito, `isLiability`) el saldo es "lo que debes" (positivo = deuda), así que el efecto es el
+// contrario: gastar con la tarjeta SUBE lo que debes, pagarla (una transferencia hacia ella) lo BAJA y un reembolso lo baja.
+// Antes de 2026-10-04 el ledger aplicaba el mismo signo a las dos, y gastar con la tarjeta reducía la deuda.
+export function signedDeltaForAccount(account: { isLiability?: boolean }, delta: number): number {
+  return account.isLiability ? -delta : delta;
+}
+
 export function reverseDeltas(deltas: AccountDelta[]): AccountDelta[] {
   return deltas.map((d) => ({ accountId: d.accountId, delta: -d.delta }));
 }

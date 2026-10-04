@@ -81,7 +81,7 @@ export function AccountForm({
         value={balance}
         onChangeText={setBalance}
         keyboardType="decimal-pad"
-        placeholder="Dinero disponible"
+        placeholder={type === 'credit_card' ? 'Lo que debes hoy en la tarjeta' : 'Dinero disponible'}
         placeholderTextColor={colors.textTertiary}
         style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />

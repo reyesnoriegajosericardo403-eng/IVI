@@ -18,7 +18,7 @@ import type { AIActionType, InterpretedMessage, MissingField, PendingClarificati
 import { extractDate } from './dates';
 import { extractAmount, normalize, parseCaptureText } from './localParser';
 import { parseISODate } from '@/utils/date';
-import { accountDeltasForTransaction, reverseDeltas } from '@/utils/ledger';
+import { accountDeltasForTransaction, reverseDeltas, signedDeltaForAccount } from '@/utils/ledger';
 import { formatCurrency } from '@/utils/format';
 import type { Transaction } from '@/data/types';
 
@@ -298,7 +298,7 @@ export function previewPlan(steps: PlannedStep[], ctx: ActionValidationContext):
   const moveAccount = (id: string, delta: number, stepNo: number) => {
     const e = accounts.get(id);
     if (!e) return;
-    e.now += delta;
+    e.now += signedDeltaForAccount(e.a, delta);
     if (e.now < e.minNow) {
       e.minNow = e.now;
       e.minStep = stepNo;
