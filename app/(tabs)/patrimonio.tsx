@@ -31,6 +31,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDateDMY } from '@/utils/date';
 import { formatCurrency, formatPercent } from '@/utils/format';
+import { cardSettingsOf } from '@/utils/creditCard';
 import { splitLiabilities, validateLiabilityDraft } from '@/utils/debts';
 import { buildBudgetLines, computeFinancialHealth, computeNetWorth, getNetWorthTrend, investmentCurrentValue, spendInPeriod } from '@/utils/finance';
 
@@ -288,7 +289,14 @@ export default function Patrimonio() {
               <Ionicons name="card-outline" size={20} color={colors.accentFrom} />
               <View style={{ flex: 1 }}>
                 <Text style={[typography.headline, { color: colors.textPrimary }]}>Tarjetas de crédito</Text>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>Fecha de corte, fecha de pago y avisos para que no se te pase ninguna.</Text>
+                {(() => {
+                  const missing = accounts.filter((a) => a.type === 'credit_card' && !cardSettingsOf(a));
+                  return missing.length > 0 ? (
+                    <Text style={[typography.caption, { color: colors.warning }]}>Falta poner el corte y el pago de {missing.map((m) => m.name).join(', ')} para que VALU te avise.</Text>
+                  ) : (
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>Fecha de corte, fecha de pago y avisos para que no se te pase ninguna.</Text>
+                  );
+                })()}
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
             </GlassCard>
