@@ -17,6 +17,7 @@ import {
   rebaseSavings,
   sellAsset,
 } from '@/store/investmentActions';
+import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { todayISO } from '@/utils/date';
 import { formatCurrency } from '@/utils/format';
@@ -527,6 +528,40 @@ export function MoveForm({ position, onDone, onCancel }: { position: InvestmentP
         onSave={() => {
           const opt = options.find((o) => o.key === selected);
           if (opt) movePosition(position, opt.inst, opt.product);
+          onDone();
+        }}
+      />
+    </FormCard>
+  );
+}
+
+// Dividendo recibido de una posición: entra como ingreso a la cuenta que elijas (o solo se anota) y suma a lo recibido.
+export function DividendForm({ position, onDone, onCancel }: { position: InvestmentPosition; onDone: () => void; onCancel: () => void }) {
+  const { colors, typography } = useTheme();
+  const rawAccounts = useAppStore((s) => s.accounts);
+  const registerDividend = useAppStore((s) => s.registerDividend);
+  const accounts = rawAccounts.filter((a) => !a.deletedAt && !a.isLiability && a.currency === position.currency);
+  const [amount, setAmount] = useState('');
+  const [accountId, setAccountId] = useState<string>('none');
+  const [error, setError] = useState<string | null>(null);
+  const value = parseAmount(amount);
+  return (
+    <FormCard title={`Dividendo de ${position.ticker === position.name ? position.name : position.ticker}`} subtitle="Registra lo que te depositaron. Entra como ingreso a la cuenta que elijas.">
+      <Field label={`Monto recibido (${position.currency})`} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" />
+      <ChipRow
+        label="¿A QUÉ CUENTA ENTRÓ?"
+        options={[{ value: 'none', label: 'Solo anotarlo' }, ...accounts.map((a) => ({ value: a.id, label: a.name }))]}
+        value={accountId}
+        onChange={setAccountId}
+      />
+      {error && <Text style={[typography.caption, { color: colors.danger }]}>{error}</Text>}
+      <FormActions
+        onCancel={onCancel}
+        canSave={Number.isFinite(value) && value > 0}
+        saveLabel="Registrar dividendo"
+        onSave={() => {
+          const res = registerDividend(position.id, { amount: value, accountId: accountId === 'none' ? undefined : accountId });
+          if (!res.ok) return setError(res.error ?? 'No se pudo registrar.');
           onDone();
         }}
       />

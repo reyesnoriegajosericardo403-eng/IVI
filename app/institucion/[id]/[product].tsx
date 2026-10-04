@@ -16,6 +16,7 @@ import {
   MoveForm,
   SavingsAdjustForm,
   SavingsForm,
+  DividendForm,
   SellForm,
 } from '@/components/investments/InvestmentForms';
 import { ProductInfo } from '@/components/investments/ProductInfo';
@@ -39,6 +40,7 @@ type Panel =
   | { kind: 'fixed' }
   | { kind: 'cetes' }
   | { kind: 'move'; id: string }
+  | { kind: 'dividend'; id: string }
   | null;
 
 const money = (n: number, c: Currency) => formatCurrency(n, c, 2);
@@ -280,6 +282,10 @@ export default function ProductScreen() {
         const pos = findPos(panel.id);
         return pos ? <MoveForm position={pos} onDone={done} onCancel={closePanel} /> : null;
       }
+      case 'dividend': {
+        const pos = findPos(panel.id);
+        return pos ? <DividendForm position={pos} onDone={done} onCancel={closePanel} /> : null;
+      }
     }
   };
 
@@ -304,6 +310,7 @@ export default function ProductScreen() {
     if (isMarket) {
       actions.push({ label: 'Comprar más', onPress: () => openPanel({ kind: 'buy', presetId: p.id }) });
       actions.push({ label: 'Vender', onPress: () => openPanel({ kind: 'sell', id: p.id }) });
+      actions.push({ label: 'Registrar dividendo', onPress: () => openPanel({ kind: 'dividend', id: p.id }) });
     } else if (product.model === 'daily_yield') {
       actions.push({ label: 'Depositar / retirar / saldo real', onPress: () => openPanel({ kind: 'adjust', id: p.id }) });
     } else if (matured) {
@@ -340,6 +347,7 @@ export default function ProductScreen() {
           <SummaryLine label="Rendimiento" value={`${v.valuation.gain >= 0 ? '+' : ''}${money(v.valuation.gain, p.currency)}`} tone={v.valuation.gain >= 0 ? 'positive' : 'negative'} />
         )}
         {!!p.realizedPnL && <SummaryLine label="Realizado en ventas" value={money(p.realizedPnL, p.currency)} tone={p.realizedPnL >= 0 ? 'positive' : 'negative'} />}
+        {!!p.dividendsReceived && <SummaryLine label="Dividendos recibidos" value={money(p.dividendsReceived, p.currency)} tone="positive" />}
         {!!p.fees && <SummaryLine label="Comisiones pagadas" value={money(p.fees, p.currency)} tone="muted" />}
         {matured && <Text style={[typography.caption, { color: colors.warning }]}>Esta inversión ya venció.</Text>}
         <View style={{ gap: 6, marginTop: 4 }}>

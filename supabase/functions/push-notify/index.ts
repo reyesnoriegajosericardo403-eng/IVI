@@ -300,12 +300,17 @@ async function runCron(env: Env): Promise<Record<string, number>> {
   for (const s of subs) subsByUser.set(s.user_id, [...(subsByUser.get(s.user_id) ?? []), s]);
 
   const debtUsers = settings.filter((s) => s.debt_due && subsByUser.has(s.user_id)).map((s) => s.user_id);
-  const liabilities = debtUsers.length
-    ? await restJson<LiabilityRow>(
-        env,
-        `liabilities?user_id=in.(${debtUsers.join(',')})&deleted_at=is.null&due_date=not.is.null&select=id,user_id,institution,due_date`
-      )
-    : [];
+  // Solo deudas que TÚ debes y siguen vivas. Las columnas status/direction vienen de la migración 0023: si todavía no se corrió,
+  // la consulta con filtro falla y se usa la de antes (así el aviso de pagos no se cae en el entretiempo).
+  let liabilities: LiabilityRow[] = [];
+  if (debtUsers.length) {
+    const base = `liabilities?user_id=in.(${debtUsers.join(',')})&deleted_at=is.null&due_date=not.is.null&select=id,user_id,institution,due_date`;
+    try {
+      liabilities = await restJson<LiabilityRow>(env, `${base}&status=eq.active&direction=eq.owe`);
+    } catch {
+      liabilities = await restJson<LiabilityRow>(env, base);
+    }
+  }
 
   const now = new Date();
   await runReminders(env, settings, subsByUser, now, stats);

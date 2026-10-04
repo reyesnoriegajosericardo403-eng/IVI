@@ -39,6 +39,9 @@ export function buildFinancialContextSummary(ctx: CopilotContext) {
       saldo: l.balance,
       tasa_interes: l.interestRate,
       moneda: l.currency,
+      sentido: l.direction === 'owed_to_me' ? 'me_deben' : 'yo_debo',
+      contraparte: l.counterparty,
+      estado: l.status === 'settled' ? 'saldada' : 'activa',
     })),
     inversiones: ctx.investments.map((i) => ({
       ticker: i.ticker,

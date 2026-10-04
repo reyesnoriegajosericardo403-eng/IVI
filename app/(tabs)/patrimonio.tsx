@@ -11,6 +11,8 @@ import { AssetsLiabilitiesTrendChart } from '@/components/AssetsLiabilitiesTrend
 import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { HealthGradientBar } from '@/components/HealthGradientBar';
+import { ChipRow } from '@/components/p3/Chips';
+import { DebtCard } from '@/components/p3/DebtCard';
 import { NetWorthTrendChart } from '@/components/NetWorthTrendChart';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS, LIABILITY_TYPE_LABELS } from '@/data/accountMeta';
@@ -29,6 +31,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDateDMY } from '@/utils/date';
 import { formatCurrency, formatPercent } from '@/utils/format';
+import { splitLiabilities, validateLiabilityDraft } from '@/utils/debts';
 import { buildBudgetLines, computeFinancialHealth, computeNetWorth, getNetWorthTrend, investmentCurrentValue, spendInPeriod } from '@/utils/finance';
 
 const LIABILITY_TYPES: LiabilityType[] = ['credit_card', 'student_loan', 'personal_loan', 'mortgage', 'other'];
@@ -75,6 +78,7 @@ export default function Patrimonio() {
   const [showLiabilityForm, setShowLiabilityForm] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [editingLiabilityId, setEditingLiabilityId] = useState<string | null>(null);
+  const [showSettled, setShowSettled] = useState(false);
   const updateAccount = useAppStore((s) => s.updateAccount);
   const updateLiability = useAppStore((s) => s.updateLiability);
 
@@ -296,54 +300,48 @@ export default function Patrimonio() {
           />
         )}
 
-        {liabilities.length === 0 && !showLiabilityForm && (
+        {liabilities.filter((l) => !l.deletedAt).length === 0 && !showLiabilityForm && (
           <Text style={[typography.caption, { color: colors.textTertiary }]}>Sin deudas registradas.</Text>
         )}
 
-        {liabilities.map((l) =>
-          editingLiabilityId === l.id ? (
-            <LiabilityForm
-              key={l.id}
-              initial={l}
-              onCancel={() => setEditingLiabilityId(null)}
-              onSave={(patch) => {
-                updateLiability(l.id, patch);
-                setEditingLiabilityId(null);
-              }}
-              defaultCurrency={profile.primaryCurrency}
-            />
-          ) : (
-            <GlassCard key={l.id} style={{ gap: spacing.xs }}>
-              <View style={styles.listRow}>
-                <Ionicons name="card-outline" size={18} color={colors.danger} />
-                <View style={{ flex: 1, marginLeft: spacing.md }}>
-                  <Text style={[typography.headline, { color: colors.textPrimary }]}>{l.institution}</Text>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    {LIABILITY_TYPE_LABELS[l.type]}
-                    {l.interestRate ? ` · ${l.interestRate}% anual` : ''}
-                    {l.dueDate ? ` · vence ${formatDateDMY(l.dueDate)}` : ''}
-                  </Text>
-                </View>
-                <Text style={[typography.headline, { color: colors.danger, marginRight: spacing.sm }]}>
-                  {formatCurrency(l.balance, l.currency)}
-                </Text>
-                <Pressable
-                  accessibilityLabel={`Editar ${l.institution}`}
-                  onPress={() => setEditingLiabilityId(l.id)}
-                  style={{ marginRight: spacing.sm }}
-                >
-                  <Ionicons name="pencil-outline" size={18} color={colors.textTertiary} />
-                </Pressable>
-                <Pressable accessibilityLabel={`Eliminar ${l.institution}`} onPress={() => deleteLiability(l.id)}>
-                  <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
-                </Pressable>
-              </View>
-              {l.notes && (
-                <Text style={[typography.caption, { color: colors.textTertiary, marginLeft: 30 }]}>{l.notes}</Text>
+        {(() => {
+          const groups = splitLiabilities(liabilities);
+          const renderOne = (l: Liability) =>
+            editingLiabilityId === l.id ? (
+              <LiabilityForm
+                key={l.id}
+                initial={l}
+                onCancel={() => setEditingLiabilityId(null)}
+                onSave={(patch) => {
+                  updateLiability(l.id, patch);
+                  setEditingLiabilityId(null);
+                }}
+                defaultCurrency={profile.primaryCurrency}
+              />
+            ) : (
+              <DebtCard key={l.id} l={l} onEdit={() => setEditingLiabilityId(l.id)} />
+            );
+          return (
+            <>
+              {groups.owe.map(renderOne)}
+              {groups.owedToMe.length > 0 && (
+                <>
+                  <Text style={[typography.caption, { color: colors.textTertiary, marginTop: spacing.sm }]}>LO QUE TE DEBEN</Text>
+                  {groups.owedToMe.map(renderOne)}
+                </>
               )}
-            </GlassCard>
-          )
-        )}
+              {groups.settled.length > 0 && (
+                <>
+                  <Pressable onPress={() => setShowSettled((v) => !v)} style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[typography.caption, { color: colors.textTertiary }]}>SALDADAS ({groups.settled.length})</Text>
+                    <Ionicons name={showSettled ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textTertiary} />
+                  </Pressable>
+                  {showSettled && groups.settled.map(renderOne)}
+                </>
+              )}
+            </>
+          );
+        })()}
       </ScrollView>
     </SafeAreaView>
   );
@@ -379,8 +377,56 @@ function LiabilityForm({
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [adjustAmount, setAdjustAmount] = useState('');
+  const [direction, setDirection] = useState<'owe' | 'owed_to_me'>(initial?.direction ?? 'owe');
+  const [counterparty, setCounterparty] = useState(initial?.counterparty ?? '');
+  const [hasPlan, setHasPlan] = useState(!!initial?.installmentCount);
+  const [planCount, setPlanCount] = useState(initial?.installmentCount ? String(initial.installmentCount) : '');
+  const [planAmount, setPlanAmount] = useState(initial?.installmentAmount ? String(initial.installmentAmount) : '');
+  const [planStart, setPlanStart] = useState(initial?.installmentStartDate ?? '');
+  const [planPaid, setPlanPaid] = useState(initial?.installmentsPaid ? String(initial.installmentsPaid) : '');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const canSave = institution.trim().length > 0 && balance.length > 0 && !Number.isNaN(parseFloat(balance));
+
+  // Al EDITAR, lo que se quitó se manda como valor "vacío" explícito ('' / 0): así el cambio también llega a la nube
+  // (una columna sin valor no se manda y la nube conservaría el viejo).
+  const buildDraft = (): Draft<Liability> | null => {
+    const draft: Draft<Liability> = {
+      type,
+      institution: institution.trim(),
+      balance: parseFloat(balance),
+      currency: defaultCurrency,
+      dueDate: dueDate.trim() || undefined,
+      notes: notes.trim() || undefined,
+      ...(direction === 'owed_to_me' || initial?.direction ? { direction } : {}),
+      ...(counterparty.trim() ? { counterparty: counterparty.trim() } : initial?.counterparty ? { counterparty: '' } : {}),
+    };
+    if (hasPlan) {
+      draft.installmentCount = parseInt(planCount, 10);
+      draft.installmentAmount = parseFloat(planAmount.replace(',', '.'));
+      draft.installmentStartDate = planStart || undefined;
+      draft.installmentsPaid = planPaid ? parseInt(planPaid, 10) : 0;
+      const err = validateLiabilityDraft(draft);
+      if (err) {
+        setFormError(err);
+        return null;
+      }
+    } else {
+      const err = validateLiabilityDraft({ institution: draft.institution, balance: draft.balance });
+      if (err) {
+        setFormError(err);
+        return null;
+      }
+      if (initial?.installmentCount) {
+        draft.installmentCount = 0;
+        draft.installmentAmount = 0;
+        draft.installmentStartDate = '';
+        draft.installmentsPaid = 0;
+      }
+    }
+    setFormError(null);
+    return draft;
+  };
 
   const applyAdjust = (sign: 1 | -1) => {
     const delta = parseFloat(adjustAmount.replace(',', '.'));
@@ -392,10 +438,15 @@ function LiabilityForm({
 
   return (
     <GlassCard style={{ gap: spacing.md }}>
+      <ChipRow
+        options={[{ id: 'owe', label: 'Yo debo' }, { id: 'owed_to_me', label: 'Me deben' }]}
+        value={direction}
+        onChange={(d) => setDirection(d as 'owe' | 'owed_to_me')}
+      />
       <TextInput
         value={institution}
         onChangeText={setInstitution}
-        placeholder="Institución (ej. BBVA)"
+        placeholder={direction === 'owed_to_me' ? 'Quién te debe (ej. Juan)' : 'Institución (ej. BBVA)'}
         placeholderTextColor={colors.textTertiary}
         style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />
@@ -449,7 +500,29 @@ function LiabilityForm({
           </Pressable>
         </View>
       )}
-      <DateField value={dueDate} onChange={setDueDate} placeholder="Fecha de pago" />
+      {direction === 'owe' && (
+        <TextInput
+          value={counterparty}
+          onChangeText={setCounterparty}
+          placeholder="A quién le debes (opcional, ej. un amigo)"
+          placeholderTextColor={colors.textTertiary}
+          style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
+        />
+      )}
+      <DateField value={dueDate} onChange={setDueDate} placeholder={direction === 'owed_to_me' ? 'Fecha en que esperas cobrar' : 'Fecha de pago'} />
+      <ChipRow
+        options={[{ id: 'no', label: 'Sin plan de cuotas' }, { id: 'yes', label: 'Plan de cuotas mensuales' }]}
+        value={hasPlan ? 'yes' : 'no'}
+        onChange={(v) => setHasPlan(v === 'yes')}
+      />
+      {hasPlan && (
+        <View style={{ gap: spacing.sm }}>
+          <TextInput value={planCount} onChangeText={setPlanCount} keyboardType="number-pad" placeholder="¿Cuántas cuotas en total?" placeholderTextColor={colors.textTertiary} style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]} />
+          <TextInput value={planAmount} onChangeText={setPlanAmount} keyboardType="decimal-pad" placeholder="¿De cuánto es cada cuota?" placeholderTextColor={colors.textTertiary} style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]} />
+          <DateField value={planStart} onChange={setPlanStart} placeholder="Fecha de la primera cuota" />
+          <TextInput value={planPaid} onChangeText={setPlanPaid} keyboardType="number-pad" placeholder="¿Cuántas ya pagaste? (opcional)" placeholderTextColor={colors.textTertiary} style={[styles.input, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]} />
+        </View>
+      )}
       <TextInput
         value={notes}
         onChangeText={setNotes}
@@ -458,22 +531,17 @@ function LiabilityForm({
         multiline
         style={[styles.input, styles.notesInput, { color: colors.textPrimary, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
       />
+      {formError && <Text style={{ color: colors.danger, fontSize: 13 }}>{formError}</Text>}
       <View style={styles.formActions}>
         <Pressable onPress={onCancel} style={styles.formCancel}>
           <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
         </Pressable>
         <Pressable
           disabled={!canSave}
-          onPress={() =>
-            onSave({
-              type,
-              institution: institution.trim(),
-              balance: parseFloat(balance),
-              currency: defaultCurrency,
-              dueDate: dueDate.trim() || undefined,
-              notes: notes.trim() || undefined,
-            })
-          }
+          onPress={() => {
+            const draft = buildDraft();
+            if (draft) onSave(draft);
+          }}
           style={[styles.formSave, { backgroundColor: canSave ? colors.accentFrom : colors.surfaceBorder, borderRadius: radius.pill }]}
         >
           <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Guardar</Text>

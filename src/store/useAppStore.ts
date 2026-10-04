@@ -72,6 +72,7 @@ import {
   todayOf,
 } from '@/utils/materialize';
 import { addDaysIso, validateRecurrence } from '@/utils/recurrence';
+import { applyPayment, directionOf, PAYMENT_SUBCATEGORY, validateLiabilityPayment } from '@/utils/debts';
 import { normalizeAdvanceDays, normalizeIntervalMinutes, REMINDER_DEFAULTS, validateReminderDraft, validateRuleDraft, type ReminderDraft, type RuleDraft } from '@/utils/p3Validation';
 
 // Color de la plantilla "Mi presupuesto" — neutro a propósito: es la que
@@ -353,6 +354,14 @@ interface AppState {
   addLiability: (draft: Draft<Liability>) => void;
   updateLiability: (id: string, patch: Partial<Draft<Liability>>) => void;
   deleteLiability: (id: string) => void;
+  // ---------- P3: deudas ampliadas ----------
+  // Pagar una deuda (o cobrar lo que te deben): baja el saldo, avanza las cuotas, registra el movimiento en la cuenta elegida y,
+  // si llega a cero, la deuda queda saldada. Sin cuenta solo ajusta la deuda (ya lo pagaste fuera de VALU).
+  payLiability: (id: string, opts: { amount: number; accountId?: string; date?: string }) => StoreResult & { transactionId?: string };
+  settleLiability: (id: string) => StoreResult; // marcar como saldada sin movimiento (se pagó por otro lado o se perdonó)
+  reopenLiability: (id: string, balance: number) => StoreResult;
+  // Dividendo recibido de una inversión: ingreso en la cuenta elegida y suma a lo recibido por esa posición.
+  registerDividend: (investmentId: string, opts: { amount: number; accountId?: string; date?: string }) => StoreResult & { transactionId?: string };
 
   recordNetWorthSnapshot: (draft: Draft<NetWorthSnapshot>) => void;
 
@@ -1197,6 +1206,97 @@ export const useAppStore = create<AppState>()(
           const updated = touch(current, { deletedAt: new Date().toISOString() } as Partial<Liability>);
           set((s) => ({ liabilities: s.liabilities.map((l) => (l.id === id ? updated : l)) }));
           enqueue('liabilities', id, 'delete', updated as unknown as Record<string, unknown>, updated.isDemo);
+        },
+
+        payLiability: (id, opts) => {
+          const s = get();
+          const l = s.liabilities.find((x) => x.id === id);
+          if (!l) return fail('Esa deuda ya no existe.');
+          const account = opts.accountId ? s.accounts.find((a) => a.id === opts.accountId && !a.deletedAt) : undefined;
+          const err = validateLiabilityPayment(l, opts.amount, account, !!opts.accountId);
+          if (err) return fail(err);
+          const todayIso = todayOf(new Date());
+          const day = (opts.date ?? todayIso).slice(0, 10);
+          if (!parseOk(day)) return fail('La fecha no es válida.');
+          if (day > todayIso) return fail('Un pago no puede ser de una fecha futura.');
+          const owe = directionOf(l) === 'owe';
+          let transactionId: string | undefined;
+          if (account) {
+            const tx = get().addTransaction({
+              type: owe ? 'expense' : 'income',
+              amount: opts.amount,
+              currency: l.currency,
+              categoryId: owe ? 'debt' : 'income',
+              subcategoryId: owe ? PAYMENT_SUBCATEGORY[l.type] : 'inc_reimbursement',
+              merchant: l.counterparty || l.institution,
+              accountId: account.id,
+              date: day === todayIso ? new Date().toISOString() : noonIso(day),
+              notes: owe ? `Pago de deuda: ${l.institution}` : `Cobro: ${l.institution}`,
+              origin: 'manual',
+              liabilityId: l.id,
+            });
+            transactionId = tx.id;
+          }
+          const effect = applyPayment(l, opts.amount, new Date().toISOString());
+          get().updateLiability(l.id, effect as Partial<Draft<Liability>>);
+          logAudit({
+            entityType: 'liability',
+            entityId: l.id,
+            action: 'update',
+            summary: `${owe ? 'Pago' : 'Cobro'} de ${opts.amount} en "${l.institution}"${effect.status === 'settled' ? ' — deuda saldada' : ''}`,
+            previousValue: l.balance,
+            newValue: effect.balance,
+          });
+          return { ok: true, transactionId };
+        },
+        settleLiability: (id) => {
+          const l = get().liabilities.find((x) => x.id === id);
+          if (!l || l.deletedAt) return fail('Esa deuda ya no existe.');
+          if (l.status === 'settled') return fail('Esa deuda ya está saldada.');
+          get().updateLiability(id, { balance: 0, status: 'settled', settledAt: new Date().toISOString(), installmentsPaid: l.installmentCount ?? l.installmentsPaid } as Partial<Draft<Liability>>);
+          logAudit({ entityType: 'liability', entityId: id, action: 'update', summary: `Deuda "${l.institution}" marcada como saldada`, previousValue: l.balance, newValue: 0 });
+          return OK;
+        },
+        reopenLiability: (id, balance) => {
+          const l = get().liabilities.find((x) => x.id === id);
+          if (!l || l.deletedAt) return fail('Esa deuda ya no existe.');
+          if (l.status !== 'settled') return fail('Esa deuda no está saldada.');
+          if (typeof balance !== 'number' || !Number.isFinite(balance) || balance <= 0) return fail('El saldo debe ser mayor que cero.');
+          get().updateLiability(id, { balance, status: 'active', settledAt: undefined } as Partial<Draft<Liability>>);
+          return OK;
+        },
+        registerDividend: (investmentId, opts) => {
+          const s = get();
+          const inv = s.investments.find((i) => i.id === investmentId && !i.deletedAt);
+          if (!inv) return fail('Esa inversión ya no existe.');
+          if (typeof opts.amount !== 'number' || !Number.isFinite(opts.amount) || opts.amount <= 0) return fail('El monto debe ser un número mayor que cero.');
+          const account = opts.accountId ? s.accounts.find((a) => a.id === opts.accountId && !a.deletedAt) : undefined;
+          if (opts.accountId && !account) return fail('La cuenta que elegiste ya no existe.');
+          if (account?.isLiability) return fail('Un dividendo no puede entrar a una tarjeta de crédito: elige una cuenta de efectivo, banco o inversión.');
+          if (account && account.currency !== inv.currency) return fail('La cuenta y la inversión usan monedas distintas; todavía no puedo convertir entre ellas.');
+          const todayIso = todayOf(new Date());
+          const day = (opts.date ?? todayIso).slice(0, 10);
+          if (!parseOk(day)) return fail('La fecha no es válida.');
+          if (day > todayIso) return fail('Un dividendo recibido no puede ser de una fecha futura.');
+          let transactionId: string | undefined;
+          if (account) {
+            const tx = get().addTransaction({
+              type: 'income',
+              amount: opts.amount,
+              currency: inv.currency,
+              categoryId: 'income',
+              subcategoryId: 'inc_dividends',
+              merchant: inv.ticker,
+              accountId: account.id,
+              date: day === todayIso ? new Date().toISOString() : noonIso(day),
+              notes: `Dividendo: ${inv.name}`,
+              origin: 'manual',
+            });
+            transactionId = tx.id;
+          }
+          get().updateInvestment(inv.id, { dividendsReceived: Math.round(((inv.dividendsReceived ?? 0) + opts.amount) * 100) / 100 });
+          logAudit({ entityType: 'investment', entityId: inv.id, action: 'update', summary: `Dividendo de ${opts.amount} en ${inv.ticker}`, newValue: opts.amount });
+          return { ok: true, transactionId };
         },
 
         recordNetWorthSnapshot: (draft) =>

@@ -99,8 +99,9 @@ const rules: Rule[] = [
   {
     test: /(qu[eé] deuda|deuda deber[ií]a priorizar)/i,
     answer: (ctx) => {
-      if (ctx.liabilities.length === 0) return 'No tienes deudas registradas.';
-      const sorted = [...ctx.liabilities].sort((a, b) => (b.interestRate ?? 0) - (a.interestRate ?? 0));
+      const owed = ctx.liabilities.filter((l) => !l.deletedAt && l.status !== 'settled' && l.direction !== 'owed_to_me');
+      if (owed.length === 0) return 'No tienes deudas pendientes.';
+      const sorted = [...owed].sort((a, b) => (b.interestRate ?? 0) - (a.interestRate ?? 0));
       const top = sorted[0];
       return `Prioriza ${top.institution} (${formatCurrency(top.balance, top.currency)}${top.interestRate ? `, ${top.interestRate}% anual` : ''}) por ser la de mayor tasa de interés registrada.`;
     },

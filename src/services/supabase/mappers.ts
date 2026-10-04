@@ -266,7 +266,7 @@ export function liabilityToRow(userId: string, l: Liability) {
     ...(l.settledAt !== undefined ? { settled_at: l.settledAt } : {}),
     ...(l.installmentCount !== undefined ? { installment_count: l.installmentCount } : {}),
     ...(l.installmentAmount !== undefined ? { installment_amount: l.installmentAmount } : {}),
-    ...(l.installmentStartDate !== undefined ? { installment_start_date: l.installmentStartDate } : {}),
+    ...(l.installmentStartDate !== undefined ? { installment_start_date: l.installmentStartDate || null } : {}),
     ...(l.installmentsPaid !== undefined ? { installments_paid: l.installmentsPaid } : {}),
   };
 }
@@ -287,12 +287,12 @@ export function liabilityFromRow(row: any): Liability {
     notes: row.notes ?? undefined,
     isDemo: row.is_demo,
     direction: row.direction ?? undefined,
-    counterparty: row.counterparty ?? undefined,
+    counterparty: row.counterparty || undefined,
     status: row.status ?? undefined,
     settledAt: row.settled_at ?? undefined,
     installmentCount: row.installment_count != null ? Number(row.installment_count) : undefined,
     installmentAmount: row.installment_amount != null ? Number(row.installment_amount) : undefined,
-    installmentStartDate: row.installment_start_date ?? undefined,
+    installmentStartDate: row.installment_start_date || undefined,
     installmentsPaid: row.installments_paid != null ? Number(row.installments_paid) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

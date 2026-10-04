@@ -84,12 +84,16 @@ export function computeNetWorth(
     0
   );
 
-  const otherLiabilities = liabilities.reduce(
-    (sum, l) => sum + toBaseCurrency(l.balance, l.currency, baseCurrency),
-    0
-  );
+  // Deudas saldadas no cuentan; lo que TE deben a ti ("owed_to_me") es un activo (por cobrar), no un pasivo.
+  const openLiabilities = liabilities.filter((l) => !l.deletedAt && l.status !== 'settled');
+  const otherLiabilities = openLiabilities
+    .filter((l) => l.direction !== 'owed_to_me')
+    .reduce((sum, l) => sum + toBaseCurrency(l.balance, l.currency, baseCurrency), 0);
+  const receivables = openLiabilities
+    .filter((l) => l.direction === 'owed_to_me')
+    .reduce((sum, l) => sum + toBaseCurrency(l.balance, l.currency, baseCurrency), 0);
 
-  const assets = accountAssets + investmentAssets;
+  const assets = accountAssets + investmentAssets + receivables;
   const liabilitiesTotal = accountLiabilities + otherLiabilities;
 
   return { assets, liabilities: liabilitiesTotal, netWorth: assets - liabilitiesTotal };
@@ -243,7 +247,7 @@ export interface LiabilityReminder {
 export function upcomingLiabilityReminders(liabilities: Liability[], withinDays = 14, ref = new Date()): LiabilityReminder[] {
   const startOfToday = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
   return liabilities
-    .filter((l): l is Liability & { dueDate: string } => !!l.dueDate)
+    .filter((l): l is Liability & { dueDate: string } => !!l.dueDate && l.status !== 'settled' && l.direction !== 'owed_to_me')
     .map((l) => {
       const due = new Date(l.dueDate);
       const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
