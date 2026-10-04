@@ -86,7 +86,10 @@ export default function Privacidad() {
             {learnedCount > 0
               ? `Cuando corriges una categoría que VALU no supo adivinar sola, se acuerda de esa palabra para la próxima vez — sin mandarla a ningún proveedor de IA. Hasta ahora ha aprendido ${learnedCount} de un máximo de 50 palabras.`
               : 'Cuando corriges una categoría que VALU no supo adivinar sola, se acuerda de esa palabra para la próxima vez — sin mandarla a ningún proveedor de IA. Todavía no has corregido ninguna, así que no hay nada guardado aquí.'}
-            {' '}Guarda como máximo 50 — al llegar al tope, olvida primero la corrección más antigua. Esto vive solo en este dispositivo, no se sincroniza a la nube todavía.
+            {' '}Guarda como máximo 50 — al llegar al tope, olvida primero la corrección más antigua.
+            {isSupabaseConfigured && userId
+              ? ' También se guarda en tu cuenta (protegido para que solo tú lo veas), así lo conservas si cambias de teléfono o reinstalas. Lo único que viaja es la palabra y la categoría que elegiste — nunca la frase completa ni los montos. «Olvidar todo» también lo borra de tu cuenta.'
+              : ' Esto vive solo en este dispositivo.'}
           </Text>
           {learnedCount > 0 && (
             <Pressable

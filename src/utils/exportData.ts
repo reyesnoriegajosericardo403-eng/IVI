@@ -24,6 +24,15 @@ export function exportAllDataAsJson(): { ok: boolean; message: string } {
     deudas: state.liabilities,
     historialPatrimonioNeto: state.netWorthHistory,
     bitacoraDeAuditoria: state.auditLog,
+    // Plan de gastos (plantillas con nombre, sus partidas, en qué periodos aplican y excepciones de un periodo).
+    plantillasDePresupuesto: state.budgetTemplates,
+    partidasDePlantilla: state.templateBudgetLines,
+    asignacionesDePresupuesto: state.budgetAssignments,
+    excepcionesDePeriodo: state.periodBudgetOverrides,
+    // Lo que VALU aprendió de ti (palabra → categoría) y el historial de tus chats con el asistente.
+    loQueVALUAprendioDeTi: state.customCategoryMappings,
+    conversacionesDelChat: state.conversations,
+    mensajesDelChat: state.chatMessages,
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
