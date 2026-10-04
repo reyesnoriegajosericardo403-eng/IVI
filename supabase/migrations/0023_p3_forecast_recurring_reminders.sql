@@ -155,6 +155,7 @@ create table if not exists public.reminder_occurrences (
   last_sent_at timestamptz,
   resolved_at timestamptz,
   postponed_count integer not null default 0,
+  auto_settled boolean not null default false,
   title text not null,
   push boolean not null default true,
   source_type text,

@@ -32,6 +32,7 @@ import {
   type RegisterDividendArgs,
   type ResumeRecurringArgs,
   type SetBudgetLineArgs,
+  type SetCardDatesArgs,
   type SettleLiabilityArgs,
   type SkipForecastArgs,
   type TransferBetweenAccountsArgs,
@@ -88,6 +89,7 @@ import {
 } from '@/utils/materialize';
 import { addDaysIso, validateRecurrence, type Recurrence } from '@/utils/recurrence';
 import { substituteVirtualIds, virtualIdFor, virtualKindOf } from '@/ai/virtualIds';
+import { cardDue, cardReminderId, cardReminderSpecs, cardSettingsOf, isCreditCard, validateCardSettings, type CardSettings } from '@/utils/creditCard';
 import { applyPayment, directionOf, PAYMENT_SUBCATEGORY, validateLiabilityPayment } from '@/utils/debts';
 import { normalizeAdvanceDays, normalizeIntervalMinutes, REMINDER_DEFAULTS, validateReminderDraft, validateRuleDraft, type ReminderDraft, type RuleDraft } from '@/utils/p3Validation';
 
@@ -295,6 +297,13 @@ interface AppState {
   skipOccurrence: (id: string) => StoreResult; // omitir ESTA vez de una serie
   postponeOccurrence: (id: string, to: { minutes?: number; untilIso?: string }) => StoreResult;
   dismissOccurrence: (id: string) => StoreResult; // "enterado" (aviso previo)
+  // ---------- P3-TC: tarjeta de crédito ----------
+  // Fecha de corte y de pago de una tarjeta: crea (con id determinista) sus avisos de corte y de pago. El pago se da por cubierto solo
+  // cuando el saldo lo cubre, y se reabre si ese pago se borra.
+  setCardSettings: (accountId: string, settings: CardSettings) => StoreResult;
+  clearCardSettings: (accountId: string) => StoreResult;
+  payCard: (accountId: string, opts: { amount: number; fromAccountId: string; date?: string }) => StoreResult & { transactionId?: string };
+  refreshCards: () => void; // avisos de tarjeta al día + pagos cubiertos
   // Genera los previstos y las ocurrencias que falten (idempotente). Se llama al abrir la app, al volver a primer plano y tras
   // cada cambio en reglas o avisos.
   runMaterialization: (now?: Date) => { forecasts: number; occurrences: number };
@@ -584,6 +593,80 @@ export const useAppStore = create<AppState>()(
         return OK;
       }
 
+
+      // ---------- P3-TC: tarjeta de crédito ----------
+      const sameRec = (a?: Recurrence, b?: Recurrence) => !!a && !!b && a.frequency === b.frequency && a.interval === b.interval && a.dayOfMonth === b.dayOfMonth;
+      const sameList = (a: number[], b: number[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+      // Deja EXACTAMENTE los avisos que corresponden: dos por tarjeta con fechas (corte y pago), ninguno para una tarjeta borrada o sin fechas.
+      function syncCardReminders() {
+        const s = get();
+        const todayIso = todayOf(new Date());
+        const want = new Set<string>();
+        for (const acc of s.accounts) {
+          if (!isCreditCard(acc)) continue;
+          const settings = cardSettingsOf(acc);
+          if (!settings) continue;
+          for (const spec of cardReminderSpecs(acc, settings, todayIso)) {
+            const id = cardReminderId(acc.id, spec.key);
+            want.add(id);
+            const fields = {
+              kind: spec.kind,
+              title: spec.title,
+              sourceType: 'account' as const,
+              sourceId: acc.id,
+              timeOfDay: spec.timeOfDay,
+              advanceDays: normalizeAdvanceDays(spec.advanceDays),
+              maxAttempts: spec.maxAttempts,
+              attemptIntervalMinutes: spec.attemptIntervalMinutes,
+              push: spec.push,
+              status: 'active' as const,
+            };
+            const cur = get().reminders.find((r) => r.id === id);
+            if (!cur) {
+              putReminder({ ...withNewMeta<Omit<Reminder, keyof SyncMeta>>({ ...fields, recurrence: spec.recurrence }), id });
+              resyncReminderOccurrences(id);
+            } else if (
+              cur.deletedAt || cur.status !== 'active' || cur.title !== fields.title || cur.timeOfDay !== fields.timeOfDay || cur.maxAttempts !== fields.maxAttempts ||
+              cur.push !== fields.push || !sameList(cur.advanceDays, fields.advanceDays) || !sameRec(cur.recurrence, spec.recurrence)
+            ) {
+              patchReminder(id, { ...fields, recurrence: sameRec(cur.recurrence, spec.recurrence) ? cur.recurrence : spec.recurrence, deletedAt: undefined } as Partial<Reminder>);
+              resyncReminderOccurrences(id);
+            }
+          }
+        }
+        for (const r of get().reminders) {
+          if (r.sourceType === 'account' && (r.kind === 'card_cutoff' || r.kind === 'card_due') && !r.deletedAt && r.status !== 'cancelled' && !want.has(r.id)) {
+            patchReminder(r.id, { status: 'cancelled' });
+            cancelOpenOccurrences(r.id);
+          }
+        }
+      }
+
+      // Cierra solo los avisos de pago que el saldo ya cubre; reabre los que se cerraron solos si ese pago desapareció.
+      function reconcileCards() {
+        const s0 = get();
+        if (!s0.accounts.some((a) => isCreditCard(a) && cardSettingsOf(a))) return;
+        const todayIso = todayOf(new Date());
+        const nowIso = new Date().toISOString();
+        for (const acc of s0.accounts) {
+          if (!isCreditCard(acc)) continue;
+          const due = cardDue(acc, get().transactions, todayIso);
+          if (!due) continue;
+          const dueId = cardReminderId(acc.id, 'due');
+          if (!get().reminders.some((r) => r.id === dueId && !r.deletedAt)) continue;
+          const settled = due.status === 'paid' || due.status === 'nothing_to_pay';
+          for (const o of get().reminderOccurrences) {
+            if (o.reminderId !== dueId || o.deletedAt) continue;
+            if (settled && o.eventDate <= due.cycle.lastDue && (o.status === 'pending' || o.status === 'sent')) {
+              patchOccurrence(o.id, { status: o.offsetDays === 0 ? 'confirmed' : 'dismissed', nextAttemptAt: undefined, resolvedAt: nowIso, autoSettled: true });
+            } else if (!settled && o.autoSettled && o.status === 'confirmed' && o.eventDate === due.cycle.lastDue) {
+              patchOccurrence(o.id, { status: 'pending', nextAttemptAt: new Date(Math.max(Date.now(), Date.parse(o.scheduledFor))).toISOString(), attemptsMade: 0, resolvedAt: undefined, autoSettled: undefined });
+            }
+          }
+        }
+      }
+
       // Confirmar un previsto: pasa a real y el ledger recién ahí mueve los saldos.
       function confirmForecastInternal(id: string, opts?: { date?: string; amount?: number; accountId?: string }): StoreResult {
         const s = get();
@@ -824,6 +907,7 @@ export const useAppStore = create<AppState>()(
           set((s) => ({ transactions: [tx, ...s.transactions] }));
           enqueue('transactions', tx.id, 'upsert', tx as unknown as Record<string, unknown>, tx.isDemo);
           applyAccountDeltas(accountDeltasForTransaction(tx));
+          reconcileCards();
           return tx;
         },
         updateTransaction: (id, patch) => {
@@ -837,6 +921,7 @@ export const useAppStore = create<AppState>()(
           // un movimiento (spec: registro de voz mal asignado se corrige
           // después en Movimientos).
           applyAccountDeltas([...reverseDeltas(accountDeltasForTransaction(current)), ...accountDeltasForTransaction(updated)]);
+          reconcileCards();
         },
         deleteTransaction: (id) => {
           const current = get().transactions.find((t) => t.id === id);
@@ -845,6 +930,7 @@ export const useAppStore = create<AppState>()(
           set((s) => ({ transactions: s.transactions.map((t) => (t.id === id ? updated : t)) }));
           enqueue('transactions', id, 'delete', updated as unknown as Record<string, unknown>, updated.isDemo);
           applyAccountDeltas(reverseDeltas(accountDeltasForTransaction(current)));
+          reconcileCards();
         },
 
         addAccount: (draft) => {
@@ -881,6 +967,10 @@ export const useAppStore = create<AppState>()(
               newValue: patch.balance,
             });
           }
+          if (patch.balance !== undefined || patch.name !== undefined) {
+            if (patch.name !== undefined) syncCardReminders(); // el título de los avisos lleva el nombre de la tarjeta
+            reconcileCards();
+          }
         },
         deleteAccount: (id) => {
           const current = get().accounts.find((a) => a.id === id);
@@ -888,6 +978,7 @@ export const useAppStore = create<AppState>()(
           const updated = touch(current, { deletedAt: new Date().toISOString() } as Partial<Account>);
           set((s) => ({ accounts: s.accounts.map((a) => (a.id === id ? updated : a)) }));
           enqueue('accounts', id, 'delete', updated as unknown as Record<string, unknown>, updated.isDemo);
+          syncCardReminders(); // una tarjeta borrada ya no avisa
         },
 
         setBudget: (draft) =>
@@ -1616,6 +1707,13 @@ export const useAppStore = create<AppState>()(
               const args = action.args as unknown as RegisterDividendArgs;
               return state.registerDividend(args.investmentId, { amount: args.amount, accountId: args.accountId });
             }
+            case 'set_card_dates': {
+              const args = action.args as unknown as SetCardDatesArgs;
+              const card = state.accounts.find((a) => a.id === args.accountId && !a.deletedAt);
+              if (!card) return { ok: false, error: `La tarjeta "${args.accountName}" ya no existe.` };
+              // conserva lo demás que ya tenía la tarjeta (límite, pago mínimo, preferencias de aviso)
+              return state.setCardSettings(args.accountId, { cutoffDay: args.cutoffDay, dueDay: args.dueDay, creditLimit: card.creditLimit, minPayment: card.cardMinPayment, alerts: card.cardAlerts });
+            }
             default: {
               const exhaustiveCheck: never = action.type;
               return { ok: false, error: `Tipo de acción no reconocido: ${exhaustiveCheck}` };
@@ -1719,6 +1817,8 @@ export const useAppStore = create<AppState>()(
                 case 'postpone_forecast':
                   logAudit({ entityType: 'transaction', entityId: a.forecastId, action: 'update', summary: label });
                   break;
+                case 'set_card_dates':
+                  break; // las fechas y avisos de una tarjeta no son un saldo: el plan guardado en el chat es el rastro
                 case 'confirm_forecast':
                 case 'pay_liability':
                 case 'settle_liability':
@@ -1804,6 +1904,67 @@ export const useAppStore = create<AppState>()(
           patchTransaction(id, { date: noonIso(day), plannedDate: tx.plannedDate ?? tx.date });
           settleOccurrencesForForecast(tx, 'skipped'); // el aviso de la fecha vieja ya no aplica
           return OK;
+        },
+
+        setCardSettings: (accountId, settings) => {
+          const acc = get().accounts.find((a) => a.id === accountId && !a.deletedAt);
+          if (!acc) return fail('Esa tarjeta ya no existe.');
+          if (acc.type !== 'credit_card') return fail('Solo una cuenta de tipo tarjeta de crédito tiene fecha de corte y de pago.');
+          const err = validateCardSettings(settings);
+          if (err) return fail(err);
+          get().updateAccount(accountId, {
+            cardCutoffDay: settings.cutoffDay,
+            cardDueDay: settings.dueDay,
+            creditLimit: settings.creditLimit,
+            cardMinPayment: settings.minPayment,
+            cardAlerts: settings.alerts,
+          } as Partial<Draft<Account>>);
+          syncCardReminders();
+          get().runMaterialization();
+          reconcileCards();
+          return OK;
+        },
+        clearCardSettings: (accountId) => {
+          const acc = get().accounts.find((a) => a.id === accountId && !a.deletedAt);
+          if (!acc) return fail('Esa tarjeta ya no existe.');
+          get().updateAccount(accountId, { cardCutoffDay: undefined, cardDueDay: undefined, creditLimit: undefined, cardMinPayment: undefined, cardAlerts: undefined } as Partial<Draft<Account>>);
+          syncCardReminders();
+          return OK;
+        },
+        payCard: (accountId, opts) => {
+          const s = get();
+          const card = s.accounts.find((a) => a.id === accountId && !a.deletedAt);
+          if (!card || card.type !== 'credit_card') return fail('Esa tarjeta ya no existe.');
+          const from = s.accounts.find((a) => a.id === opts.fromAccountId && !a.deletedAt);
+          if (!from) return fail('La cuenta de la que pagas ya no existe.');
+          if (from.isLiability || from.type === 'credit_card') return fail('No puedes pagar una tarjeta con otra tarjeta de crédito: elige una cuenta de la que tengas el dinero.');
+          if (from.currency !== card.currency) return fail('Las dos cuentas usan monedas distintas; todavía no puedo convertir entre ellas.');
+          if (typeof opts.amount !== 'number' || !Number.isFinite(opts.amount) || opts.amount <= 0) return fail('El monto debe ser un número mayor que cero.');
+          if (card.balance <= 0.005) return fail('Esta tarjeta no tiene saldo por pagar.');
+          if (opts.amount > card.balance + 0.005) return fail(`Solo debes ${card.balance} en esta tarjeta: no puedo registrar un pago de ${opts.amount}.`);
+          const todayIso = todayOf(new Date());
+          const day = (opts.date ?? todayIso).slice(0, 10);
+          if (!parseOk(day)) return fail('La fecha no es válida.');
+          if (day > todayIso) return fail('Un pago no puede ser de una fecha futura.');
+          const tx = get().addTransaction({
+            type: 'transfer',
+            amount: opts.amount,
+            currency: card.currency,
+            categoryId: 'transfer',
+            subcategoryId: 'transfer_own',
+            accountId: from.id,
+            toAccountId: card.id,
+            merchant: `Pago de tarjeta ${card.name}`,
+            date: day === todayIso ? new Date().toISOString() : noonIso(day),
+            origin: 'manual',
+            notes: 'Pago de tarjeta de crédito',
+          });
+          logAudit({ entityType: 'account', entityId: card.id, action: 'update', summary: `Pago de tarjeta "${card.name}" desde "${from.name}": ${opts.amount}`, previousValue: card.balance, newValue: Math.round((card.balance - opts.amount) * 100) / 100 });
+          return { ok: true, transactionId: tx.id };
+        },
+        refreshCards: () => {
+          syncCardReminders();
+          reconcileCards();
         },
 
         createRule: (draft, opts) => {
@@ -2036,7 +2197,12 @@ export const useAppStore = create<AppState>()(
           const nowD = nowArg ?? new Date();
           const nowIso = nowD.toISOString();
           const todayIso = todayOf(nowD);
-          const s = get();
+          // las tarjetas primero: sus avisos son series como cualquier otra y deben existir antes de generar ocurrencias
+          if (get().accounts.some((a) => a.type === 'credit_card')) {
+            syncCardReminders();
+            reconcileCards();
+          }
+          const s = get(); // ya con los avisos de tarjeta
           if (s.recurringRules.length === 0 && s.reminders.length === 0) return { forecasts: 0, occurrences: 0 };
           const existingTx = new Set(s.transactions.map((x) => x.id));
           const newTx: Transaction[] = [];

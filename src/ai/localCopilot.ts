@@ -8,7 +8,10 @@ import {
   spendByCategory,
   spendInPeriod,
 } from '@/utils/finance';
+import { cardDue } from '@/utils/creditCard';
+import { toISODate } from '@/utils/date';
 import { formatCurrency, formatPercent } from '@/utils/format';
+import { shortDateEs } from '@/utils/recurrence';
 
 // Copiloto local — Fase 1. Responde preguntas frecuentes calculando
 // directamente sobre los datos reales del usuario, SIN modelo de lenguaje
@@ -33,6 +36,24 @@ interface Rule {
 }
 
 const rules: Rule[] = [
+  {
+    // Tarjeta de crédito: cuándo corta, cuándo se paga y cuánto falta para no generar intereses (solo preguntas; fechas se ponen con
+    // «mi tarjeta Oro corta el 5 y paga el 25» o en Tarjetas de crédito).
+    test: /(cu[aá]ndo|qu[eé] d[ií]a|cu[aá]nto).{0,40}(pago|pagar|corte|corta|vence|vencimiento|fecha l[ií]mite).{0,40}tarjeta|tarjeta.{0,40}(corte|corta|vence|fecha l[ií]mite|para no generar intereses)/i,
+    answer: (ctx) => {
+      const cards = ctx.accounts.filter((a) => a.type === 'credit_card' && !a.deletedAt);
+      if (cards.length === 0) return 'No tienes ninguna tarjeta de crédito registrada. Agrégala en Patrimonio → Cuentas.';
+      const today = toISODate(new Date());
+      const lines = cards.map((c) => {
+        const d = cardDue(c, ctx.transactions, today);
+        if (!d) return `• ${c.name}: todavía no me dices sus fechas. Dime, por ejemplo, «mi tarjeta ${c.name} corta el 5 y paga el 25».`;
+        const when = d.status === 'overdue' ? `la fecha límite pasó hace ${-d.daysToDue} día(s)` : d.daysToDue === 0 ? 'la fecha límite es hoy' : `la fecha límite es ${shortDateEs(d.dueDate)} (en ${d.daysToDue} días)`;
+        const amount = d.status === 'paid' ? 'ya cubriste el pago de este corte' : d.status === 'nothing_to_pay' ? 'no tienes saldo por pagar del último corte' : `para no generar intereses te faltan ${formatCurrency(d.remaining, c.currency)}`;
+        return `• ${c.name}: ${when}; ${amount}. Próximo corte: ${shortDateEs(d.cycle.nextCutoff)}.`;
+      });
+      return `Así van tus tarjetas (con lo que has registrado en VALU — compáralo con tu estado de cuenta):\n${lines.join('\n')}`;
+    },
+  },
   {
     test: /patrimonio/i,
     answer: (ctx) => {

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
+import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { DateField } from '@/components/DateField';
@@ -79,7 +80,8 @@ export function OccurrenceCard({ occ }: { occ: ReminderOccurrence }) {
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           {isDay ? (
             <>
-              <SmallButton label="Ya ocurrió" tone="primary" onPress={() => run(confirmOccurrence(occ.id))} />
+              {occ.sourceType === 'account' && <SmallButton label="Ir a la tarjeta" tone="primary" onPress={() => router.push('/tarjetas')} />}
+              <SmallButton label={occ.sourceType === 'account' ? 'Ya pagué' : 'Ya ocurrió'} tone={occ.sourceType === 'account' ? 'neutral' : 'primary'} onPress={() => run(confirmOccurrence(occ.id))} />
               <SmallButton label="Posponer" onPress={() => setMode('postpone')} />
               <SmallButton label="No ocurrió" tone="danger" onPress={() => run(markNot(occ.id))} />
               <SmallButton label="Omitir esta vez" onPress={() => run(skipOccurrence(occ.id))} />

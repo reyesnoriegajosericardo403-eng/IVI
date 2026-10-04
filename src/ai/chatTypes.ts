@@ -44,7 +44,8 @@ export type AIActionType =
   | 'cancel_reminder'
   | 'pay_liability'
   | 'settle_liability'
-  | 'register_dividend';
+  | 'register_dividend'
+  | 'set_card_dates';
 
 // Un tipo de argumentos angosto por acción — nunca un parche genérico
 // (spec del plan: "tipos angostos, nunca parches genéricos") — así el
@@ -250,6 +251,12 @@ export interface SettleLiabilityArgs {
   liabilityId: string;
   institution: string;
 }
+export interface SetCardDatesArgs {
+  accountId: string;
+  accountName: string;
+  cutoffDay: number;
+  dueDay: number;
+}
 export interface RegisterDividendArgs {
   investmentId: string;
   ticker: string;
@@ -295,7 +302,8 @@ export type ResolvedAction =
   | { type: 'cancel_reminder'; args: CancelReminderArgs }
   | { type: 'pay_liability'; args: PayLiabilityArgs }
   | { type: 'settle_liability'; args: SettleLiabilityArgs }
-  | { type: 'register_dividend'; args: RegisterDividendArgs };
+  | { type: 'register_dividend'; args: RegisterDividendArgs }
+  | { type: 'set_card_dates'; args: SetCardDatesArgs };
 
 // 'skipped' solo lo usan los pasos de un plan que no se llegaron a ejecutar porque uno anterior falló.
 export type AIActionStatus = 'proposed' | 'applied' | 'dismissed' | 'failed' | 'skipped';

@@ -23,6 +23,7 @@ const ctx = {
     { ...base, id: 'a1', name: 'BBVA', type: 'bank', balance: 5000, currency: 'MXN' },
     { ...base, id: 'a2', name: 'Nu', type: 'savings', balance: 1200, currency: 'MXN' },
     { ...base, id: 'a3', name: 'Morralla', type: 'cash', balance: 300, currency: 'MXN' },
+    { ...base, id: 'a4', name: 'Oro', type: 'credit_card', balance: 900, currency: 'MXN', isLiability: true, cardCutoffDay: 5, cardDueDay: 25 },
   ],
   goals: [{ ...base, id: 'g1', name: 'Viaje', targetAmount: 20000, currentAmount: 3000, currency: 'MXN' }],
   liabilities: [{ ...base, id: 'l1', institution: 'Banorte', type: 'credit_card', balance: 8000, currency: 'MXN', dueDate: '2026-10-20' }],
@@ -37,7 +38,7 @@ const ctx = {
 const WORDS = ['transfiere', 'pasa', 'aporta', 'retira', 'registra', 'gasté', 'pagué', 'de', 'a', 'en', 'y', 'luego', 'mi', 'meta', 'cuenta', 'deuda', 'BBVA', 'Nu', 'Morralla', 'Viaje', 'Banorte',
   'ayer', 'hoy', 'mañana', 'el', 'viernes', 'lunes', '15', 'marzo', 'de', 'octubre', '500', '1,200.50', '$300', 'mil', 'pesos', 'a las', '5', 'pm', 'hace', '3', 'días', 'semana', 'pasada', 'vence', 'fecha', 'cambia',
   'tacos', 'luz', 'renta', '/', '-', ',', '.', ';', '\n', '2026', '1/2', 'kilo', 'cada', 'mes', 'quincena', 'domingo', 'enero', 'dic', 'una', 'cinco', 'treinta', 'y', 'media', 'cuarto', 'menos',
-  'recuérdame', 'avísame', 'cada', 'todos los', 'mensual', 'quincenal', 'pausa', 'reanuda', 'termina', 'ya pagué', 'no pagué', 'pospón', 'dividendo', 'FUNO11', 'Renta', 'Pagar predial', 'insiste', 'hasta', 'veces', 'antes', 'abona', 'liquidé', 'me depositan', 'tengo que pagar', 'voy a pagar'];
+  'recuérdame', 'avísame', 'cada', 'todos los', 'mensual', 'quincenal', 'pausa', 'reanuda', 'termina', 'ya pagué', 'no pagué', 'pospón', 'dividendo', 'FUNO11', 'Renta', 'Pagar predial', 'insiste', 'hasta', 'veces', 'antes', 'abona', 'liquidé', 'me depositan', 'tengo que pagar', 'voy a pagar', 'tarjeta', 'Oro', 'corta', 'cierra', 'paga', 'fecha límite', 'corte'];
 const RARE = ['', ' ', '\u0000', '😀', 'ñandú', 'ÁÉÍÓÚ', '٣٤٥', '𝟙𝟚𝟛', '‮', 'İstanbul', 'ǅ', '\ud800', 'a'.repeat(200), '9'.repeat(40), '-0', '1e999', '0x10', 'NaN', 'Infinity', '$', '$$$', '(((', '[[[', '\\', '*', '+', '?'];
 const randomText = () => {
   const n = 1 + Math.floor(rnd() * 24);
@@ -107,7 +108,7 @@ t('un plan nunca trae más de 6 pasos ni pasos sin resumen; la vista previa no p
 
 t('frases de P3 combinadas al azar: nunca lanzan y todo paso de un plan lleva resumen y argumentos', () => {
   const FR = ['recuérdame pagar la luz el 15', 'cada mes pago 199 de Spotify con BBVA', 'pausa Renta', 'ya pagué la renta', 'no pagué la renta', 'pospón la renta al 20', 'pagué 500 a Banorte desde BBVA', 'ya liquidé Banorte', 'me llegó un dividendo de 10 de FUNO11 en Nu',
-    'mañana pago 300 de agua con BBVA', 'cada quincena me depositan 9000 en Nu', 'quita el aviso de predial', 'la renta subió a 9000', 'crea la cuenta Ahorro9 con 100', 'aporta 50 a mi meta Viaje', 'transfiere 100 de BBVA a Nu'];
+    'mañana pago 300 de agua con BBVA', 'cada quincena me depositan 9000 en Nu', 'quita el aviso de predial', 'la renta subió a 9000', 'crea la cuenta Ahorro9 con 100', 'mi tarjeta Oro corta el 7 y paga el 27', 'cuándo pago mi tarjeta', 'aporta 50 a mi meta Viaje', 'transfiere 100 de BBVA a Nu'];
   for (let i = 0; i < 2500; i++) {
     const s = Array.from({ length: 1 + Math.floor(rnd() * 4) }, () => pick(FR)).join(pick([' y ', '; ', ' luego ', ', ']));
     const o = planFromText(s, ctx);
@@ -145,6 +146,8 @@ const hostile = {
   'cada cada': 'cada cada cada cada '.repeat(1000),
   'todos los': 'todos los lunes y martes y jueves y '.repeat(300),
   'dividendos': 'dividendo de FUNO11 en BBVA 12 '.repeat(300),
+  'tarjeta corta paga': 'mi tarjeta Oro corta el 5 y paga el 25 '.repeat(250),
+  'fecha límite': 'fecha de corte fecha límite de pago '.repeat(300),
 };
 for (const [name, text] of Object.entries(hostile)) {
   for (const [fn, f] of Object.entries({

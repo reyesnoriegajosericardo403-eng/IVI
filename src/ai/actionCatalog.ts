@@ -557,6 +557,7 @@ export function resolveCandidate(type: AIActionType, c: Record<string, unknown>,
     case 'pay_liability':
     case 'settle_liability':
     case 'register_dividend':
+    case 'set_card_dates':
       return resolveCandidateP3(type, c, ctx);
     default: {
       const exhaustive: never = type;

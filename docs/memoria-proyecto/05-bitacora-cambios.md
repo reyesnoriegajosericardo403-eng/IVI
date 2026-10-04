@@ -8,6 +8,16 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-04 — Tarjeta de crédito: corte, pago y avisos que no se pasan
+
+Pedido: «que las personas nunca se les pase sus fechas de pago ni de corte… debe funcionar al cien». Detalle en [[11-tarjeta-de-credito]].
+
+- Día de corte y límite de pago por tarjeta (pantalla *Tarjetas de crédito* o por chat), con cálculo del **pago para no generar intereses**, estado de cuenta calculado y **pagar la tarjeta** desde una cuenta.
+- Avisos de corte y pago **6 meses por adelantado**, con ids deterministas (sin duplicados entre dispositivos), previos + el día + hasta 3 intentos, push sin montos, tarjeta en el inicio y `.ics`.
+- El aviso se cierra **solo si el saldo lo cubre**; un pago parcial no lo cierra; si se borra el pago, **se reabre**.
+- Migración `0024`; 48 pruebas nuevas (incluye un barrido de calendario de 4 años); flujo completo probado en navegador real.
+- Un conflicto real que salió en las pruebas: «Liverpool vence el 25» (con una tarjeta Y una deuda con ese nombre) se sigue leyendo como el vencimiento de la deuda.
+
 ## 2026-10-04 — P3: previsto vs. real, pagos recurrentes, avisos, deudas y dividendos
 
 Pedido: «hazlo todo de golpe pero cuidando que todo sea correcto» (con permiso de arreglar lo que apareciera) y, antes, revisar

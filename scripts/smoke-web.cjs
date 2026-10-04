@@ -27,6 +27,7 @@ const state = {
   accounts: [
     { ...meta, id: '11111111-1111-4111-8111-111111111111', name: 'BBVA', type: 'bank', currency: 'MXN', balance: 5000 },
     { ...meta, id: '44444444-4444-4444-8444-444444444444', name: 'Morralla', type: 'cash', currency: 'MXN', balance: 300 },
+    { ...meta, id: '99999999-0000-4000-8000-000000000001', name: 'Oro', type: 'credit_card', currency: 'MXN', balance: 3000, isLiability: true },
   ],
   goals: [{ ...meta, id: '33333333-3333-4333-8333-333333333333', name: 'Viaje', targetAmount: 20000, currentAmount: 3000, currency: 'MXN' }],
   // P3: previstos (uno ya pasó, otro viene), una regla recurrente, un aviso y sus ocurrencias
@@ -39,7 +40,7 @@ const state = {
   reminderOccurrences: [{ ...meta, id: '99999999-9999-4999-8999-999999999991', reminderId: '88888888-8888-4888-8888-888888888881', eventDate: new Date(Date.now() - 3600000).toISOString().slice(0, 10), offsetDays: 0, scheduledFor: new Date(Date.now() - 3600000).toISOString(), status: 'pending', attemptsMade: 0, maxAttempts: 2, attemptIntervalMinutes: 120, title: 'Pagar la luz', push: true }],
   liabilities: [{ ...meta, id: '55555555-5555-4555-8555-555555555555', institution: 'Banorte', type: 'credit_card', balance: 8000, currency: 'MXN', dueDate: '2026-10-20' }],
 };
-const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inversiones', '/metas', '/ia', '/capture', '/transaction/new', '/settings', '/appearance', '/salud-financiera', '/privacidad', '/perfil', '/notificaciones', '/avisos', '/recurrentes', '/ai-settings', '/terminos', '/instalar', '/auth', '/onboarding'];
+const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inversiones', '/metas', '/ia', '/capture', '/transaction/new', '/settings', '/appearance', '/salud-financiera', '/privacidad', '/perfil', '/notificaciones', '/avisos', '/recurrentes', '/tarjetas', '/ai-settings', '/terminos', '/instalar', '/auth', '/onboarding'];
 
 (async () => {
   const browser = await playwright.chromium.launch();
@@ -103,6 +104,35 @@ const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inve
     saved = await page.evaluate(() => JSON.parse(localStorage.getItem('valu-app-storage')).state);
     const okRem = (saved.reminders || []).some((r) => r.title === 'Predial');
     if (errors.length || !okRule || !okRem) { bad++; console.log('✗ formularios P3', { errors, okRule, okRem, rule: !!rule, fcs: fcs.length, rem: !!rem }); } else console.log('✓ formularios P3: pago recurrente (con previstos y aviso) y aviso propio');
+    await page.close();
+  }
+  // Tarjeta de crédito: poner corte y pago crea los avisos; pagar la tarjeta baja la deuda.
+  {
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message.slice(0, 160)));
+    await page.goto(`http://localhost:${port}/tarjetas`, { waitUntil: 'load' }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await page.getByPlaceholder('ej. 5', { exact: true }).fill('5');
+    await page.getByPlaceholder('ej. 25', { exact: true }).fill('25');
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+    await page.waitForTimeout(800);
+    let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('valu-app-storage')).state);
+    const oro = saved.accounts.find((a) => a.name === 'Oro');
+    const cardRems = (saved.reminders || []).filter((r) => r.sourceType === 'account');
+    const cardOccs = (saved.reminderOccurrences || []).filter((o) => o.sourceType === 'account');
+    const okDates = oro.cardCutoffDay === 5 && oro.cardDueDay === 25 && cardRems.length === 2 && cardOccs.length >= 6;
+    const body = await page.locator('body').innerText();
+    const okText = /fecha l[ií]mite/i.test(body);
+    await page.getByRole('button', { name: 'Pagar tarjeta' }).first().click();
+    await page.getByRole('button', { name: 'BBVA' }).first().click();
+    await page.getByRole('button', { name: 'Registrar pago' }).first().click();
+    await page.waitForTimeout(800);
+    saved = await page.evaluate(() => JSON.parse(localStorage.getItem('valu-app-storage')).state);
+    const oro2 = saved.accounts.find((a) => a.name === 'Oro');
+    const bbva = saved.accounts.find((a) => a.name === 'BBVA');
+    const okPay = oro2.balance < 3000 && bbva.balance < 5000;
+    if (errors.length || !okDates || !okText || !okPay) { bad++; console.log('✗ tarjeta de crédito', { errors, okDates, okText, okPay, oro: oro2.balance, bbva: bbva.balance }); } else console.log('✓ tarjeta de crédito: fechas → avisos de corte y pago; pagar baja la deuda');
     await page.close();
   }
   // Gesto: deslizar de lado entre secciones con eventos TÁCTILES reales (PanResponder de React Native).

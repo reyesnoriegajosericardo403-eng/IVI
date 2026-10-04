@@ -282,6 +282,19 @@ export default function Patrimonio() {
             );
           })()}
 
+        {accounts.some((a) => a.type === 'credit_card') && (
+          <Pressable accessibilityLabel="Ver tarjetas de crédito" onPress={() => router.push('/tarjetas')}>
+            <GlassCard style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <Ionicons name="card-outline" size={20} color={colors.accentFrom} />
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.headline, { color: colors.textPrimary }]}>Tarjetas de crédito</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>Fecha de corte, fecha de pago y avisos para que no se te pase ninguna.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </GlassCard>
+          </Pressable>
+        )}
+
         <SectionHeader
           title="Deudas"
           onAdd={() => setShowLiabilityForm((v) => !v)}

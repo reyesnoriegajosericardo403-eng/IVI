@@ -113,6 +113,12 @@ export interface Account extends SyncMeta {
   // spec: "importantísima para que... los primeros a los que se deben
   // realizar los cargos".
   isTransportCard?: boolean;
+  // ---- P3-TC: tarjeta de crédito (solo `type: 'credit_card'`) ----
+  cardCutoffDay?: number; // día del mes en que cierra el estado de cuenta (1..31; 31 = último día si el mes es corto)
+  cardDueDay?: number; // día límite de pago
+  creditLimit?: number;
+  cardMinPayment?: number; // pago mínimo que dice el estado de cuenta (lo escribe la persona)
+  cardAlerts?: import('@/utils/creditCard').CardAlertPrefs;
 }
 
 export type BudgetPeriodicity = 'day' | 'week' | 'month';
@@ -479,4 +485,7 @@ export interface ReminderOccurrence extends SyncMeta {
   push: boolean;
   sourceType?: 'rule' | 'goal' | 'liability' | 'account';
   sourceId?: string;
+  // El pago de una tarjeta se cerró SOLO porque el saldo ya quedó cubierto (no porque la persona tocara «ya pagué»): si luego se
+  // borra ese pago, el aviso se reabre. Un «ya pagué» manual nunca se reabre.
+  autoSettled?: boolean;
 }

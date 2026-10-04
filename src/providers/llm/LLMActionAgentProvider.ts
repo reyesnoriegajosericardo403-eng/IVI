@@ -32,6 +32,7 @@ import {
   resolvePostponeForecast,
   resolveRegisterDividend,
   resolveResumeRecurring,
+  resolveSetCardDates,
   resolveSettleLiability,
   resolveSkipForecast,
   resolveUpdateRecurringAmount,
@@ -90,6 +91,7 @@ Si el mensaje pide agregar, quitar o cambiar datos, cada elemento de "actions" d
 - {"type":"cancel_reminder","reminderHint":"string"} — quitar un aviso propio
 - {"type":"pay_liability","institutionHint":"string","amount":number,"accountNameHint":"cuenta de la que sale (o a la que entra si te pagan a ti), o null"} — pagar (o abonar) una deuda, o registrar que alguien que te debe te pagó
 - {"type":"settle_liability","institutionHint":"string"} — la deuda quedó totalmente pagada
+- {"type":"set_card_dates","accountNameHint":"nombre de la tarjeta de crédito, o null si solo hay una","cutoffDay":1-31,"dueDay":1-31} — día del mes del corte y de la fecha límite de pago de una tarjeta de crédito (solo el número del día)
 - {"type":"register_dividend","tickerHint":"string","amount":number,"accountNameHint":"string o null"} — dividendo recibido de una inversión
 
 "reply" siempre es una frase corta y natural — nunca describas ahí el detalle exacto de la acción (monto, cuenta), eso lo arma la app aparte a partir de "actions".`;
@@ -172,6 +174,8 @@ function resolveModelAction(raw: unknown, ctx: ActionValidationContext): Resolve
       return resolveSettleLiability({ institutionHint: String(a.institutionHint ?? '') }, ctx);
     case 'register_dividend':
       return resolveRegisterDividend({ tickerHint: String(a.tickerHint ?? ''), amount: a.amount, accountNameHint: a.accountNameHint ? String(a.accountNameHint) : '' }, ctx);
+    case 'set_card_dates':
+      return resolveSetCardDates({ accountNameHint: a.accountNameHint ? String(a.accountNameHint) : '', cutoffDay: a.cutoffDay ?? undefined, dueDay: a.dueDay ?? undefined }, ctx);
     default:
       return null;
   }

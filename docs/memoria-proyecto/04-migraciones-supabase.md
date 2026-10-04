@@ -45,6 +45,7 @@ de partida.
 | 0021 | Inversiones por institución: `product`, `annual_rate`, `term_days`, `maturity_date` en `investments` (y corrección del check de `asset_class`). Corrida el 2026-10-02. |
 | 0022 | **`category_mappings`**: «lo que VALU aprendió de ti» (palabra → categoría) por persona. Llave `user_id + keyword`, RLS solo dueño, `updated_at` del servidor, borrado suave, `on delete cascade` (borrar la cuenta la arrastra). **Pendiente de correr.** Mientras no exista, la app sigue funcionando: las palabras aprendidas se quedan en el dispositivo y esperan en la cola de sincronización (no se pierden). |
 | 0023 | **P3 — previsto, recurrentes, avisos y deudas ampliadas.** `transactions`: `status` (`posted`/`forecast`/`skipped`/`paused`, por defecto `posted`: lo que ya tienes no cambia), `planned_date`, `confirmed_at`, `recurring_rule_id`, `liability_id`. `liabilities`: `direction`, `counterparty`, `status`, `settled_at`, `installment_*`. Tablas nuevas `recurring_rules`, `reminders`, `reminder_occurrences` (RLS solo dueño, `updated_at` del servidor, borrado suave). Probada en Postgres 16 de 0001 a 0023 y corrida dos veces (idempotente). **Pendiente de correr.** Mientras no exista la app sigue funcionando: las columnas nuevas solo se mandan si tienen valor y las tablas nuevas se sincronizan aparte (esperan en la cola, sin perderse). |
+| 0024 | **Tarjeta de crédito.** `accounts`: `card_cutoff_day`, `card_due_day` (1 a 31), `credit_limit`, `card_min_payment`, `card_alerts` (jsonb). Solo se llenan en cuentas de tarjeta. Probada junto con 0023 en Postgres 16 (dos corridas). **Pendiente de correr** (después de 0023). La app funciona sin ella: las columnas solo se mandan si tienen valor. |
 
 ## Estado actual del esquema (tablas principales)
 
@@ -52,7 +53,7 @@ de partida.
 `template_budget_lines`, `budget_assignments`, `period_budget_overrides`,
 `goals`, `investments`, `liabilities`, `net_worth_snapshots`, `audit_log`,
 `survey_responses`, `ui_themes`, `push_subscriptions`, `notification_settings`,
-`notification_log`, `category_mappings` (desde 0022), `recurring_rules`, `reminders` y `reminder_occurrences` (desde 0023).
+`notification_log`, `category_mappings` (desde 0022), `recurring_rules`, `reminders` y `reminder_occurrences` (desde 0023); `accounts` ganó las fechas de tarjeta (0024).
 
 Campos relevantes de `profiles` hoy, además de los de siempre
 (`name`, `primary_currency`, `theme_preference`...): `visual_style`,

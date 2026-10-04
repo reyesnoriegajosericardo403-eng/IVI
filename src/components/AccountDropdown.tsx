@@ -77,6 +77,7 @@ export function AccountDropdown() {
     // configura el proveedor, son cosas distintas.
     { key: 'ai', label: 'Chat con IA', icon: 'sparkles-outline', onPress: () => go('/(tabs)/ia') },
     { key: 'reminders', label: 'Avisos', icon: 'notifications-outline', onPress: () => go('/avisos') },
+    { key: 'cards', label: 'Tarjetas de crédito', icon: 'card-outline', onPress: () => go('/tarjetas') },
     { key: 'recurring', label: 'Pagos recurrentes', icon: 'repeat-outline', onPress: () => go('/recurrentes') },
     { key: 'privacy', label: 'Privacidad y datos', icon: 'shield-checkmark-outline', onPress: () => go('/privacidad') },
     { key: 'install', label: 'Instalar VALU', icon: 'download-outline', onPress: () => go('/instalar') },

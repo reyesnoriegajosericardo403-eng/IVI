@@ -22,6 +22,7 @@ import {
   resolvePostponeForecast,
   resolveRegisterDividend,
   resolveResumeRecurring,
+  resolveSetCardDates,
   resolveSettleLiability,
   resolveSkipForecast,
   resolveUpdateRecurringAmount,
@@ -110,6 +111,29 @@ function namedAccountIn(n: string, ctx: ActionValidationContext): string {
   return '';
 }
 
+// "Mi tarjeta Oro corta el 5 y paga el 25". Se revisa ANTES de partir el mensaje en instrucciones (el planificador cortaría en
+// "y paga…"), por eso se exporta.
+export function detectCardDates(rawText: string, ctx: ActionValidationContext, now: Date): ResolveResult | null {
+  if (rawText.length > 4000) return null;
+  const n = normalize(rawText);
+  const rec = findRecurrence(rawText, now);
+  const creditCards = ctx.accounts.filter((a) => !a.deletedAt && a.type === 'credit_card');
+  if (!creditCards.length || rec || has(n, REMIND_RE) || has(n, PAST_RECORD_RE)) return null;
+  const named = findMentionedName(n, creditCards, (a) => a.name).found;
+  if (!(/\btarjeta\b/.test(n) || named)) return null;
+  const cut = n.match(/\b(?:corte|corta|cierra|cierre)\b[^0-9]{0,40}?(\d{1,2})\b/);
+  const due = n.match(/\b(?:fecha\s+(?:limite\s+)?de\s+pago|fecha\s+limite|limite\s+de\s+pago|dia\s+de\s+pago|vence|vencimiento|se\s+paga|paga)\b[^0-9]{0,30}?(\d{1,2})\b/);
+  const cutDay = cut ? parseInt(cut[1], 10) : undefined;
+  const dueDay = due ? parseInt(due[1], 10) : undefined;
+  if (cutDay === undefined && dueDay === undefined) return null;
+  // «Liverpool vence el 25», sin decir «tarjeta» ni «corte», cuando TAMBIÉN hay una deuda con ese nombre, es el vencimiento de la deuda
+  // (lo de siempre), no las fechas de la tarjeta.
+  if (!/\btarjeta\b/.test(n) && cutDay === undefined && named && ctx.liabilities.some((l) => !l.deletedAt && normalize(l.institution) === normalize(named.name))) return null;
+  // sin un monto suelto ("paga 3000 de la tarjeta") no es una fecha: solo números de 1 o 2 cifras después de la palabra clave
+  const hit = findMentionedName(n, creditCards, (a) => a.name);
+  return resolveSetCardDates({ accountNameHint: hit.found?.name ?? '', cutoffDay: cutDay, dueDay }, ctx);
+}
+
 export function detectP3Intent(rawText: string, ctx: ActionValidationContext, now: Date): ResolveResult | null {
   if (rawText.length > 4000) return null;
   const p = parse(rawText, now);
@@ -150,6 +174,10 @@ export function detectP3Intent(rawText: string, ctx: ActionValidationContext, no
       );
     }
   }
+
+  // ---------- Tarjeta de crédito: fecha de corte y fecha límite de pago ----------
+  const cardDates = detectCardDates(rawText, ctx, now);
+  if (cardDates) return cardDates;
 
   // ---------- Dividendos ----------
   if (/\bdividendos?\b/.test(n) && !p.rec) {

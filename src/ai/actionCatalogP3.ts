@@ -83,6 +83,11 @@ export interface PayLiabilityCandidate {
 export interface SettleLiabilityCandidate {
   institutionHint: string;
 }
+export interface SetCardDatesCandidate {
+  accountNameHint: string;
+  cutoffDay?: unknown;
+  dueDay?: unknown;
+}
 export interface RegisterDividendCandidate {
   tickerHint: string;
   amount: unknown;
@@ -482,12 +487,34 @@ export function resolveRegisterDividend(c: RegisterDividendCandidate, ctx: Actio
   };
 }
 
+// ---------- Tarjeta de crédito ----------
+
+export function resolveSetCardDates(c: SetCardDatesCandidate, ctx: ActionValidationContext): ResolveResult {
+  const cards = ctx.accounts.filter((a) => !a.deletedAt && a.type === 'credit_card');
+  if (cards.length === 0) return { ok: false, reason: 'No tienes ninguna tarjeta de crédito registrada. Agrégala en Patrimonio → Cuentas y vuelve a decirme sus fechas.' };
+  const hint = cleanString(c.accountNameHint);
+  const card = hint ? resolveByNameHint(hint, cards, (a) => a.name) : cards.length === 1 ? cards[0] : undefined;
+  if (!card) {
+    return ask('set_card_dates', c, [{ field: 'account', slot: 'accountNameHint', prompt: `${hint ? `No encontré ninguna tarjeta que se llame "${hint}". ` : ''}¿De cuál tarjeta?${listNames(cards.map((a) => a.name))}` }]);
+  }
+  const day = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 31 ? v : null);
+  const cutoff = day(c.cutoffDay) ?? (c.cutoffDay === undefined || c.cutoffDay === null || c.cutoffDay === '' ? card.cardCutoffDay ?? null : null);
+  const due = day(c.dueDay) ?? (c.dueDay === undefined || c.dueDay === null || c.dueDay === '' ? card.cardDueDay ?? null : null);
+  if (cutoff === null) return ask('set_card_dates', c, [askAmount('cutoffDay', `¿Qué día del mes es el corte de "${card.name}"? Dime solo el número, por ejemplo "5".`)]);
+  if (due === null) return ask('set_card_dates', c, [askAmount('dueDay', `¿Y qué día del mes es la fecha límite de pago de "${card.name}"? Dime solo el número, por ejemplo "25".`)]);
+  return {
+    ok: true,
+    action: { type: 'set_card_dates', args: { accountId: card.id, accountName: card.name, cutoffDay: cutoff, dueDay: due } },
+    summary: `Tarjeta "${card.name}": corte el día ${cutoff} y fecha límite de pago el día ${due} de cada mes — te aviso antes, el mismo día y, si no confirmas el pago, te insisto hasta 3 veces`,
+  };
+}
+
 // ---------- Reintento con la respuesta de la persona ----------
 
 const P3_TYPES: AIActionType[] = [
   'add_forecast', 'confirm_forecast', 'skip_forecast', 'postpone_forecast', 'add_recurring', 'add_recurring_contribution',
   'update_recurring_amount', 'pause_recurring', 'resume_recurring', 'end_recurring', 'add_reminder', 'cancel_reminder',
-  'pay_liability', 'settle_liability', 'register_dividend',
+  'pay_liability', 'settle_liability', 'register_dividend', 'set_card_dates',
 ];
 export const isP3ActionType = (t: string): boolean => (P3_TYPES as string[]).includes(t);
 
@@ -525,6 +552,8 @@ export function resolveCandidateP3(type: AIActionType, c: Record<string, unknown
       return resolveSettleLiability({ institutionHint: s('institutionHint') }, ctx);
     case 'register_dividend':
       return resolveRegisterDividend({ tickerHint: s('tickerHint'), amount: c.amount, accountNameHint: s('accountNameHint') }, ctx);
+    case 'set_card_dates':
+      return resolveSetCardDates({ accountNameHint: s('accountNameHint'), cutoffDay: c.cutoffDay, dueDay: c.dueDay }, ctx);
     default:
       return { ok: false, reason: `Tipo de acción no reconocido: ${type}` } satisfies ResolveErr;
   }

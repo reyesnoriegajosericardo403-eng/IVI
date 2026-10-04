@@ -8,6 +8,7 @@
 // - Los efectos (saldos resultantes) se calculan sobre una copia, en orden, y nunca escriben nada.
 
 import { detectChatIntent } from './chatIntentParser';
+import { detectCardDates } from './p3Intents';
 import { accountHintFor } from './catalogCommon';
 import { simulateStep } from './virtualIds';
 import {
@@ -132,6 +133,9 @@ export const MAX_PLAN_TEXT_CHARS = 4000;
 
 export function planFromText(rawText: string, ctx: ActionValidationContext): PlanOutcome {
   if (rawText.length > MAX_PLAN_TEXT_CHARS) return { kind: 'none' };
+  // "mi tarjeta Oro corta el 5 y paga el 25" es UNA instrucción aunque traiga una "y paga": no se parte.
+  const cardDates = detectCardDates(rawText, ctx, nowOf(ctx));
+  if (cardDates) return fromSingle(cardDates);
   const segments = splitPlanSegments(rawText);
   const whole = () => detectChatIntent(rawText, ctx, nowOf(ctx));
   if (segments.length <= 1) {

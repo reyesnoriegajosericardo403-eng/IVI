@@ -32,6 +32,7 @@ Esta carpeta nunca reemplaza eso ni lo toca — ver [[06-pendientes#Sobre Obsidi
 - [[08-golden-set-resultados|Golden set del motor local]] — cómo se mide el motor (1,047 casos + frases frescas selladas) y los resultados de P1, P1b y P2.
 - [[09-p2-planificador-fechas-y-catalogo-en-segundo-plano|P2: planificador, fechas y catálogo en segundo plano]] — cómo un mensaje se vuelve varias acciones confirmadas juntas, las fechas en español, el «túnel» del vocabulario y el peso de la app.
 - [[10-p3-previsto-recurrentes-avisos-deudas|P3: previsto, pagos recurrentes, avisos, deudas y dividendos]] — qué es un movimiento previsto, cómo se generan solos y por qué nunca duplican, cómo funcionan los avisos que insisten, deudas con cuotas y las 15 acciones nuevas del chat.
+- [[11-tarjeta-de-credito|Tarjeta de crédito]] — fecha de corte y de pago, cuánto falta para no generar intereses y los avisos que no se pasan.
 - [[04-migraciones-supabase|Migraciones de Supabase]] — historial de la base de datos real y su estado actual.
 - [[05-bitacora-cambios|Bitácora de cambios]] — qué se construyó, en orden, y por qué.
 - [[06-pendientes|Pendientes y decisiones abiertas]] — lo que falta resolver o confirmar.

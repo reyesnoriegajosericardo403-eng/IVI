@@ -44,7 +44,7 @@
     "web": "expo start --web",
     "build:web": "expo export --platform web",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/golden/run-golden.cjs --min 100 && node scripts/golden/catalogo.cjs && node scripts/golden/planes.cjs && node scripts/golden/ejecutor.cjs && node scripts/golden/sync-mapeo.cjs && node scripts/golden/run-fechas.cjs && node scripts/golden/recurrencia.cjs && node scripts/golden/previsto.cjs && node scripts/golden/p3-store.cjs && node scripts/golden/push-avisos.cjs && node scripts/golden/ics.cjs && node scripts/golden/deudas.cjs && node scripts/golden/p3-chat.cjs && node scripts/golden/fuzz.cjs --rounds 600 && node scripts/golden/audit-budget.cjs && node scripts/golden/robustez.cjs",
+    "test": "node scripts/golden/run-golden.cjs --min 100 && node scripts/golden/catalogo.cjs && node scripts/golden/planes.cjs && node scripts/golden/ejecutor.cjs && node scripts/golden/sync-mapeo.cjs && node scripts/golden/run-fechas.cjs && node scripts/golden/recurrencia.cjs && node scripts/golden/previsto.cjs && node scripts/golden/p3-store.cjs && node scripts/golden/push-avisos.cjs && node scripts/golden/ics.cjs && node scripts/golden/deudas.cjs && node scripts/golden/p3-chat.cjs && node scripts/golden/tarjeta.cjs && node scripts/golden/tarjeta-store.cjs && node scripts/golden/fuzz.cjs --rounds 600 && node scripts/golden/audit-budget.cjs && node scripts/golden/robustez.cjs",
     "size": "node scripts/size-report.cjs"
   },
   "private": true
