@@ -8,6 +8,7 @@ const D = require('@/ai/dates');
 const { planFromText, splitPlanSegments, previewPlan } = require('@/ai/planner');
 const { detectChatIntent } = require('@/ai/chatIntentParser');
 const P = require('@/ai/localParser');
+const { findRecurrence } = require('@/ai/recurrenceText');
 
 const argv = process.argv.slice(2);
 const opt = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 ? Number(argv[i + 1]) : d; };
@@ -25,12 +26,18 @@ const ctx = {
   ],
   goals: [{ ...base, id: 'g1', name: 'Viaje', targetAmount: 20000, currentAmount: 3000, currency: 'MXN' }],
   liabilities: [{ ...base, id: 'l1', institution: 'Banorte', type: 'credit_card', balance: 8000, currency: 'MXN', dueDate: '2026-10-20' }],
+  // P3: previstos, pagos recurrentes, avisos e inversiones para que las frases de P3 resuelvan contra algo real
+  investments: [{ ...base, id: 'i1', ticker: 'FUNO11', name: 'FUNO', assetClass: 'fibra', quantity: 1, avgCostPrice: 1, currency: 'MXN', amountInvested: 1, purchaseDate: '2026-01-01' }],
+  forecasts: [{ ...base, id: 'f1', type: 'expense', amount: 8000, currency: 'MXN', categoryId: 'housing', subcategoryId: 'house_rent', merchant: 'Renta', accountId: 'a1', date: '2026-10-05T18:00:00.000Z', status: 'forecast', recurringRuleId: 'r1', origin: 'automatic' }],
+  recurringRules: [{ ...base, id: 'r1', kind: 'transaction', name: 'Renta', status: 'active', recurrence: { frequency: 'monthly', interval: 1, startDate: '2026-10-05', dayOfMonth: 5 }, amount: 8000, currency: 'MXN', txType: 'expense', accountId: 'a1' }],
+  reminders: [{ ...base, id: 'm1', kind: 'custom', title: 'Pagar predial', date: '2026-10-20', timeOfDay: '09:00', advanceDays: [], maxAttempts: 1, attemptIntervalMinutes: 120, push: true, status: 'active' }],
   templateBudgetLines: [], recentTransactions: [], primaryCurrency: 'MXN', today: '2026-10-03',
 };
 
 const WORDS = ['transfiere', 'pasa', 'aporta', 'retira', 'registra', 'gasté', 'pagué', 'de', 'a', 'en', 'y', 'luego', 'mi', 'meta', 'cuenta', 'deuda', 'BBVA', 'Nu', 'Morralla', 'Viaje', 'Banorte',
   'ayer', 'hoy', 'mañana', 'el', 'viernes', 'lunes', '15', 'marzo', 'de', 'octubre', '500', '1,200.50', '$300', 'mil', 'pesos', 'a las', '5', 'pm', 'hace', '3', 'días', 'semana', 'pasada', 'vence', 'fecha', 'cambia',
-  'tacos', 'luz', 'renta', '/', '-', ',', '.', ';', '\n', '2026', '1/2', 'kilo', 'cada', 'mes', 'quincena', 'domingo', 'enero', 'dic', 'una', 'cinco', 'treinta', 'y', 'media', 'cuarto', 'menos'];
+  'tacos', 'luz', 'renta', '/', '-', ',', '.', ';', '\n', '2026', '1/2', 'kilo', 'cada', 'mes', 'quincena', 'domingo', 'enero', 'dic', 'una', 'cinco', 'treinta', 'y', 'media', 'cuarto', 'menos',
+  'recuérdame', 'avísame', 'cada', 'todos los', 'mensual', 'quincenal', 'pausa', 'reanuda', 'termina', 'ya pagué', 'no pagué', 'pospón', 'dividendo', 'FUNO11', 'Renta', 'Pagar predial', 'insiste', 'hasta', 'veces', 'antes', 'abona', 'liquidé', 'me depositan', 'tengo que pagar', 'voy a pagar'];
 const RARE = ['', ' ', '\u0000', '😀', 'ñandú', 'ÁÉÍÓÚ', '٣٤٥', '𝟙𝟚𝟛', '‮', 'İstanbul', 'ǅ', '\ud800', 'a'.repeat(200), '9'.repeat(40), '-0', '1e999', '0x10', 'NaN', 'Infinity', '$', '$$$', '(((', '[[[', '\\', '*', '+', '?'];
 const randomText = () => {
   const n = 1 + Math.floor(rnd() * 24);
@@ -57,6 +64,7 @@ t(`${ROUNDS} textos al azar: ninguna función lanza`, () => {
       const o = planFromText(s, ctx);
       if (o.kind === 'plan') previewPlan(o.steps, ctx);
       detectChatIntent(s, ctx, NOW);
+      findRecurrence(s, NOW);
       P.parseCaptureText(s, NOW);
     } catch (e) { e.message = `${e.message}\n   entrada: ${JSON.stringify(s)}`; throw e; }
   }
@@ -97,6 +105,21 @@ t('un plan nunca trae más de 6 pasos ni pasos sin resumen; la vista previa no p
   }
 });
 
+t('frases de P3 combinadas al azar: nunca lanzan y todo paso de un plan lleva resumen y argumentos', () => {
+  const FR = ['recuérdame pagar la luz el 15', 'cada mes pago 199 de Spotify con BBVA', 'pausa Renta', 'ya pagué la renta', 'no pagué la renta', 'pospón la renta al 20', 'pagué 500 a Banorte desde BBVA', 'ya liquidé Banorte', 'me llegó un dividendo de 10 de FUNO11 en Nu',
+    'mañana pago 300 de agua con BBVA', 'cada quincena me depositan 9000 en Nu', 'quita el aviso de predial', 'la renta subió a 9000', 'crea la cuenta Ahorro9 con 100', 'aporta 50 a mi meta Viaje', 'transfiere 100 de BBVA a Nu'];
+  for (let i = 0; i < 2500; i++) {
+    const s = Array.from({ length: 1 + Math.floor(rnd() * 4) }, () => pick(FR)).join(pick([' y ', '; ', ' luego ', ', ']));
+    const o = planFromText(s, ctx);
+    if (o.kind === 'plan') {
+      assert(o.steps.length >= 2 && o.steps.length <= 6, `${o.steps.length} pasos en «${s}»`);
+      for (const st of o.steps) assert(st.summary && st.action.args && typeof st.action.type === 'string', `paso sin resumen en «${s}»`);
+      const p = previewPlan(o.steps, ctx);
+      for (const e of p.effects) assert(Number.isFinite(e.before) && Number.isFinite(e.after), `NaN en «${s}»`);
+    }
+  }
+});
+
 // ---- 3) rendimiento con textos largos y hostiles (cada llamada debe tardar poco) ----
 const LIMIT_MS = 150;
 const hostile = {
@@ -113,11 +136,20 @@ const hostile = {
   'metas': 'meta Viaje meta Laptop meta Moto '.repeat(400),
   'acentos': 'á é í ó ú ñ '.repeat(2000),
   'saltos de línea': 'aporta 5 a mi meta Viaje\n'.repeat(500),
+  // P3
+  'cada mes repetido': 'cada mes pago 500 de renta '.repeat(300),
+  'recuérdame repetido': 'recuérdame pagar la luz el 15 a las 9 '.repeat(250),
+  'el N de cada mes': 'el 5 de cada mes el 6 de cada mes '.repeat(300),
+  'ya pagué': 'ya pagué la renta, fueron 8100 '.repeat(250),
+  'días antes': '3 días antes de 2 días antes de '.repeat(300),
+  'cada cada': 'cada cada cada cada '.repeat(1000),
+  'todos los': 'todos los lunes y martes y jueves y '.repeat(300),
+  'dividendos': 'dividendo de FUNO11 en BBVA 12 '.repeat(300),
 };
 for (const [name, text] of Object.entries(hostile)) {
   for (const [fn, f] of Object.entries({
     findDateMentions: (s) => D.findDateMentions(s, NOW), findTimeMentions: (s) => D.findTimeMentions(s), extractPeriod: (s) => D.extractPeriod(s, NOW),
-    splitPlanSegments: (s) => splitPlanSegments(s), planFromText: (s) => planFromText(s, ctx), detectChatIntent: (s) => detectChatIntent(s, ctx, NOW), parseCaptureText: (s) => P.parseCaptureText(s, NOW),
+    findRecurrence: (s) => findRecurrence(s, NOW), splitPlanSegments: (s) => splitPlanSegments(s), planFromText: (s) => planFromText(s, ctx), detectChatIntent: (s) => detectChatIntent(s, ctx, NOW), parseCaptureText: (s) => P.parseCaptureText(s, NOW),
   })) {
     t(`${fn} · ${name} (${text.length} car.) < ${LIMIT_MS} ms`, () => {
       const t0 = process.hrtime.bigint();

@@ -6,7 +6,27 @@ import { resolveAccountByNameHint, resolveByNameHint, resolveGoalByNameHint, res
 import { formatDateDMY, parseISODate, todayISO } from '@/utils/date';
 import { formatCurrency } from '@/utils/format';
 
+import { resolveCandidateP3 } from './actionCatalogP3';
 import { describeDateEs, isoDateToTimestamp } from './dates';
+import {
+  ask,
+  askAccount,
+  askAmount,
+  askDate,
+  askGoal,
+  askLiability,
+  askName,
+  cleanString,
+  dateOnly,
+  finiteAmount,
+  positiveAmount,
+  resolveCurrency,
+  todayOf,
+  type ActionValidationContext,
+  type ResolveErr,
+  type ResolveOk,
+  type ResolveResult,
+} from './catalogCommon';
 import { normalize } from './localParser';
 import type {
   AddAccountArgs,
@@ -31,6 +51,8 @@ import type {
   WithdrawFromGoalArgs,
 } from './chatTypes';
 
+export type { ActionValidationContext, ResolveErr, ResolveOk, ResolveResult };
+
 // Catálogo de acciones: el único lugar donde una propuesta cruda (venga de
 // una expresión regular o de un LLM, ambas igual de no confiables) se
 // convierte en algo que de verdad se le puede mostrar al usuario y aplicar.
@@ -41,96 +63,6 @@ import type {
 //   datos reales (nunca se confía en un ID que "diga" el modelo).
 // - El texto de confirmación (`summary`) SIEMPRE lo arma este código a
 //   partir de los argumentos ya validados — nunca la prosa del modelo.
-
-export interface ActionValidationContext {
-  accounts: Account[];
-  goals: Goal[];
-  liabilities: Liability[];
-  templateBudgetLines: TemplateBudgetLine[];
-  // Ya recortadas por quien arma el contexto (mismo recorte de 20 que usa
-  // financialContext.ts) — nunca la lista completa.
-  recentTransactions: Transaction[];
-  primaryCurrency: Currency;
-  // Hoy (AAAA-MM-DD) para validar fechas; solo las pruebas lo fijan, en la app es el día del dispositivo.
-  today?: string;
-}
-
-export interface ResolveOk {
-  ok: true;
-  action: ResolvedAction;
-  summary: string;
-}
-export interface ResolveErr {
-  ok: false;
-  reason: string;
-  // Cuando lo que falta es UN dato que la persona puede contestar en una frase (monto, a qué cuenta...), aquí
-  // va lo necesario para preguntarlo y reintentar el mismo resolver con la respuesta (contrato §2).
-  clarification?: { type: AIActionType; candidate: Record<string, unknown>; missing: MissingField[] };
-}
-export type ResolveResult = ResolveOk | ResolveErr;
-
-// ---------- Datos faltantes: pregunta + candidato para reintentar (contrato §2) ----------
-
-function ask(type: AIActionType, candidate: object, missing: MissingField[]): ResolveErr {
-  return {
-    ok: false,
-    reason: missing.map((m) => m.prompt).join(' '),
-    clarification: { type, candidate: { ...(candidate as Record<string, unknown>) }, missing },
-  };
-}
-
-const askAmount = (slot: string, prompt: string): MissingField => ({ field: 'amount', slot, prompt });
-const askName = (slot: string, prompt: string): MissingField => ({ field: 'name', slot, prompt });
-
-function listNames(names: string[]): string {
-  const clean = names.filter(Boolean).slice(0, 8);
-  return clean.length ? ` (tienes: ${clean.join(', ')})` : '';
-}
-const askAccount = (slot: string, hint: string, ctx: ActionValidationContext, label = 'cuenta'): MissingField => ({
-  field: 'account',
-  slot,
-  prompt: hint.trim()
-    ? `No encontré ninguna ${label} que se llame "${hint.trim()}". ¿Cuál es?${listNames(ctx.accounts.filter((a) => !a.deletedAt).map((a) => a.name))}`
-    : `¿En qué ${label}? Dime el nombre${listNames(ctx.accounts.filter((a) => !a.deletedAt).map((a) => a.name))}.`,
-});
-const askGoal = (hint: string, ctx: ActionValidationContext): MissingField => ({
-  field: 'goal',
-  slot: 'goalNameHint',
-  prompt: `No encontré ninguna meta que se llame "${hint}". ¿Cuál es?${listNames(ctx.goals.filter((g) => !g.deletedAt).map((g) => g.name))}`,
-});
-const askLiability = (hint: string, ctx: ActionValidationContext): MissingField => ({
-  field: 'liability',
-  slot: 'institutionHint',
-  prompt: `No encontré ninguna deuda con "${hint}". ¿Cuál es?${listNames(ctx.liabilities.filter((l) => !l.deletedAt).map((l) => l.institution))}`,
-});
-
-// ---------- Fechas ----------
-
-// Fecha AAAA-MM-DD válida (acepta también un timestamp ISO) o null.
-function dateOnly(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
-  const y = +m[1];
-  const mo = +m[2];
-  const d = +m[3];
-  const date = new Date(y, mo - 1, d);
-  return date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d ? `${m[1]}-${m[2]}-${m[3]}` : null;
-}
-const todayOf = (ctx: ActionValidationContext): string => ctx.today ?? todayISO();
-const askDate = (slot: string, prompt: string): MissingField => ({ field: 'date', slot, prompt });
-
-function positiveAmount(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function finiteAmount(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function cleanString(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
-}
 
 // ---------- Candidatos crudos (sin validar) por tipo de acción ----------
 // Los produce tanto chatIntentParser.ts (regex) como
@@ -254,11 +186,6 @@ function resolveLiabilityType(hint: unknown): LiabilityType {
   const key = normalize(cleanString(hint));
   if ((LIABILITY_TYPES as string[]).includes(key)) return key as LiabilityType;
   return LIABILITY_TYPE_SYNONYMS[key] ?? 'other';
-}
-
-function resolveCurrency(hint: unknown, fallback: Currency): Currency {
-  const upper = cleanString(hint).toUpperCase();
-  return (['MXN', 'USD', 'EUR', 'CAD', 'GBP'] as string[]).includes(upper) ? (upper as Currency) : fallback;
 }
 
 // Sinónimos de los conceptos de presupuesto más comunes que alguien
@@ -615,6 +542,22 @@ export function resolveCandidate(type: AIActionType, c: Record<string, unknown>,
       return resolveDeleteBudgetLine({ categoryHint: s('categoryHint') }, ctx);
     case 'delete_transaction':
       return resolveDeleteTransaction({ transactionId: c.transactionId }, ctx);
+    case 'add_forecast':
+    case 'confirm_forecast':
+    case 'skip_forecast':
+    case 'postpone_forecast':
+    case 'add_recurring':
+    case 'add_recurring_contribution':
+    case 'update_recurring_amount':
+    case 'pause_recurring':
+    case 'resume_recurring':
+    case 'end_recurring':
+    case 'add_reminder':
+    case 'cancel_reminder':
+    case 'pay_liability':
+    case 'settle_liability':
+    case 'register_dividend':
+      return resolveCandidateP3(type, c, ctx);
     default: {
       const exhaustive: never = type;
       return { ok: false, reason: `Tipo de acción no reconocido: ${exhaustive}` };

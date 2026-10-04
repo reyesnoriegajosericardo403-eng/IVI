@@ -1,7 +1,7 @@
 import type { InterpretedMessage, PendingClarification } from '@/ai/chatTypes';
 import type { ParsedCapture } from '@/ai/localParser';
 import type { CopilotContext } from '@/ai/localCopilot';
-import type { Currency, TemplateBudgetLine } from '@/data/types';
+import type { Currency, RecurringRule, Reminder, TemplateBudgetLine, Transaction } from '@/data/types';
 
 // Contratos que cualquier proveedor externo debe cumplir. La UI y la
 // lógica de negocio SOLO conocen estas interfaces — nunca un SDK de un
@@ -25,6 +25,10 @@ export interface CopilotProvider {
 // montos actuales.
 export interface ActionAgentContext extends CopilotContext {
   templateBudgetLines: TemplateBudgetLine[];
+  // P3 (opcionales): lo previsto todavía abierto, los pagos recurrentes y los avisos, para poder resolverlos por nombre.
+  forecasts?: Transaction[];
+  recurringRules?: RecurringRule[];
+  reminders?: Reminder[];
 }
 
 // Chat con capacidad de proponer una acción sobre datos (spec: "modificar,

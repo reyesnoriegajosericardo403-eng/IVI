@@ -8,6 +8,8 @@
 // - Los efectos (saldos resultantes) se calculan sobre una copia, en orden, y nunca escriben nada.
 
 import { detectChatIntent } from './chatIntentParser';
+import { accountHintFor } from './catalogCommon';
+import { simulateStep } from './virtualIds';
 import {
   resolveAddTransaction,
   resolveCandidate,
@@ -47,6 +49,8 @@ const START_VERBS = [
   'abona', 'abonar', 'aporta', 'aportar', 'actualiza', 'actualizar', 'cambia', 'cambiar', 'pon', 'poner', 'ponle',
   'presupuesta', 'presupuestar', 'paga', 'pagar', 'págale', 'pagale', 'ahorra', 'ahorrar', 'suma', 'sumar', 'resta', 'restar',
   'deposita', 'depositar', 'retira', 'retirar',
+  'recuérdame', 'recuerdame', 'avísame', 'avisame', 'pausa', 'pausar', 'reanuda', 'reanudar', 'termina', 'terminar', 'pospón', 'pospon', 'pospone', 'confirma', 'omite',
+  'salda', 'saldar', 'liquida', 'liquidé', 'liquide', 'abonó', 'ya pagué', 'ya pague', 'ya cobré', 'ya cobre', 'no pagué', 'no pague', 'me llegó un dividendo', 'cobré dividendos',
   'gasté', 'gaste', 'pagué', 'pague', 'compré', 'compre', 'cobré', 'cobre', 'recibí', 'recibi', 'me depositaron', 'me pagaron',
 ];
 const START = `(?:${START_VERBS.map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?=\\s|$)`;
@@ -80,24 +84,6 @@ const RECORD_VERB_RE = /\b(gaste|pague|compre|cobre|recibi|registra|registrame|r
 const nowOf = (ctx: ActionValidationContext): Date => (ctx.today ? parseISODate(ctx.today) : new Date());
 
 // ---------- Resolver cada trozo ----------
-
-function activeAccounts(ctx: ActionValidationContext) {
-  return ctx.accounts.filter((a) => !a.deletedAt);
-}
-
-// Cuenta nombrada dentro del trozo (la de nombre más largo que aparezca); si no se nombra ninguna y solo hay
-// una cuenta normal, esa; si no, '' (y el resolver preguntará).
-function accountHintFor(normalized: string, ctx: ActionValidationContext): string {
-  const accounts = activeAccounts(ctx);
-  const named = accounts
-    .map((a) => ({ a, n: normalize(a.name) }))
-    .filter(({ n }) => n.length >= 2 && ` ${normalized} `.includes(` ${n} `))
-    .sort((x, y) => y.n.length - x.n.length)[0];
-  if (named) return named.a.name;
-  if (/\befectivo\b/.test(normalized)) return 'efectivo';
-  const spendable = accounts.filter((a) => a.type !== 'credit_card' && !a.isLiability);
-  return spendable.length === 1 ? spendable[0].name : '';
-}
 
 // "Gasté 200 en tacos con mi BBVA" → add_transaction categorizado, con el motor de captura de siempre.
 function resolveRecordSegment(segment: string, ctx: ActionValidationContext): ResolveResult | null {
@@ -158,7 +144,19 @@ export function planFromText(rawText: string, ctx: ActionValidationContext): Pla
   if (segments.length > MAX_PLAN_STEPS) {
     return { kind: 'reply', reply: `Son demasiadas instrucciones juntas (máximo ${MAX_PLAN_STEPS}). Mándalas en dos mensajes.` };
   }
-  return combineResults(segments, segments.map((seg) => resolveSegment(seg, ctx, true)), whole);
+  return combineResults(segments, resolveSequentially(segments, ctx), whole);
+}
+
+// Cada instrucción se valida contra el contexto COMO QUEDARÍA tras las anteriores (P3): "crea la cuenta Nu y transfiere 500
+// de BBVA a Nu" ve a Nu como una cuenta con id virtual (src/ai/virtualIds.ts); "retira 800 de la meta X" tras "aporta 500"
+// usa el saldo ya aportado; "borra la meta X y aporta a X" falla en el segundo paso.
+function resolveSequentially(segments: string[], ctx: ActionValidationContext): Array<ResolveResult | null> {
+  let cur = ctx;
+  return segments.map((seg) => {
+    const r = resolveSegment(seg, cur, true);
+    if (r?.ok) cur = simulateStep(cur, r.action.type, r.action.args as unknown as Record<string, unknown>);
+    return r;
+  });
 }
 
 // Parte el mensaje en una "y" (de las primeras 3) y exige que AMBOS lados sean una acción completa y válida.
@@ -169,7 +167,7 @@ function splitOnAnd(rawText: string, ctx: ActionValidationContext): PlanOutcome 
     const right = rawText.slice(m.index! + m[0].length).trim();
     if (left.length < 5 || right.length < 5) continue;
     const a = resolveSegment(left, ctx, true);
-    const b = resolveSegment(right, ctx, true);
+    const b = a?.ok ? resolveSegment(right, simulateStep(ctx, a.action.type, a.action.args as unknown as Record<string, unknown>), true) : null;
     if (a?.ok && b?.ok) return { kind: 'plan', steps: [toStep(a), toStep(b)] };
   }
   return null;
@@ -338,6 +336,26 @@ export function previewPlan(steps: PlannedStep[], ctx: ActionValidationContext):
         if (e) e.now = args.balance;
         break;
       }
+      // ---- P3: solo lo REAL mueve saldos; un previsto nuevo, una regla o un aviso no cambian ninguna cifra ----
+      case 'confirm_forecast': {
+        const tx = (ctx.forecasts ?? []).find((t: Transaction) => t.id === args.forecastId);
+        if (tx) for (const d of accountDeltasForTransaction({ ...tx, amount: args.amount ?? tx.amount, status: 'posted' })) moveAccount(d.accountId, d.delta, n);
+        break;
+      }
+      case 'pay_liability': {
+        if (args.accountId) for (const d of accountDeltasForTransaction({ type: args.owedToMe ? 'income' : 'expense', amount: args.amount, accountId: args.accountId })) moveAccount(d.accountId, d.delta, n);
+        const e = liabilities.get(args.liabilityId);
+        if (e) e.now = Math.max(0, Math.round((e.now - args.amount) * 100) / 100);
+        break;
+      }
+      case 'settle_liability': {
+        const e = liabilities.get(args.liabilityId);
+        if (e) e.now = 0;
+        break;
+      }
+      case 'register_dividend':
+        if (args.accountId) for (const d of accountDeltasForTransaction({ type: 'income', amount: args.amount, accountId: args.accountId })) moveAccount(d.accountId, d.delta, n);
+        break;
       default:
         break;
     }

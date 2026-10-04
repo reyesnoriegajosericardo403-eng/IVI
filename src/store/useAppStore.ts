@@ -5,22 +5,37 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   type ActionPlan,
   type AddAccountArgs,
+  type AddForecastArgs,
   type AddGoalArgs,
   type AddLiabilityArgs,
+  type AddRecurringArgs,
+  type AddRecurringContributionArgs,
+  type AddReminderArgs,
   type AddTransactionArgs,
   type AIActionProposal,
   type AIActionStatus,
   type AIActionType,
   type ChatConversation,
+  type CancelReminderArgs,
   type ChatMessage,
+  type ConfirmForecastArgs,
   type ContributeToGoalArgs,
   type DeleteAccountArgs,
   type DeleteBudgetLineArgs,
   type DeleteGoalArgs,
   type DeleteLiabilityArgs,
   type DeleteTransactionArgs,
+  type EndRecurringArgs,
+  type PauseRecurringArgs,
+  type PayLiabilityArgs,
+  type PostponeForecastArgs,
+  type RegisterDividendArgs,
+  type ResumeRecurringArgs,
   type SetBudgetLineArgs,
+  type SettleLiabilityArgs,
+  type SkipForecastArgs,
   type TransferBetweenAccountsArgs,
+  type UpdateRecurringAmountArgs,
   type UpdateGoalDateArgs,
   type UpdateGoalTargetArgs,
   type UpdateLiabilityBalanceArgs,
@@ -71,7 +86,8 @@ import {
   reconcileRuleForecasts,
   todayOf,
 } from '@/utils/materialize';
-import { addDaysIso, validateRecurrence } from '@/utils/recurrence';
+import { addDaysIso, validateRecurrence, type Recurrence } from '@/utils/recurrence';
+import { substituteVirtualIds, virtualIdFor, virtualKindOf } from '@/ai/virtualIds';
 import { applyPayment, directionOf, PAYMENT_SUBCATEGORY, validateLiabilityPayment } from '@/utils/debts';
 import { normalizeAdvanceDays, normalizeIntervalMinutes, REMINDER_DEFAULTS, validateReminderDraft, validateRuleDraft, type ReminderDraft, type RuleDraft } from '@/utils/p3Validation';
 
@@ -1516,6 +1532,90 @@ export const useAppStore = create<AppState>()(
               state.deleteTransaction(args.transactionId);
               return { ok: true };
             }
+            case 'add_forecast': {
+              const args = action.args as unknown as AddForecastArgs;
+              const account = state.accounts.find((a) => a.id === args.accountId && !a.deletedAt);
+              if (!account) return { ok: false, error: `La cuenta "${args.accountName}" ya no existe.` };
+              if (args.date < todayOf(new Date())) return { ok: false, error: 'Esa fecha ya pasó: un movimiento previsto es de hoy en adelante.' };
+              state.addForecast({
+                type: args.transactionType,
+                amount: args.amount,
+                currency: args.currency,
+                categoryId: args.categoryId,
+                subcategoryId: args.subcategoryId,
+                accountId: args.accountId,
+                merchant: args.merchant,
+                date: noonIso(args.date),
+                origin: 'manual',
+                notes: 'Previsto desde el chat de IA',
+              });
+              return { ok: true };
+            }
+            case 'confirm_forecast': {
+              const args = action.args as unknown as ConfirmForecastArgs;
+              return state.confirmForecast(args.forecastId, args.amount !== undefined ? { amount: args.amount } : undefined);
+            }
+            case 'skip_forecast': {
+              const args = action.args as unknown as SkipForecastArgs;
+              return state.skipForecast(args.forecastId);
+            }
+            case 'postpone_forecast': {
+              const args = action.args as unknown as PostponeForecastArgs;
+              return state.postponeForecast(args.forecastId, args.newDate);
+            }
+            case 'add_recurring': {
+              const args = action.args as unknown as AddRecurringArgs;
+              return state.createRule({
+                kind: 'transaction',
+                name: args.name,
+                amount: args.amount,
+                currency: args.currency,
+                txType: args.transactionType,
+                categoryId: args.categoryId,
+                subcategoryId: args.subcategoryId,
+                merchant: args.name,
+                accountId: args.accountId,
+                recurrence: args.recurrence as Recurrence,
+              });
+            }
+            case 'add_recurring_contribution': {
+              const args = action.args as unknown as AddRecurringContributionArgs;
+              return state.createRule({ kind: 'goal_contribution', name: args.name, amount: args.amount, currency: args.currency, goalId: args.goalId, recurrence: args.recurrence as Recurrence });
+            }
+            case 'update_recurring_amount': {
+              const args = action.args as unknown as UpdateRecurringAmountArgs;
+              return state.updateRule(args.ruleId, { amount: args.amount });
+            }
+            case 'pause_recurring':
+              return state.pauseRule((action.args as unknown as PauseRecurringArgs).ruleId);
+            case 'resume_recurring':
+              return state.resumeRule((action.args as unknown as ResumeRecurringArgs).ruleId);
+            case 'end_recurring':
+              return state.endRule((action.args as unknown as EndRecurringArgs).ruleId);
+            case 'add_reminder': {
+              const args = action.args as unknown as AddReminderArgs;
+              return state.createReminder({
+                title: args.title,
+                date: args.date,
+                recurrence: args.recurrence as Recurrence | undefined,
+                timeOfDay: args.timeOfDay,
+                advanceDays: args.advanceDays,
+                maxAttempts: args.maxAttempts,
+                push: true,
+              });
+            }
+            case 'cancel_reminder':
+              return state.cancelReminder((action.args as unknown as CancelReminderArgs).reminderId);
+            case 'pay_liability': {
+              const args = action.args as unknown as PayLiabilityArgs;
+              return state.payLiability(args.liabilityId, { amount: args.amount, accountId: args.accountId });
+            }
+            case 'settle_liability':
+              return state.settleLiability((action.args as unknown as SettleLiabilityArgs).liabilityId);
+            case 'register_dividend': {
+              const args = action.args as unknown as RegisterDividendArgs;
+              return state.registerDividend(args.investmentId, { amount: args.amount, accountId: args.accountId });
+            }
             default: {
               const exhaustiveCheck: never = action.type;
               return { ok: false, error: `Tipo de acción no reconocido: ${exhaustiveCheck}` };
@@ -1530,6 +1630,7 @@ export const useAppStore = create<AppState>()(
           const writePlan = (next: ActionPlan) =>
             set((s) => ({ chatMessages: s.chatMessages.map((m) => (m.id === messageId ? { ...m, plan: next } : m)) }));
 
+          const virtualMap: Record<string, string> = {};
           // Ids que existen ANTES de cada paso, para saber cuál registro creó (auditoría).
           let before = { tx: new Set<string>(), goals: new Set<string>(), accounts: new Set<string>(), liabilities: new Set<string>() };
           const snapshot = () => ({
@@ -1547,7 +1648,17 @@ export const useAppStore = create<AppState>()(
             persist: writePlan,
             apply: (step) => {
               before = snapshot();
-              return get().aiApplyAction(step);
+              // Ids virtuales (`virtual:account:nu`): se cambian por los reales de lo que un paso anterior ya creó.
+              const sub = substituteVirtualIds(step.args, virtualMap);
+              if (sub.unresolved.length) return { ok: false, error: 'Este paso depende de algo que un paso anterior no llegó a crear.' };
+              const res = get().aiApplyAction(sub.args === step.args ? step : { ...step, args: sub.args });
+              if (res.ok) {
+                const vid = virtualIdFor(step.type, step.args);
+                const kind = virtualKindOf(step.type);
+                const realId = kind === 'account' ? created('accounts') : kind === 'goal' ? created('goals') : kind === 'liability' ? created('liabilities') : undefined;
+                if (vid && realId) virtualMap[vid] = realId;
+              }
+              return res;
             },
             onStepApplied: (step, index) => {
               const label = `Chat IA · plan ${plan.id.slice(0, 8)} · paso ${index + 1}: ${step.summary}`;
@@ -1601,6 +1712,27 @@ export const useAppStore = create<AppState>()(
                 case 'delete_budget_line':
                   logAudit({ entityType: 'budget', entityId: a.lineId, action: 'delete', summary: label });
                   break;
+                case 'add_forecast':
+                  logAudit({ entityType: 'transaction', entityId: created('tx') ?? step.id, action: 'create', summary: label, newValue: a.amount });
+                  break;
+                case 'skip_forecast':
+                case 'postpone_forecast':
+                  logAudit({ entityType: 'transaction', entityId: a.forecastId, action: 'update', summary: label });
+                  break;
+                case 'confirm_forecast':
+                case 'pay_liability':
+                case 'settle_liability':
+                case 'register_dividend':
+                  break; // la acción del store ya deja su propia entrada de auditoría (con el monto)
+                case 'add_recurring':
+                case 'add_recurring_contribution':
+                case 'update_recurring_amount':
+                case 'pause_recurring':
+                case 'resume_recurring':
+                case 'end_recurring':
+                case 'add_reminder':
+                case 'cancel_reminder':
+                  break; // reglas y avisos no tienen entidad en la bitácora de saldos: el propio plan guardado en el chat es el rastro
                 case 'update_liability_balance':
                   break; // updateLiability ya deja su propia entrada de auditoría con el saldo anterior y el nuevo
                 default: {

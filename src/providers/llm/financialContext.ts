@@ -77,7 +77,12 @@ export function buildActionContextSummary(ctx: ActionAgentContext) {
     moneda_principal: ctx.profile.primaryCurrency,
     cuentas: ctx.accounts.map((a) => ({ id: a.id, nombre: a.name, tipo: a.type, saldo: a.balance, moneda: a.currency })),
     metas: ctx.goals.map((g) => ({ id: g.id, nombre: g.name, actual: g.currentAmount, objetivo: g.targetAmount, fecha_objetivo: g.targetDate, moneda: g.currency })),
-    deudas: ctx.liabilities.map((l) => ({ id: l.id, institucion: l.institution, tipo: l.type, saldo: l.balance, vencimiento: l.dueDate, moneda: l.currency })),
+    deudas: ctx.liabilities.filter((l) => !l.deletedAt && l.status !== 'settled').map((l) => ({ id: l.id, institucion: l.institution, tipo: l.type, saldo: l.balance, vencimiento: l.dueDate, moneda: l.currency, sentido: l.direction === 'owed_to_me' ? 'me_deben' : 'yo_debo' })),
+    // P3: lo que el modelo necesita para referirse a un previsto, un pago recurrente, un aviso o una inversión por su nombre
+    previstos: (ctx.forecasts ?? []).filter((t) => !t.deletedAt && t.status === 'forecast').slice(0, 30).map((t) => ({ id: t.id, nombre: t.merchant ?? t.subcategoryId, tipo: t.type, monto: t.amount, moneda: t.currency, fecha: t.date.slice(0, 10) })),
+    pagos_recurrentes: (ctx.recurringRules ?? []).filter((r) => !r.deletedAt && r.status !== 'ended').slice(0, 30).map((r) => ({ id: r.id, nombre: r.name, estado: r.status, monto: r.amount, moneda: r.currency })),
+    avisos: (ctx.reminders ?? []).filter((r) => !r.deletedAt && r.status !== 'cancelled' && r.sourceType !== 'rule').slice(0, 30).map((r) => ({ id: r.id, titulo: r.title })),
+    inversiones: ctx.investments.filter((i) => !i.deletedAt).slice(0, 30).map((i) => ({ id: i.id, ticker: i.ticker, nombre: i.name, moneda: i.currency })),
     presupuesto_actual: ctx.templateBudgetLines
       .filter((l) => !l.deletedAt)
       .map((l) => ({ id: l.id, categoria_id: l.categoryId, monto_mensual: l.monthlyAmount, moneda: l.currency })),

@@ -28,7 +28,23 @@ export type AIActionType =
   | 'set_budget_line'
   | 'delete_budget_line'
   | 'delete_transaction'
-  | 'transfer_between_accounts';
+  | 'transfer_between_accounts'
+  // ---- P3 ----
+  | 'add_forecast'
+  | 'confirm_forecast'
+  | 'skip_forecast'
+  | 'postpone_forecast'
+  | 'add_recurring'
+  | 'add_recurring_contribution'
+  | 'update_recurring_amount'
+  | 'pause_recurring'
+  | 'resume_recurring'
+  | 'end_recurring'
+  | 'add_reminder'
+  | 'cancel_reminder'
+  | 'pay_liability'
+  | 'settle_liability'
+  | 'register_dividend';
 
 // Un tipo de argumentos angosto por acción — nunca un parche genérico
 // (spec del plan: "tipos angostos, nunca parches genéricos") — así el
@@ -133,6 +149,116 @@ export interface TransferBetweenAccountsArgs {
   currency: Currency;
 }
 
+// ---------- P3: previsto, recurrentes, avisos, deudas y dividendos ----------
+
+// Los ids de cuentas/metas/deudas pueden ser "virtuales" (`virtual:account:nu`) cuando el paso se refiere a algo que
+// crea un paso ANTERIOR del mismo plan: el ejecutor los cambia por el id real recién creado (src/ai/virtualIds.ts).
+export interface AddForecastArgs {
+  transactionType: 'expense' | 'income';
+  amount: number;
+  currency: Currency;
+  categoryId: string;
+  subcategoryId: string;
+  accountId: string;
+  accountName: string;
+  merchant?: string;
+  date: string; // AAAA-MM-DD, hoy o futuro
+}
+export interface ConfirmForecastArgs {
+  forecastId: string;
+  label: string; // "Renta (5 oct)"
+  amount?: number; // si ya ocurrió con otro monto
+}
+export interface SkipForecastArgs {
+  forecastId: string;
+  label: string;
+}
+export interface PostponeForecastArgs {
+  forecastId: string;
+  label: string;
+  newDate: string; // AAAA-MM-DD, hoy o futuro
+}
+export interface RecurrenceArgs {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'semimonthly';
+  interval: number;
+  startDate: string;
+  dayOfMonth?: number;
+  weekdays?: number[];
+  month?: number;
+  endDate?: string;
+  count?: number;
+}
+export interface AddRecurringArgs {
+  name: string;
+  transactionType: 'expense' | 'income';
+  amount: number;
+  currency: Currency;
+  categoryId: string;
+  subcategoryId: string;
+  accountId: string;
+  accountName: string;
+  recurrence: RecurrenceArgs;
+}
+export interface AddRecurringContributionArgs {
+  name: string;
+  goalId: string;
+  goalName: string;
+  amount: number;
+  currency: Currency;
+  recurrence: RecurrenceArgs;
+}
+export interface UpdateRecurringAmountArgs {
+  ruleId: string;
+  ruleName: string;
+  amount: number;
+  currency: Currency;
+}
+export interface PauseRecurringArgs {
+  ruleId: string;
+  ruleName: string;
+}
+export interface ResumeRecurringArgs {
+  ruleId: string;
+  ruleName: string;
+}
+export interface EndRecurringArgs {
+  ruleId: string;
+  ruleName: string;
+}
+export interface AddReminderArgs {
+  title: string;
+  date?: string; // una sola vez
+  recurrence?: RecurrenceArgs;
+  timeOfDay: string; // HH:MM
+  advanceDays: number[];
+  maxAttempts: number;
+}
+export interface CancelReminderArgs {
+  reminderId: string;
+  title: string;
+}
+export interface PayLiabilityArgs {
+  liabilityId: string;
+  institution: string;
+  amount: number;
+  currency: Currency;
+  owedToMe: boolean; // true = te pagaron a ti (cobro)
+  accountId?: string;
+  accountName?: string;
+}
+export interface SettleLiabilityArgs {
+  liabilityId: string;
+  institution: string;
+}
+export interface RegisterDividendArgs {
+  investmentId: string;
+  ticker: string;
+  amount: number;
+  currency: Currency;
+  accountId?: string;
+  accountName?: string;
+}
+
 // Unión discriminada usada por el catálogo (src/ai/actionCatalog.ts) y por
 // `aiApplyAction` (useAppStore.ts) para que el switch de despacho sea
 // exhaustivo y a prueba de tipos — nunca se puede despachar un tipo que no
@@ -154,7 +280,22 @@ export type ResolvedAction =
   | { type: 'set_budget_line'; args: SetBudgetLineArgs }
   | { type: 'delete_budget_line'; args: DeleteBudgetLineArgs }
   | { type: 'delete_transaction'; args: DeleteTransactionArgs }
-  | { type: 'transfer_between_accounts'; args: TransferBetweenAccountsArgs };
+  | { type: 'transfer_between_accounts'; args: TransferBetweenAccountsArgs }
+  | { type: 'add_forecast'; args: AddForecastArgs }
+  | { type: 'confirm_forecast'; args: ConfirmForecastArgs }
+  | { type: 'skip_forecast'; args: SkipForecastArgs }
+  | { type: 'postpone_forecast'; args: PostponeForecastArgs }
+  | { type: 'add_recurring'; args: AddRecurringArgs }
+  | { type: 'add_recurring_contribution'; args: AddRecurringContributionArgs }
+  | { type: 'update_recurring_amount'; args: UpdateRecurringAmountArgs }
+  | { type: 'pause_recurring'; args: PauseRecurringArgs }
+  | { type: 'resume_recurring'; args: ResumeRecurringArgs }
+  | { type: 'end_recurring'; args: EndRecurringArgs }
+  | { type: 'add_reminder'; args: AddReminderArgs }
+  | { type: 'cancel_reminder'; args: CancelReminderArgs }
+  | { type: 'pay_liability'; args: PayLiabilityArgs }
+  | { type: 'settle_liability'; args: SettleLiabilityArgs }
+  | { type: 'register_dividend'; args: RegisterDividendArgs };
 
 // 'skipped' solo lo usan los pasos de un plan que no se llegaron a ejecutar porque uno anterior falló.
 export type AIActionStatus = 'proposed' | 'applied' | 'dismissed' | 'failed' | 'skipped';
@@ -180,7 +321,7 @@ export interface AIActionProposal {
 // puede faltar; `slot` es la clave del candidato que la respuesta de la persona va a llenar; `prompt` es la
 // pregunta ya redactada por código (nunca prosa libre de un modelo).
 export interface MissingField {
-  field: 'account' | 'amount' | 'category' | 'goal' | 'liability' | 'currency' | 'date' | 'name';
+  field: 'account' | 'amount' | 'category' | 'goal' | 'liability' | 'currency' | 'date' | 'name' | 'forecast' | 'rule' | 'reminder' | 'investment' | 'recurrence';
   slot: string;
   prompt: string;
 }

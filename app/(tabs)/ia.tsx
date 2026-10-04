@@ -21,8 +21,11 @@ import {
   selectActiveGoals,
   selectActiveInvestments,
   selectActiveLiabilities,
+  selectActiveRecurringRules,
+  selectActiveReminders,
   selectActiveTemplateBudgetLines,
   selectActiveTransactions,
+  selectForecastTransactions,
 } from '@/store/selectors';
 import { useAppStore } from '@/store/useAppStore';
 import { CHAT_PALETTE, chatGlass, type ChatPalette } from '@/theme/chatPalette';
@@ -59,6 +62,8 @@ export default function Ia() {
   const rawBudgets = useAppStore((s) => s.budgets);
   const rawGoals = useAppStore((s) => s.goals);
   const rawTemplateLines = useAppStore((s) => s.templateBudgetLines);
+  const rawRules = useAppStore((s) => s.recurringRules);
+  const rawReminders = useAppStore((s) => s.reminders);
 
   const conversations = useAppStore((s) => s.conversations);
   const chatMessages = useAppStore((s) => s.chatMessages);
@@ -134,6 +139,9 @@ export default function Ia() {
           budgets,
           goals,
           templateBudgetLines,
+          forecasts: selectForecastTransactions(rawTransactions),
+          recurringRules: selectActiveRecurringRules(rawRules),
+          reminders: selectActiveReminders(rawReminders),
         }, { pending: openClarification?.clarification }),
         new Promise((resolve) => setTimeout(resolve, MIN_THINKING_MS)),
       ]);

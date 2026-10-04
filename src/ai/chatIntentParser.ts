@@ -27,6 +27,7 @@ import {
 } from './actionCatalog';
 import { resolveAccountByNameHint, resolveGoalByNameHint } from '@/utils/accounts';
 import { findDateMentions, findTimeMentions, removeRanges } from './dates';
+import { detectP3Intent } from './p3Intents';
 import { ACCOUNT_INCREMENT_WORDS, detectAccountAdjustment, extractAmount, normalize } from './localParser';
 
 function hasAnyWord(normalizedText: string, words: Set<string> | string[]): boolean {
@@ -117,6 +118,10 @@ const TRANSFER_REVERSED_REGEX =
 
 export function detectChatIntent(rawText: string, ctx: ActionValidationContext, now: Date = new Date()): ResolveResult | null {
   if (rawText.length > 4000) return null; // texto pegado por error: no se lee como comando (ver planner.MAX_PLAN_TEXT_CHARS)
+  // P3 primero: previstos, pagos recurrentes, avisos, pago de deudas y dividendos (solo actúa con algo que existe o con
+  // monto + fecha + verbo; si no, sigue el recorrido de siempre).
+  const p3 = detectP3Intent(rawText, ctx, now);
+  if (p3) return p3;
   const normalized = normalize(rawText);
   // Las fechas y horas dichas ("el 25 de octubre", "a las 5") no son montos ni parte de un nombre: se recortan del
   // texto que se usa para sacar montos y nombres, y se interpretan aparte.
@@ -146,6 +151,12 @@ export function detectChatIntent(rawText: string, ctx: ActionValidationContext, 
   // de "Cuentas" — no comparte palabra clave con agregar/borrar cuenta,
   // pero sí necesita ganarle al ajuste genérico de saldo del final). ----
   if (hasAnyWord(normalized, TRANSFER_VERBS)) {
+    // Una transferencia con un día FUTURO dicho ("transfiere 300 de Nu a BBVA el lunes") nunca se hace "ahora" en silencio: las
+    // transferencias programadas todavía no existen.
+    const laterDay = futureDates.find((d) => d.relation === 'future');
+    if (laterDay && TRANSFER_ACCOUNTS_REGEX.test(text) && amountOf() !== null) {
+      return { ok: false, reason: `Todavía no programo transferencias para otro día (dijiste ${laterDay.text.trim()}). Si quieres que te lo recuerde, di «recuérdame transferir… ${laterDay.text.trim()}»; si la quieres hacer ahora, dime «transfiere…» sin la fecha.` };
+    }
     const match = text.match(TRANSFER_ACCOUNTS_REGEX);
     const amount = amountOf();
     if (!match) {
@@ -175,7 +186,11 @@ export function detectChatIntent(rawText: string, ctx: ActionValidationContext, 
   }
   if (hasAnyWord(normalized, ADD_VERBS) && /\bcuenta\b/.test(normalized)) {
     const name = captureNameAfter(text, 'cuenta');
-    if (name) {
+    // "agrega 500 a mi cuenta Nu": si esa cuenta YA existe no se crea otra con el mismo nombre; con un monto es un ajuste de saldo
+    // (más abajo), sin él se avisa.
+    const existing = name ? ctx.accounts.find((a) => !a.deletedAt && normalize(a.name) === normalize(name)) : undefined;
+    if (existing && !detectAccountAdjustment(text)) return { ok: false, reason: `Ya tienes una cuenta que se llama "${existing.name}". Si quieres sumarle o quitarle dinero, dime el monto: por ejemplo "agrégale 500 a ${existing.name}".` };
+    if (name && !existing) {
       const typeMatch = normalized.match(/\b(banco|bancaria|tarjeta|credito|efectivo|ahorro|ahorros|inversion)\b/);
       return resolveAddAccount(
         { name, accountTypeHint: typeMatch?.[1], balance: amountOf() ?? undefined },

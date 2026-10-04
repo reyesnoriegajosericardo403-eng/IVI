@@ -19,8 +19,26 @@ import {
   type ActionValidationContext,
   type ResolveResult,
 } from '@/ai/actionCatalog';
+import {
+  resolveAddForecast,
+  resolveAddRecurring,
+  resolveAddRecurringContribution,
+  resolveAddReminder,
+  resolveCancelReminder,
+  resolveConfirmForecast,
+  resolveEndRecurring,
+  resolvePauseRecurring,
+  resolvePayLiability,
+  resolvePostponeForecast,
+  resolveRegisterDividend,
+  resolveResumeRecurring,
+  resolveSettleLiability,
+  resolveSkipForecast,
+  resolveUpdateRecurringAmount,
+} from '@/ai/actionCatalogP3';
 import { answerClarification, combineResults, interpretationFrom, MAX_PLAN_STEPS } from '@/ai/planner';
 import type { PendingClarification } from '@/ai/chatTypes';
+import { buildValidationContext } from '@/ai/validationContext';
 import { DEFAULT_CATEGORIES } from '@/data/categories';
 
 import { localActionAgentProvider } from '../local/localActionAgent';
@@ -60,6 +78,19 @@ Si el mensaje pide agregar, quitar o cambiar datos, cada elemento de "actions" d
 - {"type":"delete_budget_line","categoryHint":"string"}
 - {"type":"delete_transaction","transactionId":"id real de movimientos_recientes abajo, nunca inventado"}
 - {"type":"transfer_between_accounts","fromAccountNameHint":"string","toAccountNameHint":"string","amount":number} — mover dinero entre dos cuentas propias del usuario, nunca hacia/desde una cuenta de otra persona
+- {"type":"add_forecast","transactionType":"expense"|"income","amount":number,"accountNameHint":"string","merchant":"string o null","categoryId":"id del catálogo o null","subcategoryId":"id del catálogo o null","date":"AAAA-MM-DD"} — algo que AÚN NO pasa (hoy o futuro: "mañana pago la luz", "el 15 me depositan"); no mueve saldos hasta que se confirme. Si ya pasó es add_transaction, nunca esto
+- {"type":"confirm_forecast","forecastHint":"nombre del previsto (ver previstos abajo)","amount":number o null} — "ya pagué la renta" / "ya me depositaron": confirma un previsto; "amount" solo si fue otro monto
+- {"type":"skip_forecast","forecastHint":"string"} — "no pagué la renta este mes": el previsto no ocurrió
+- {"type":"postpone_forecast","forecastHint":"string","newDate":"AAAA-MM-DD"} — mover un previsto a otro día (de hoy en adelante)
+- {"type":"add_recurring","name":"string","transactionType":"expense"|"income","amount":number,"accountNameHint":"string","categoryId":"id o null","subcategoryId":"id o null","recurrence":{"frequency":"daily"|"weekly"|"monthly"|"yearly"|"semimonthly","interval":number,"startDate":"AAAA-MM-DD","dayOfMonth":number o null,"weekdays":[0-6] o null}} — un pago o ingreso que se repite ("cada mes pago la renta"). "semimonthly" = cada quincena (15 y último día). dayOfMonth 31 = último día del mes. weekdays: 0=domingo … 6=sábado
+- {"type":"add_recurring_contribution","goalNameHint":"string","amount":number,"recurrence":{...igual que arriba}} — aportación periódica a una meta
+- {"type":"update_recurring_amount","ruleHint":"nombre del pago recurrente","amount":number}
+- {"type":"pause_recurring","ruleHint":"string"} · {"type":"resume_recurring","ruleHint":"string"} · {"type":"end_recurring","ruleHint":"string"} — pausar, reanudar o terminar un pago recurrente
+- {"type":"add_reminder","title":"string","date":"AAAA-MM-DD o null","recurrence":{...} o null,"timeOfDay":"HH:MM o null","advanceDays":[números] o null,"maxAttempts":1|2|3 o null} — "recuérdame…"; usa "date" para una sola vez o "recurrence" si se repite
+- {"type":"cancel_reminder","reminderHint":"string"} — quitar un aviso propio
+- {"type":"pay_liability","institutionHint":"string","amount":number,"accountNameHint":"cuenta de la que sale (o a la que entra si te pagan a ti), o null"} — pagar (o abonar) una deuda, o registrar que alguien que te debe te pagó
+- {"type":"settle_liability","institutionHint":"string"} — la deuda quedó totalmente pagada
+- {"type":"register_dividend","tickerHint":"string","amount":number,"accountNameHint":"string o null"} — dividendo recibido de una inversión
 
 "reply" siempre es una frase corta y natural — nunca describas ahí el detalle exacto de la acción (monto, cuenta), eso lo arma la app aparte a partir de "actions".`;
 
@@ -111,9 +142,45 @@ function resolveModelAction(raw: unknown, ctx: ActionValidationContext): Resolve
         { fromAccountNameHint: String(a.fromAccountNameHint ?? ''), toAccountNameHint: String(a.toAccountNameHint ?? ''), amount: a.amount },
         ctx
       );
+    case 'add_forecast':
+      return resolveAddForecast({ transactionType: a.transactionType === 'income' ? 'income' : 'expense', amount: a.amount, accountNameHint: String(a.accountNameHint ?? ''), merchant: a.merchant, categoryId: a.categoryId, subcategoryId: a.subcategoryId, date: a.date }, ctx);
+    case 'confirm_forecast':
+      return resolveConfirmForecast({ forecastHint: String(a.forecastHint ?? ''), amount: a.amount }, ctx);
+    case 'skip_forecast':
+      return resolveSkipForecast({ forecastHint: String(a.forecastHint ?? '') }, ctx);
+    case 'postpone_forecast':
+      return resolvePostponeForecast({ forecastHint: String(a.forecastHint ?? ''), newDate: a.newDate }, ctx);
+    case 'add_recurring':
+      return resolveAddRecurring({ name: a.name, transactionType: a.transactionType === 'income' ? 'income' : 'expense', amount: a.amount, accountNameHint: String(a.accountNameHint ?? ''), categoryId: a.categoryId, subcategoryId: a.subcategoryId, recurrence: cleanRecurrence(a.recurrence) }, ctx);
+    case 'add_recurring_contribution':
+      return resolveAddRecurringContribution({ name: a.name, goalNameHint: String(a.goalNameHint ?? ''), amount: a.amount, recurrence: cleanRecurrence(a.recurrence) }, ctx);
+    case 'update_recurring_amount':
+      return resolveUpdateRecurringAmount({ ruleHint: String(a.ruleHint ?? ''), amount: a.amount }, ctx);
+    case 'pause_recurring':
+      return resolvePauseRecurring({ ruleHint: String(a.ruleHint ?? '') }, ctx);
+    case 'resume_recurring':
+      return resolveResumeRecurring({ ruleHint: String(a.ruleHint ?? '') }, ctx);
+    case 'end_recurring':
+      return resolveEndRecurring({ ruleHint: String(a.ruleHint ?? '') }, ctx);
+    case 'add_reminder':
+      return resolveAddReminder({ title: a.title, date: a.date ?? undefined, recurrence: cleanRecurrence(a.recurrence), timeOfDay: a.timeOfDay ?? undefined, advanceDays: a.advanceDays ?? undefined, maxAttempts: a.maxAttempts ?? undefined }, ctx);
+    case 'cancel_reminder':
+      return resolveCancelReminder({ reminderHint: String(a.reminderHint ?? '') }, ctx);
+    case 'pay_liability':
+      return resolvePayLiability({ institutionHint: String(a.institutionHint ?? ''), amount: a.amount, accountNameHint: a.accountNameHint ? String(a.accountNameHint) : '' }, ctx);
+    case 'settle_liability':
+      return resolveSettleLiability({ institutionHint: String(a.institutionHint ?? '') }, ctx);
+    case 'register_dividend':
+      return resolveRegisterDividend({ tickerHint: String(a.tickerHint ?? ''), amount: a.amount, accountNameHint: a.accountNameHint ? String(a.accountNameHint) : '' }, ctx);
     default:
       return null;
   }
+}
+
+// El modelo manda `null` en lo que no aplica: se quita para que el resolver vea "no dicho" y no un valor basura.
+function cleanRecurrence(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return undefined;
+  return Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined));
 }
 
 function extractJson(raw: string): any | null {
@@ -134,14 +201,7 @@ export function createLLMActionAgentProvider(client: LLMClient, providerName: st
     name: providerName,
     async interpretMessage(text: string, ctx: ActionAgentContext, opts?: { pending?: PendingClarification }) {
       try {
-        const validationCtx: ActionValidationContext = {
-          accounts: ctx.accounts,
-          goals: ctx.goals,
-          liabilities: ctx.liabilities,
-          templateBudgetLines: ctx.templateBudgetLines,
-          recentTransactions: ctx.transactions.slice(0, 20),
-          primaryCurrency: ctx.profile.primaryCurrency,
-        };
+        const validationCtx: ActionValidationContext = buildValidationContext(ctx);
         // Contestar una pregunta pendiente es determinista y no necesita al modelo (ni gastar su cuota).
         if (opts?.pending) {
           const answered = answerClarification(opts.pending, text, validationCtx);
