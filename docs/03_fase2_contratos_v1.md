@@ -233,3 +233,24 @@ Con este documento y `docs/02_fase2_auditoria_operaciones.md`:
 ✅ Primer guardia de idempotencia real, implementado y verificado (`npx tsc --noEmit` limpio).
 ➡️ P0 completo. Siguiente: Semana 3 — golden set de 1,000 casos (P1), pendiente de que confirmes
 que sigo con eso o quieres revisar algo de lo anterior primero.
+
+
+---
+
+## Estado de implementación (P2, 2026-10-04)
+
+Los contratos de arriba se implementaron en P2. Esta tabla dice **dónde vive cada uno** y **en qué se desvía el código del
+texto** (para no tener dos verdades). Detalle y cifras: `docs/memoria-proyecto/09-p2-planificador-fechas-y-catalogo-en-segundo-plano.md`.
+
+| § | Contrato | Estado | Dónde | Diferencias con el texto del contrato |
+|---|---|---|---|---|
+| 1 | Interpretación (`interpretMessage` v2) | ✅ | `src/ai/chatTypes.ts` (`InterpretedMessage`), `src/providers/types.ts`, `localActionAgent.ts`, `LLMActionAgentProvider.ts` | Es **aditivo** en vez de una unión con `kind`: `{ reply, action?, summary?, plan?, clarification?, handledClarification? }`. Así los llamadores existentes siguen funcionando; el discriminante es qué campo viene. `contractVersion: 1` vive en los objetos que se guardan (`ActionPlan`, `PendingClarification`). |
+| 2 | Datos faltantes | ✅ | `actionCatalog.ts` (`ask`, `resolveCandidate`), `planner.ts` (`answerClarification`) | `MissingField` ganó `slot` (la clave del candidato que llena la respuesta) y el campo `'name'` (nombre faltante). La pregunta pendiente se guarda en el mensaje del chat con su estado (`open/answered/superseded`). |
+| 3 | `ActionPlan` | ✅ | `chatTypes.ts`, `planner.ts`, `ChatPlanCard.tsx` | Mismos estados (`proposed/applying/applied/partially_applied/dismissed/failed`). El plan guarda además `effects` y `warnings`. `AIActionStatus` ganó `'skipped'` para los pasos que no se ejecutaron porque uno anterior falló. Tope de 6 pasos por mensaje (no estaba en el contrato). |
+| 4 | Efectos y presentación | ✅ | `planner.ts` (`previewPlan`) | Se calcula con el mismo libro contable de la app (`accountDeltasForTransaction`), no con `computeNetWorth`. Cubre cuentas, metas y deudas; avisa de saldo negativo (cuentas que no son tarjeta) y pasos idénticos. |
+| 5 | Confirmación e idempotencia | ✅ | `planExecutor.ts`, `aiApplyPlan` en `useAppStore.ts` | `aiApplyPlan` recibe el **id del mensaje**, no el plan: la verdad es el estado guardado (más fuerte que mirar el objeto de la pantalla). **Auditoría:** la tabla `audit_log` tiene un `check` que no admite un tipo de entidad «plan», así que cada paso se audita bajo su entidad real (movimiento, meta, cuenta, deuda, presupuesto) con el id del plan en el resumen; `update_liability_balance` usa la entrada que `updateLiability` ya genera. Recuperación tras cierre inesperado al rehidratar. |
+| 6 | Previsto vs. real | ⏳ P3 | — | Sin cambios. Base lista: las fechas se interpretan (`src/ai/dates.ts`) y un día futuro dicho en una captura se conserva en `futureDate` sin usarse como fecha del movimiento. |
+| 7 | Adaptadores | sin cambios | — | Las cuatro interfaces nuevas siguen siendo solo contrato. |
+| 8 | Compatibilidad hacia atrás | ✅ | — | Todo es aditivo; el guardia de `aiApplyAction` sigue igual. |
+
+**Acciones del catálogo hoy: 17** (las 14 originales + `withdraw_from_goal`, `update_goal_date`, `update_liability_due_date`).

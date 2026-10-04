@@ -1,4 +1,4 @@
-# Golden set del motor local — resultados (P1 y P1b)
+# Golden set del motor local — resultados (P1, P1b y P2)
 
 Ver también: [[README|Índice]] · [[03-motor-clasificacion|Motor de clasificación]] · [[06-pendientes|Pendientes]]
 
@@ -117,3 +117,49 @@ Lo mismo vale para el 100% de 1,047 casos del golden completo. Salida original d
 
 Escribir **Fresco 6** con frases nuevas (idealmente dictadas por personas reales en la beta de P5) y
 correrlo una sola vez. Mientras no haya hardware real, el mejor golden set son las correcciones reales de la gente.
+
+---
+
+## P2 — fechas y planificador (2026-10-03/04)
+
+Detalle y contexto en [[09-p2-planificador-fechas-y-catalogo-en-segundo-plano]]. Aquí solo lo que se midió.
+
+### Conjuntos nuevos
+
+| Conjunto | Casos | Uso |
+|---|---:|---|
+| Fechas, horas y periodos — DEV (`fechas.cjs`) | 172 | Se usó para construir el módulo (y recibe los casos que mostró el sellado). |
+| Fechas — SELLADO (`fechas-sellado.cjs`) | 113 | Escrito después de dejar pasando el DEV, sin correrlo antes; **corrida única**. |
+| Fechas dentro de una captura (`fechas-captura.cjs`, suite `fechas` del golden) | 45 | Monto, tipo, categoría y día dicho en la misma frase. Regresión. |
+| Planificador — DEV (`planes.cjs`, pruebas con asserts) | 46 | Construcción y regresión. |
+| Planificador — SELLADO (`planes-sellado.cjs`, `run-planes.cjs`) | 55 | Escrito después de dejar pasando el DEV; **corrida única**. |
+
+Las etiquetas son juicio humano (lo que la persona quiso decir) y se escribieron sin copiar la salida del código. El
+calendario del golden está **fijo** en sábado 2026-10-03 para que nunca dependa del día en que se corra.
+
+### Cifras que se pueden creer (primera y única corrida)
+
+| Conjunto | Resultado | Detalle |
+|---|---:|---|
+| Fechas SELLADO | **93.8 %** (106/113) | fallaron 7: «el martes de la semana pasada» y «el siguiente miércoles»; «a las 9 y media», «a las cinco de la tarde», «a las 3 y cuarto»; «el gasto del mes pasado» (leído como «este mes») y «en el 2027» |
+| Planificador SELLADO | **87.3 %** (48/55) | una acción 26/29 · no son acciones 4/4 · aclaraciones 7/7 · planes 11/15. Fallas: «pásale 300 de BBVA a Nu», «transfiérele 1000 a Nu desde BBVA», «crea una meta de ahorro llamada Casa con 200000» (nombre «ahorro llamada Casa»), «Banorte vence el 25 y Coppel vence el 28», dos planes con un día dicho antes del verbo («el viernes pagué… y el sábado compré…», «ayer… y hoy…»), y el límite conocido de abajo |
+| Monto correcto en 45 capturas con fecha | motor anterior 42/45 → **45/45** | el anterior leía el día o la hora como monto: «el 20 de octubre pagué 15 de estacionamiento» daba 20, «a las 16 hrs 12» daba 16 |
+
+### Contaminación (para no engañarse)
+
+Después de ver las fallas de cada sellado se corrigieron: fechas **113/113**, planificador **54/55**. **Esas cifras ya no
+miden nada.** La única falla restante es un límite conocido: «agrega la meta Cámara de 12000 y aporta 500 a la meta
+Cámara» pide aclaración porque la meta aún no existe cuando se valida el segundo paso (se arregla con ids virtuales
+dentro del plan, P3). Salidas originales: `scripts/golden/sealed-fechas-2026-10-03.txt`, `sealed-planes-2026-10-03.txt`.
+
+### Robustez
+
+La prueba metamórfica pasó de 13,224 a **26,448** variantes: ahora también agrega fechas y horas («el viernes», «el 15 de
+marzo», «hace 3 días», «a las 5 pm», «el 15/03/2026»…) y exige que no cambie **ni la categoría ni el monto**. Encontró un
+error real que se corrigió: un monto de 4 cifras pegado a una fecha («el 28 de septiembre 4998 de la renta») se leía como
+el año. Resultado final: 0 cambios.
+
+### Qué falta medir
+
+Un **Fresco 6** (frases nuevas, idealmente dictadas por personas reales en la beta de P5), y los mismos sellados de fechas
+y planes con frases de otras personas. Todo esto se midió con texto escrito por mí, no con voz real en un teléfono.

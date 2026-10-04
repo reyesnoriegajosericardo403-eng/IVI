@@ -41,13 +41,17 @@ de partida.
 | 0017 | Rediseño de Presupuesto v2 ("Plan de gastos"): `budget_assignments.start_date/end_date` (rango de fechas elegido a mano) + `budget_templates.icon`. Aditiva, sin backfill (el cliente deriva el rango de `period_key` cuando estas columnas vienen vacías). |
 | 0018 | Sistema "Vidrio líquido": `accent_palette_id`, `background_mode`, `background_catalog_image_id`, `background_focal_x/y_mobile/desktop`, `background_darkness`, `background_blur_amount` en el perfil. |
 | 0019 | `background_custom_uri` (foto propia, como `data:` URI) — reversa explícita de la decisión de 0018 de dejarla solo local: se sincroniza para que sobreviva cerrar la app (ver [[06-pendientes]] por el bug de reconciliación que esto ayudó a resolver). |
+| 0020 | Notificaciones push reales: `push_subscriptions`, `notification_settings`, `notification_log`. Corrida el 2026-10-02. |
+| 0021 | Inversiones por institución: `product`, `annual_rate`, `term_days`, `maturity_date` en `investments` (y corrección del check de `asset_class`). Corrida el 2026-10-02. |
+| 0022 | **`category_mappings`**: «lo que VALU aprendió de ti» (palabra → categoría) por persona. Llave `user_id + keyword`, RLS solo dueño, `updated_at` del servidor, borrado suave, `on delete cascade` (borrar la cuenta la arrastra). **Pendiente de correr.** Mientras no exista, la app sigue funcionando: las palabras aprendidas se quedan en el dispositivo y esperan en la cola de sincronización (no se pierden). |
 
 ## Estado actual del esquema (tablas principales)
 
 `profiles`, `accounts`, `transactions`, `budgets`, `budget_templates`,
 `template_budget_lines`, `budget_assignments`, `period_budget_overrides`,
 `goals`, `investments`, `liabilities`, `net_worth_snapshots`, `audit_log`,
-`survey_responses`, `ui_themes`.
+`survey_responses`, `ui_themes`, `push_subscriptions`, `notification_settings`,
+`notification_log` y `category_mappings` (esta última, desde 0022).
 
 Campos relevantes de `profiles` hoy, además de los de siempre
 (`name`, `primary_currency`, `theme_preference`...): `visual_style`,

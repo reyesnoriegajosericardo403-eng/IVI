@@ -10,6 +10,8 @@ Cada archivo en `migrations/` es una migración versionada (spec sección 72): t
 | `0004_net_worth_snapshots.sql` | Historial diario de patrimonio neto |
 | `0005_audit_log.sql` | Auditoría de cambios de saldo (cliente + triggers automáticos del servidor) |
 
+Las migraciones **0006 a 0022** están descritas una por una en `docs/memoria-proyecto/04-migraciones-supabase.md`. La más reciente, `0022_category_mappings.sql`, guarda «lo que VALU aprendió de ti» (palabra → categoría) por persona: viaja con la cuenta, solo el dueño la ve (RLS) y el borrado es suave.
+
 ## Principios aplicados (spec 69-88)
 
 - **UUID como identificador único global** en todas las tablas — nunca fecha+monto+categoría.

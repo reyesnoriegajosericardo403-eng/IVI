@@ -8,6 +8,21 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-03/04 — P2: planificador multi-acción, fechas, catálogo en segundo plano y lo aprendido en la nube
+
+Pedido: seguir con P2, y que el vocabulario grande no se descargue completo con la app («un túnel … conectado a cada
+usuario que corra en segundo plano»), dejando listos los temas previos. Detalle completo en
+[[09-p2-planificador-fechas-y-catalogo-en-segundo-plano]].
+
+- **Catálogo en segundo plano**: el vocabulario se parte en núcleo (en la app) y ampliado (un trozo aparte, 88 KB comprimido, que se baja solo y queda en caché); seguro entre versiones (ids desconocidos se ignoran, idempotente). Respuestas del motor idénticas antes y después.
+- **Planificador multi-acción**: un mensaje puede traer hasta 6 acciones que se validan una por una, se muestran en orden con cómo quedan los saldos y se confirman con UN solo «mantén presionado». Pregunta el dato que falta y completa la misma acción con la respuesta. Ejecutor idempotente (por estado guardado), sin revertir ni seguir si un paso falla, con auditoría por paso. Probado también con el store real y en navegador real.
+- **Acciones nuevas del chat**: retirar de una meta, fecha objetivo de una meta, vencimiento de una deuda; los movimientos y las metas nuevas aceptan fecha (17 tipos en total). Corregidos errores de siempre del reconocimiento local («Laptop» quedaba «ptop», el nombre arrastraba monto y fecha, «retira de mi meta» se leía como ajuste de cuenta).
+- **Fechas y horas en español** (`src/ai/dates.ts`): ayer, el viernes, el 15 de marzo, hace 3 días, a las 5 pm, este mes… La captura guarda el movimiento en el día dicho y ya no lee el día o la hora como monto.
+- **Lo aprendido viaja con la cuenta**: migración `0022_category_mappings.sql` (**falta correrla** en Supabase), sincronización como tabla opcional que nunca frena lo demás. La pantalla de Privacidad ahora dice la verdad y la exportación de datos incluye lo aprendido, el plan de gastos completo y el chat.
+- **Peso**: descarga inicial de 998 KB a **793 KB** comprimidos (−20.5 %): −88 KB por mover el vocabulario y −135 KB por quitar `react-native-reanimated` en web (no se usa; solo web).
+- **Puertas de calidad**: `npm test` (≈ 11 s), `npm run size` con presupuestos, `scripts/smoke-web.cjs` en Chromium real y un workflow de GitHub Actions («Revisión automática») que corre todo en cada subida.
+- **Medición honesta**: fechas sellado 93.8 %, planificador sellado 87.3 % (primera corrida); tras corregir, 113/113 y 54/55 (contaminadas).
+
 ## 2026-10-03 (noche) — P1b: catálogo de palabras de 3 mil a ≈19 mil
 
 Pedido: cubrir todas las áreas de las finanzas personales (pareja, roomies, amigos, tarjetas, impuestos…)

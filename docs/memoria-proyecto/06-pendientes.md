@@ -2,7 +2,7 @@
 
 Ver también: [[README|Índice]]
 
-## Checklist de pendientes (actualizada 2026-10-03)
+## Checklist de pendientes (actualizada 2026-10-04)
 
 Esta lista la lee el **explorador del grafo** (`graphify-out/explorer.html`, pestaña «Pendientes») y
 cada punto se liga a sus archivos en el mapa. Formato de cada línea:
@@ -32,8 +32,9 @@ cerrar un pendiente solo hay que cambiar `[ ]` por `[x]` y regenerar el mapa
 
 - [ ] **Ajuste de saldo de cuenta: ¿asiento o sobrescribir?** — hoy desde Patrimonio se pone `balance` directo y solo se audita (operación #15 de la auditoría). Decidir si se corrige en P2. · requiere: Tu decisión · archivos: src/store/useAppStore.ts
 - [ ] **Código muerto detectado** — `unassignPeriod` y `removeBudgetAssignment` no las llama ninguna pantalla; tampoco existe «restaurar cuenta archivada». Conectarlas o borrarlas. · requiere: Tu decisión · archivos: src/store/useAppStore.ts
-- [ ] **Conectar la captura rápida al catálogo de acciones** — `capture.tsx` / `localParser.ts` solo entienden un movimiento; transferencias, deudas y metas viven en el chat de IA (`actionCatalog.ts`). · requiere: Claude · archivos: app/capture.tsx, src/ai/localParser.ts, src/ai/actionCatalog.ts
-- [ ] **Sincronizar la memoria de correcciones (mapeo personal)** — vive solo en el dispositivo; no viaja a otro teléfono ni sobrevive a reinstalar. Requiere tabla + repositorio + motor de sync. · requiere: Claude · archivos: src/services/sync/
+- [ ] **Decidir si el chat registra un gasto suelto («gasté 200 en tacos»)** — hoy lo contesta el copiloto de lectura (para registrar está la captura); dentro de un mensaje de varios pasos sí se reconoce, exigiendo un verbo de registro. Unificar evitaría dos caminos; riesgo: que «¿puedo gastar 500 en un viaje?» se vuelva un gasto. Las transferencias, metas y deudas ya viven en el planificador del chat (P2). · requiere: Tu decisión · archivos: src/ai/planner.ts, app/capture.tsx, src/ai/actionCatalog.ts
+- [x] **Sincronizar la memoria de correcciones (mapeo personal)** — código listo el 2026-10-04 (tabla `category_mappings`, repositorio, cola de sincronización, mezcla por «gana la más reciente», pantalla de Privacidad y exportación de datos al día). Falta correr la migración (siguiente punto). · requiere: Claude · archivos: src/services/sync/SyncEngine.ts, src/services/supabase/repositories.ts, src/store/useAppStore.ts, app/privacidad.tsx
+- [ ] **Correr la migración 0022 en Supabase (lo aprendido viaja con la cuenta)** — SQL Editor → New query → pegar `supabase/migrations/0022_category_mappings.sql` completo → Run (debe decir «Success»). Mientras no se corra, la app funciona igual: lo aprendido se queda en el dispositivo y espera en la cola, sin perderse. · requiere: Supabase web · archivos: supabase/migrations/0022_category_mappings.sql, docs/memoria-proyecto/04-migraciones-supabase.md
 - [ ] **Columnas en Supabase para `dayOfMonth`, `dayOfWeek` y `oneTimeDate` del presupuesto** — hoy solo se guardan local. · requiere: Claude, Supabase web · archivos: src/services/sync/, supabase/migrations/
 - [ ] **Pérdida de datos al forzar el cierre en iOS (mitigado, no resuelto)** — las 3 defensas reducen la carrera pero ninguna solución solo-JS la cierra al 100%. Si sigue pasando, considerar app nativa. · requiere: iPhone · archivos: src/services/sync/
 
@@ -46,7 +47,14 @@ cerrar un pendiente solo hay que cambiar `[ ]` por `[x]` y regenerar el mapa
 - [ ] **Conectar `detectConcepts` en P2/P3** — las etiquetas de modalidad (pareja, roomies, a plazos, recurrente…) existen pero ninguna pantalla las usa todavía; el planificador multi-acción es el primer consumidor natural. · requiere: Claude · archivos: src/ai/concepts.ts, src/data/conceptLexicon.ts
 - [ ] **Medir el arranque del índice en un teléfono real** — en el contenedor son ≈300 ms en trozos (pausa máxima 13 ms); en un iPhone/Android de gama baja puede ser varias veces más. Si molesta, precalcular o comprimir el índice (idea de Fase 3). · requiere: iPhone, Android · archivos: src/ai/localParser.ts, app/_layout.tsx
 - [ ] **Revisar las frases protegidas cuando aparezcan fallas** — `protegidas.ts` guarda los desempates que la poda automática nunca borra; cada falla real nueva debe terminar como frase protegida o palabra débil, no como más plantillas. · requiere: Claude · archivos: src/data/keywordPacks/protegidas.ts, scripts/golden/packs.cjs
-- [ ] **P2 · Planificador multi-acción + ejecutor seguro con confirmación e idempotencia** — contratos en `docs/03_fase2_contratos_v1.md`. · requiere: Claude · archivos: src/ai/actionCatalog.ts, src/store/useAppStore.ts
+- [x] **P2 · Planificador multi-acción + ejecutor seguro con confirmación e idempotencia** — hecho el 2026-10-04: hasta 6 acciones por mensaje con un solo «mantén para confirmar», aclaraciones, vista previa de saldos, ejecutor idempotente con auditoría, fechas en español, acciones nuevas (17 tipos), catálogo en segundo plano y lo aprendido en la nube. Fechas sellado 93.8 %, planificador sellado 87.3 % (primera corrida). Ver docs/memoria-proyecto/09-p2-planificador-fechas-y-catalogo-en-segundo-plano.md. · requiere: Claude · archivos: src/ai/planner.ts, src/ai/planExecutor.ts, src/ai/dates.ts, src/store/useAppStore.ts, src/components/ChatPlanCard.tsx
+- [ ] **Pasos que dependen de lo creado en el mismo mensaje** — «crea la meta Cámara y aporta 500 a Cámara» hoy pide aclaración porque la meta aún no existe al validar el segundo paso. Requiere ids virtuales dentro del plan. · requiere: Claude · archivos: src/ai/planner.ts, src/ai/planExecutor.ts
+- [ ] **Acción «pagar deuda» (operación #46)** — hoy solo se puede cambiar el saldo de una deuda; falta una acción que mueva dinero de una cuenta y baje la deuda en un solo plan. · requiere: Claude · archivos: src/ai/actionCatalog.ts, src/store/useAppStore.ts
+- [ ] **Catálogo remoto con versión (actualizar el vocabulario sin publicar app)** — diseño en el doc 09: bucket público de Supabase Storage + `manifest.json` {versión, versión mínima de la app, paquetes con hash}; `installKeywordPacks` ya es seguro entre versiones. Decidir si se hace ya o con las tiendas (P5). · requiere: Tu decisión, Supabase web · archivos: src/data/catalogLoader.ts, src/data/categories.ts
+- [ ] **Cargar cada pantalla solo al abrirla (rutas asíncronas de Expo Router)** — la siguiente palanca de peso: el código propio pesa ≈ 169 KB comprimido de los 793 KB que se bajan al abrir. Medir con `npm run size` antes y después. · requiere: Claude · archivos: app/_layout.tsx, scripts/size-report.cjs
+- [ ] **Exigir la revisión automática antes de unir a la rama principal** — el workflow «Revisión automática» (tipos, `npm test`, `npm run size`) ya corre en cada subida; falta activar la protección de rama en GitHub (Settings → Branches). · requiere: Tu decisión · archivos: package.json, scripts/size-report.cjs
+- [ ] **Escribir Fresco 6 y sellados nuevos de fechas y planes con frases de otras personas** — todo lo medido hasta hoy lo escribió Claude; lo ideal son dictados reales de la beta (P5). · requiere: Claude, Tu decisión · archivos: scripts/golden/fechas-sellado.cjs, scripts/golden/planes-sellado.cjs
+- [ ] **Probar P2 en un teléfono real** — plan de varios pasos, «mantener para confirmar», aclaraciones, captura con fechas, descarga del trozo del vocabulario en red lenta y sin conexión (el service worker lo guarda en caché, no se probó sin conexión). Solo se probó en Chromium con la app compilada. · requiere: iPhone, Android · archivos: app/(tabs)/ia.tsx, src/components/ChatPlanCard.tsx, public/sw.js
 - [ ] **P3 · Nuevas entidades (previsto, rangos, recurrencia, recordatorios personalizados)** — cubre #58 parcial y #59-#65 de la auditoría. · requiere: Claude
 - [ ] **P4 · Ayuda contextual + auditoría de privacidad** · requiere: Claude
 - [ ] **P5 · Beta en hardware real y decisión de tiendas** · requiere: iPhone, Android
@@ -197,14 +205,12 @@ reinstalar el acceso directo, por si quedó un service worker viejo
 atorado) y reporte si ya funciona o qué mensaje de error exacto le
 aparece.
 
-## Memoria de correcciones — solo en este dispositivo
+## Memoria de correcciones — ahora viaja con la cuenta (2026-10-04)
 
-El "mapeo personal" (ver [[03-motor-clasificacion]]) vive únicamente en
-el almacenamiento local del dispositivo — no viaja con la cuenta a otro
-teléfono ni sobrevive a una reinstalación. Sincronizarlo a Supabase es
-una mejora futura razonable (agregar una tabla nueva + repositorio +
-motor de sincronización, siguiendo el mismo patrón que ya existe para
-cuentas/transacciones/presupuestos), pendiente de que la persona lo pida.
+El "mapeo personal" (ver [[03-motor-clasificacion]]) se sincroniza con la cuenta en la tabla `category_mappings`
+(migración 0022): solo la palabra y la categoría, protegido por RLS, con la misma cola de sincronización que cuentas y
+movimientos. **Falta correr la migración** (punto de la lista de arriba); mientras tanto sigue funcionando en el
+dispositivo y los cambios esperan en la cola. Detalle: [[09-p2-planificador-fechas-y-catalogo-en-segundo-plano]].
 
 ## Campos de fecha del presupuesto — solo locales
 

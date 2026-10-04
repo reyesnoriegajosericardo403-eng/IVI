@@ -92,7 +92,7 @@ volver a preguntar — con prioridad sobre el catálogo y sobre cualquier
 proveedor de IA conectado.
 
 - Vive en `customCategoryMappings` dentro del store de Zustand, persistido igual que el resto del estado (AsyncStorage/localStorage).
-- **Solo en este dispositivo por ahora** — no se sincroniza a Supabase todavía (si se reinstala la app o se usa otro dispositivo, no viaja con la cuenta). Ver [[06-pendientes]].
+- **Viaja con la cuenta** (desde 2026-10-04, tabla `category_mappings`, migración 0022): se sincroniza en segundo plano, solo la palabra y la categoría (nunca la frase ni los montos), protegido para que solo la persona dueña lo vea. Si la migración aún no se corrió, se queda en el dispositivo y espera en la cola. Ver [[09-p2-planificador-fechas-y-catalogo-en-segundo-plano]].
 - La persona puede ver cuántas palabras aprendió y borrarlas todas desde Ajustes → Privacidad y datos → "Lo que VALU aprendió de ti".
 - Solo aplica a **gastos** (`type === 'expense'`) — no interfiere con la detección de ingresos/ahorro/inversión.
 
@@ -185,7 +185,18 @@ cambian ninguna respuesta. `scripts/golden/packs.cjs` lo controla:
 
 ### Golden set y resultados
 
-- `scripts/golden/` (sin dependencias nuevas): `node scripts/golden/run-golden.cjs [--split dev|holdout|all|fresh1|fresh3|sealed|sealed2|sealed3] [--suite nombre] [--fail]`;
-  se regenera con `node scripts/golden/build-golden.cjs`. Hoy: **1,047 casos de regresión** (incluye 63 de conceptos) +
-  5 conjuntos de frases nuevas (fresco 1–5).
+- `scripts/golden/` (sin dependencias nuevas): `node scripts/golden/run-golden.cjs [--split dev|holdout|all|fresh1|fresh3|sealed|sealed2|sealed3] [--suite nombre] [--fail] [--min 100]`;
+  se regenera con `node scripts/golden/build-golden.cjs`. Hoy: **1,092 casos de regresión** (incluye 63 de conceptos y 45 de
+  fechas) + 5 conjuntos de frases nuevas (fresco 1–5). Todo junto: `npm test`.
 - Resultados y la cifra honesta sobre frases que el motor nunca vio: [[08-golden-set-resultados]].
+
+## Fechas, planes y catálogo en segundo plano (P2, 2026-10-03/04)
+
+- **Fechas y horas**: `src/ai/dates.ts`. `parseCaptureText(texto, ahora)` recorta las fechas y horas dichas **antes** de
+  buscar monto, tipo y categoría, y devuelve `date`/`dateIso`/`dateText` (un día pasado: el movimiento se guarda ese día) y
+  `futureDate` (un día futuro, aún sin usar). El tercer paso del pipeline de arriba ya no ve «el 15 de marzo» como un monto.
+- **El vocabulario se carga en dos niveles** (núcleo + ampliado en segundo plano): `src/data/catalogLoader.ts`. La captura
+  espera un poco al catálogo completo y sigue sin él si tarda.
+- **El chat** (`src/ai/planner.ts`) convierte un mensaje en una o varias acciones validadas, con aclaraciones, vista previa
+  y ejecución segura. No usa el clasificador de categorías salvo para un gasto dentro de un mensaje de varios pasos.
+- Todo el detalle, las cifras y los límites: [[09-p2-planificador-fechas-y-catalogo-en-segundo-plano]].
