@@ -63,7 +63,10 @@ const SPLIT_RE = new RegExp(
 );
 
 export function splitPlanSegments(rawText: string): string[] {
+  // Se colapsan las tiradas de espacios (no los saltos de línea, que sí separan): una tirada larga de espacios
+  // haría cuadrática la búsqueda de separadores.
   return rawText
+    .replace(/[^\S\n]+/g, ' ')
     .split(SPLIT_RE)
     .map((s) => s.trim().replace(/^[,.;\s]+|[,.;\s]+$/g, ''))
     .filter((s) => s.length >= 3);
@@ -137,7 +140,12 @@ function fromSingle(r: ResolveResult | null): PlanOutcome {
 
 // ---------- Planificar ----------
 
+// Un mensaje de chat con una instrucción real mide decenas de caracteres; más de esto es un texto pegado por error
+// (o un intento de congelar la pantalla) y no se intenta leer como acciones: lo contesta el copiloto.
+export const MAX_PLAN_TEXT_CHARS = 4000;
+
 export function planFromText(rawText: string, ctx: ActionValidationContext): PlanOutcome {
+  if (rawText.length > MAX_PLAN_TEXT_CHARS) return { kind: 'none' };
   const segments = splitPlanSegments(rawText);
   const whole = () => detectChatIntent(rawText, ctx, nowOf(ctx));
   if (segments.length <= 1) {

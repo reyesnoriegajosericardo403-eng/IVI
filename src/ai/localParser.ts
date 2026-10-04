@@ -997,7 +997,9 @@ export function parseCaptureText(rawText: string, now: Date = new Date()): Parse
   const type = extractType(text);
   const amount = extractAmount(text);
   const currency = extractCurrency(text);
-  const { categoryId, subcategoryId, merchant } = extractCategory(text, type);
+  // La categoría se busca en las primeras ~800 letras: un solo movimiento nunca es más largo, y el clasificador
+  // crece con el número de palabras (2,500 palabras seguidas tardaban 2 s).
+  const { categoryId, subcategoryId, merchant } = extractCategory(text.length > 800 ? text.slice(0, 800) : text, type);
 
   const missing: ParsedCapture['missing'] = [];
   if (amount === null) missing.push('amount');

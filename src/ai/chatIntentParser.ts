@@ -116,6 +116,7 @@ const TRANSFER_REVERSED_REGEX =
   /\ba\s+(?:(?:mi|la|el|tu)\s+)?(?:cuenta\s+)?(\p{L}[\p{L}\p{N}]*(?:\s+\p{L}[\p{L}\p{N}]*)*?)\s+(?:desde|de)\s+(?:(?:mi|la|el|tu)\s+)?(?:cuenta\s+)?(\p{L}[\p{L}\p{N}]*(?:\s+\p{L}[\p{L}\p{N}]*)*?)(?=\s+\d|$|[.,;])/iu;
 
 export function detectChatIntent(rawText: string, ctx: ActionValidationContext, now: Date = new Date()): ResolveResult | null {
+  if (rawText.length > 4000) return null; // texto pegado por error: no se lee como comando (ver planner.MAX_PLAN_TEXT_CHARS)
   const normalized = normalize(rawText);
   // Las fechas y horas dichas ("el 25 de octubre", "a las 5") no son montos ni parte de un nombre: se recortan del
   // texto que se usa para sacar montos y nombres, y se interpretan aparte.
