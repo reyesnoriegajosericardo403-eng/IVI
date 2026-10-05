@@ -88,6 +88,7 @@ import {
   todayOf,
 } from '@/utils/materialize';
 import { addDaysIso, validateRecurrence, type Recurrence } from '@/utils/recurrence';
+import { appendMemory, cleanMemoryText, type AgentMemoryItem } from '@/ai/agent/memory';
 import { substituteVirtualIds, virtualIdFor, virtualKindOf } from '@/ai/virtualIds';
 import { cardDue, cardReminderId, cardReminderSpecs, cardSettingsOf, isCreditCard, validateCardSettings, type CardSettings } from '@/utils/creditCard';
 import { applyPayment, directionOf, PAYMENT_SUBCATEGORY, validateLiabilityPayment } from '@/utils/debts';
@@ -215,6 +216,12 @@ interface AppState {
   seedMappingSync: () => void;
   learnCategoryMapping: (rawText: string, categoryId: string, subcategoryId: string) => void;
   clearCustomCategoryMappings: () => void;
+
+  // Memoria del agente de IA (src/ai/agent/memory.ts): solo en este dispositivo, nunca se sincroniza.
+  agentMemory: AgentMemoryItem[];
+  addAgentMemory: (text: string) => boolean;
+  removeAgentMemory: (id: string) => void;
+  clearAgentMemory: () => void;
 
   // Cotizaciones en vivo — deliberadamente FUERA de lo que se persiste
   // (ver partialize abajo): es un valor de "ahora mismo", no un dato
@@ -792,6 +799,7 @@ export const useAppStore = create<AppState>()(
         cetesRates: null,
         budgetPeriods: DEFAULT_BUDGET_PERIODS,
         customCategoryMappings: {},
+        agentMemory: [],
         customMappingsSeeded: false,
         recurringRules: [],
         reminders: [],
@@ -841,6 +849,15 @@ export const useAppStore = create<AppState>()(
           // "Olvidar lo aprendido" también debe llegar a la nube y a los demás dispositivos.
           for (const [kw, m] of Object.entries(before)) enqueue('category_mappings', kw, 'delete', mappingRecord(kw, m, now) as unknown as Record<string, unknown>);
         },
+
+        addAgentMemory: (text) => {
+          const clean = cleanMemoryText(text, get().agentMemory);
+          if (!clean) return false;
+          set((s) => ({ agentMemory: appendMemory(s.agentMemory, { id: generateId(), text: clean, createdAt: new Date().toISOString() }) }));
+          return true;
+        },
+        removeAgentMemory: (id) => set((s) => ({ agentMemory: s.agentMemory.filter((m) => m.id !== id) })),
+        clearAgentMemory: () => set({ agentMemory: [] }),
         seedMappingSync: () => {
           if (get().customMappingsSeeded) return;
           for (const [kw, m] of Object.entries(get().customCategoryMappings)) {
@@ -2301,6 +2318,7 @@ export const useAppStore = create<AppState>()(
             lastSyncedAt: null,
             budgetPeriods: DEFAULT_BUDGET_PERIODS,
             customCategoryMappings: {},
+            agentMemory: [],
             recurringRules: [],
             reminders: [],
             reminderOccurrences: [],

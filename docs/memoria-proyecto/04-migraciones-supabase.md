@@ -66,13 +66,16 @@ Campos relevantes de `budgets` hoy: `category_id`, `monthly_amount`,
 `currency`, `thresholds` (attention/warning/exceeded), `periodicity`,
 `frequency`, `custom_days_per_week`, `base_amount`, `target_account_id`,
 `included_account_ids` (uuid[]). Los campos de fecha
-(`dayOfMonth`/`dayOfWeek`/`oneTimeDate`, agregados 2026-09-02) son
-**solo locales por ahora** — todavía no tienen columna en Supabase ni se
-sincronizan (ver [[06-pendientes]]).
+(`dayOfMonth`/`dayOfWeek`/`oneTimeDate`, agregados 2026-09-02) tienen
+columna desde la migración **0025** (`day_of_month`, `day_of_week`,
+`one_time_date`); la app solo los manda si tienen valor, así que sincroniza
+igual antes de correrla.
 
 ## Edge Functions
 
-- `ai-relay` — relevo para las llamadas a Claude/ChatGPT/Gemini/Grok desde la versión web (solo esquiva CORS, no ve ni guarda contenido).
+- `ai-agent` — el agente de IA (ver [[13-agente-ia]]): exige sesión, cuota diaria por persona (tabla `ai_usage`, migración 0025), clave en el secreto `GEMINI_API_KEY` (o la propia de la persona). Reemplaza a `ai-relay`, que nunca llegó a desplegarse.
+- `push-notify` — avisos al teléfono (Web Push) y su cron.
+- `delete-account` — borra la cuenta y, en cascada, todos sus datos.
 - `market-data` — precios de mercado (Yahoo Finance) y tasa CETES (Banxico), sin guardar historial del lado del servidor.
 
 ## Cómo correr una migración nueva (recordatorio para explicarle a la persona)

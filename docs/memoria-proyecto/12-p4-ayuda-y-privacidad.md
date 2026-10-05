@@ -39,7 +39,7 @@ Comprobaciones automáticas (`ayuda.cjs`):
 | 4 | Los avisos al teléfono llevan el título que el usuario escribió (se ve bloqueado). Antes se decía «nunca muestran montos». | **Texto corregido** en Notificaciones, Ayuda y Privacidad: nunca montos calculados por VALU; sí tu título. |
 | 5 | La pantalla de Privacidad decía que a la IA solo viajaban «tus preguntas»; viaja también un resumen de cifras. | **Texto corregido** + lista completa. |
 | 6 | Eliminar cuenta no mencionaba pagos recurrentes, avisos ni dispositivos de notificación. | **Texto corregido** (el borrado en cascada ya los cubría). |
-| 7 | `ai-relay` acepta la llave pública (anon) en lugar de una sesión: cualquiera con la URL puede reenviar a los 4 proveedores permitidos con **su propia** clave (no gasta la tuya, no guarda nada). | **Abierto** (ver pendientes): exigir sesión de usuario. |
+| 7 | `ai-relay` acepta la llave pública (anon) en lugar de una sesión: cualquiera con la URL puede reenviar a los 4 proveedores permitidos con **su propia** clave (no gasta la tuya, no guarda nada). | **Resuelto el 2026-10-05**: `ai-relay` se reemplazó por `ai-agent`, que exige sesión (ver [[13-agente-ia]]). |
 | 8 | Al cerrar sesión, los datos locales quedan en el dispositivo hasta que otra cuenta inicie sesión. | **Abierto, decisión tuya**: borrar al cerrar sesión pierde cambios aún sin sincronizar. |
 
 ## 3. Diseño para compartir correcciones (opt-in, no implementado)

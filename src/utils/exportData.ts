@@ -34,6 +34,7 @@ export function exportAllDataAsJson(): { ok: boolean; message: string } {
     pagosRecurrentes: state.recurringRules,
     avisos: state.reminders,
     ocurrenciasDeAvisos: state.reminderOccurrences,
+    loQueElAgenteRecuerdaDeTi: state.agentMemory,
     conversacionesDelChat: state.conversations,
     mensajesDelChat: state.chatMessages,
   };

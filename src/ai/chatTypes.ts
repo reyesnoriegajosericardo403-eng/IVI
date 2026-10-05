@@ -382,6 +382,15 @@ export interface InterpretedMessage {
   clarification?: PendingClarification;
   // true cuando el mensaje era la respuesta a una pregunta pendiente (para marcarla como contestada)
   handledClarification?: boolean;
+  // Quién contestó: la IA (agente) o el motor local, y por qué no hubo IA si se intentó (se muestra bajo el mensaje).
+  meta?: ChatMessageMeta;
+}
+
+export interface ChatMessageMeta {
+  engine: 'ai' | 'local';
+  label?: string; // "Gemini · gemini-3.5-flash"
+  notice?: string; // "Respondí sin IA: …"
+  tools?: string[]; // herramientas que consultó el agente
 }
 
 export interface ChatMessage {
@@ -396,6 +405,7 @@ export interface ChatMessage {
   plan?: ActionPlan;
   // Solo en mensajes del asistente que preguntan un dato que faltó (P2).
   clarification?: PendingClarification;
+  meta?: ChatMessageMeta;
 }
 
 export interface ChatConversation {

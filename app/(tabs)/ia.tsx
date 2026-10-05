@@ -7,7 +7,10 @@ import { Animated, Easing, FlatList, KeyboardAvoidingView, Platform, Pressable, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, FeGaussianBlur, Filter, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 
-import { topFrequentQuestions, type ActionPlan, type AIActionProposal, type ChatMessage } from '@/ai/chatTypes';
+import { historyFromMessages } from '@/ai/agent/history';
+import { aiEnabled } from '@/ai/agent/settings';
+import { agentStatus } from '@/ai/agent/transport';
+import { topFrequentQuestions, type ActionPlan, type AIActionProposal, type ChatMessage, type ChatMessageMeta } from '@/ai/chatTypes';
 import { AiOrb } from '@/components/AiOrb';
 import { HelpButton } from '@/components/HelpButton';
 import { ChatActionCard } from '@/components/ChatActionCard';
@@ -36,7 +39,7 @@ import { generateId } from '@/utils/id';
 // VALU es tanto el nombre de la app como el de su asistente local — el
 // usuario pidió explícitamente que la interfaz nunca diga "Copiloto", así
 // que "VALU" es la única identidad que se muestra aquí.
-const ENGINE_LABELS: Record<string, string> = { 'local-rules': 'VALU' };
+const ENGINE_LABELS: Record<string, string> = { 'local-rules': 'VALU', 'valu-agent': 'VALU' };
 
 const SUGGESTION_CARDS: Array<{ title: string; desc: string; icon: keyof typeof Ionicons.glyphMap; question: string }> = [
   { title: 'Tu presupuesto', desc: 'Cómo vas este mes contra lo que planeaste', icon: 'pie-chart-outline', question: '¿Cómo voy este mes?' },
@@ -93,6 +96,22 @@ export default function Ia() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [aiLabel, setAiLabel] = useState<string | null>(null);
+
+  // Etiqueta del motor en la cabecera: "VALU · IA Gemini" cuando la IA está lista; "VALU" si responde el motor local.
+  useEffect(() => {
+    let alive = true;
+    if (!aiEnabled()) return;
+    agentStatus()
+      .then((st) => {
+        if (alive && st.configured && st.providerLabel) setAiLabel(`IA ${st.providerLabel.replace(/\s*\(.*\)$/, '')}`);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   // Siempre hay una conversación activa al entrar — nunca se le pide al
@@ -121,9 +140,11 @@ export default function Ia() {
     // texto puede ser su respuesta (contrato §2): se intenta contestar sobre la MISMA acción, sin reiniciar.
     const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
     const openClarification = lastAssistant?.clarification?.status === 'open' ? lastAssistant : undefined;
+    const history = historyFromMessages(messages);
     addChatMessage({ conversationId, role: 'user', text });
     setSending(true);
     setThinking(true);
+    setProgress(null);
     try {
       // El usuario pidió que "extrayendo datos" se vea al menos 2 segundos
       // siempre, aunque el motor local responda casi instantáneo — evita
@@ -143,7 +164,7 @@ export default function Ia() {
           forecasts: selectForecastTransactions(rawTransactions),
           recurringRules: selectActiveRecurringRules(rawRules),
           reminders: selectActiveReminders(rawReminders),
-        }, { pending: openClarification?.clarification }),
+        }, { pending: openClarification?.clarification, history, onProgress: (label) => setProgress(label) }),
         new Promise((resolve) => setTimeout(resolve, MIN_THINKING_MS)),
       ]);
       let action: AIActionProposal | undefined;
@@ -178,7 +199,7 @@ export default function Ia() {
         };
       }
       if (openClarification) setClarificationStatus(openClarification.id, result.handledClarification ? 'answered' : 'superseded');
-      addChatMessage({ conversationId, role: 'assistant', text: result.reply, action, plan, clarification: result.clarification });
+      addChatMessage({ conversationId, role: 'assistant', text: result.reply, action, plan, clarification: result.clarification, meta: result.meta });
     } catch {
       addChatMessage({
         conversationId,
@@ -188,6 +209,7 @@ export default function Ia() {
     } finally {
       setSending(false);
       setThinking(false);
+      setProgress(null);
     }
   };
 
@@ -222,7 +244,8 @@ export default function Ia() {
     setSidebarOpen(false);
   };
 
-  const engineName = ENGINE_LABELS[providers.actionAgent.name] ?? providers.actionAgent.name;
+  const baseEngine = ENGINE_LABELS[providers.actionAgent.name] ?? providers.actionAgent.name;
+  const engineName = aiLabel ? `${baseEngine} · ${aiLabel}` : baseEngine;
   const openSettings = () => router.push('/ai-settings');
 
   return (
@@ -320,9 +343,10 @@ export default function Ia() {
                         )}
                       </View>
                     )}
+                    {item.role === 'assistant' && item.meta && <MetaLine meta={item.meta} />}
                   </FadeInRow>
                 )}
-                ListFooterComponent={thinking ? <ThinkingIndicator /> : null}
+                ListFooterComponent={thinking ? <ThinkingIndicator label={progress ? `${progress}…` : 'Extrayendo datos…'} /> : null}
               />
             )}
 
@@ -459,7 +483,7 @@ function FadeInRow({ children }: { children: React.ReactNode }) {
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 const AnimatedDot = Animated.createAnimatedComponent(View);
 
-function ThinkingIndicator() {
+function ThinkingIndicator({ label }: { label: string }) {
   const shimmer = useRef(new Animated.Value(0)).current;
   const dots = [useRef(new Animated.Value(0.3)).current, useRef(new Animated.Value(0.3)).current, useRef(new Animated.Value(0.3)).current];
 
@@ -496,7 +520,7 @@ function ThinkingIndicator() {
           <AnimatedDot key={i} style={[styles.thinkingDot, { opacity: val, backgroundColor: '#FFFFFF' }]} />
         ))}
       </View>
-      <Svg width={150} height={20}>
+      <Svg width={Math.min(300, 24 + label.length * 8)} height={20}>
         <Defs>
           <AnimatedLinearGradient id="thinkingShimmer" x1={gradX1 as unknown as string} x2={gradX2 as unknown as string} y1="0%" y2="0%">
             <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.32} />
@@ -505,11 +529,24 @@ function ThinkingIndicator() {
           </AnimatedLinearGradient>
         </Defs>
         <SvgText x="0" y="15" fontSize="14" fontWeight="600" fill="url(#thinkingShimmer)">
-          Extrayendo datos…
+          {label}
         </SvgText>
       </Svg>
     </View>
   );
+}
+
+// Quién contestó (la IA o el motor local) y, si no hubo IA, por qué — en una línea discreta bajo la respuesta.
+function MetaLine({ meta }: { meta: ChatMessageMeta }) {
+  if (meta.notice) {
+    return (
+      <Text style={[styles.metaLine, { color: '#FCD34D' }]} accessibilityLabel={meta.notice}>
+        {meta.notice}
+      </Text>
+    );
+  }
+  if (meta.engine !== 'ai' || !meta.label) return null;
+  return <Text style={[styles.metaLine, { color: CHAT_PALETTE.textTertiary }]}>{`IA · ${meta.label}`}</Text>;
 }
 
 // Burbuja de respuesta con acciones — copiar (pedido explícito del
@@ -581,6 +618,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: CHAT_PALETTE.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 12 },
   cardDesc: { color: CHAT_PALETTE.textTertiary, fontSize: 13, marginTop: 4, lineHeight: 18 },
   thinkingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 6, paddingVertical: 8 },
+  metaLine: { fontSize: 11, marginTop: 4, marginHorizontal: 6, maxWidth: '92%' },
   thinkingDots: { flexDirection: 'row', gap: 4 },
   thinkingDot: { width: 6, height: 6, borderRadius: 3 },
   messageActionsRow: { flexDirection: 'row', gap: 14, marginTop: 8 },

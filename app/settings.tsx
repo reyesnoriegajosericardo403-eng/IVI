@@ -123,16 +123,14 @@ export default function Settings() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>COPILOTO IA</Text>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>INTELIGENCIA ARTIFICIAL</Text>
           <Pressable onPress={() => router.push('/ai-settings')}>
             <GlassCard style={styles.row}>
-              <Ionicons name="key-outline" size={18} color={colors.accentFrom} />
+              <Ionicons name="sparkles-outline" size={18} color={colors.accentFrom} />
               <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text style={[typography.body, { color: colors.textPrimary }]}>
-                  {aiProvider ? LLM_PROVIDER_LABELS[aiProvider] : 'Copiloto local (basado en reglas)'}
-                </Text>
+                <Text style={[typography.body, { color: colors.textPrimary }]}>IA de VALU</Text>
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  {aiProvider ? 'Conectado con tu propia clave' : 'Conecta Claude, ChatGPT, Gemini o Grok'}
+                  {aiProvider ? `Con tu propia clave de ${LLM_PROVIDER_LABELS[aiProvider]}` : 'Estado, memoria y clave propia (opcional)'}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />

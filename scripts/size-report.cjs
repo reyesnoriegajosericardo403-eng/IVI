@@ -10,7 +10,7 @@ const zlib = require('zlib');
 
 // Presupuestos en bytes COMPRIMIDOS (gzip -9, parecido a lo que sirve el hosting). Subirlos es una decisión, no un descuido.
 const BUDGETS = {
-  entry: 880_000, // paquete inicial (lo que bloquea abrir la app); a 2026-10-03: ≈793 KB (antes de excluir reanimated: ≈928 KB); a 2026-10-04 con P3 (previstos, recurrentes, avisos, deudas, acciones del chat): ≈835 KB. Subido de 850 a 880 por decisión: P3 trae pantallas y lógica nuevas; la siguiente palanca es cargar cada pantalla al abrirla (rutas asíncronas), que pide precalentar la caché sin conexión
+  entry: 880_000, // paquete inicial (lo que bloquea abrir la app); a 2026-10-03: ≈793 KB (antes de excluir reanimated: ≈928 KB); a 2026-10-04 con P3 (previstos, recurrentes, avisos, deudas, acciones del chat): ≈835 KB. Subido de 850 a 880 por decisión: P3 trae pantallas y lógica nuevas; la siguiente palanca es cargar cada pantalla al abrirla (rutas asíncronas), que pide precalentar la caché sin conexión. 2026-10-05: el agente de IA se carga diferido (trozo «agentLoop», ≈12 KB) y el inicial quedó en ≈850 KB
   extended: 130_000, // vocabulario ampliado del motor (se descarga en segundo plano); a 2026-10-03: ≈90 KB
   other: 150_000, // cualquier otro trozo diferido
 };

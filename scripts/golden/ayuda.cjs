@@ -97,10 +97,11 @@ t('los ejemplos de chat «acción» de la ayuda se entienden', () => {
 
 // ---------- Privacidad: destinos externos ----------
 const extra = new Set(['supabase.co', 'localhost']);
-t('ai-relay solo permite destinos inventariados', () => {
-  const hosts = [...read('supabase/functions/ai-relay/index.ts').matchAll(/'([a-z0-9.-]+\.[a-z]+)',/g)].map((m) => m[1]).filter((h) => h.includes('.'));
-  assert(hosts.length >= 4);
-  for (const h of hosts) assert(ALL_HOSTS.includes(h), `ai-relay permite ${h} y no está en dataFlows`);
+t('la función ai-agent solo llama a destinos inventariados', () => {
+  const src = read('supabase/functions/_shared/aiProviders.ts');
+  const hosts = [...new Set([...src.matchAll(/https:\/\/([a-z0-9.-]+)\//g)].map((m) => m[1]))];
+  assert(hosts.length >= 4, hosts.join());
+  for (const h of hosts) assert(ALL_HOSTS.includes(h), `ai-agent llama a ${h} y no está en dataFlows`);
 });
 t('market-data solo llama a destinos inventariados', () => {
   const s = read('supabase/functions/market-data/index.ts');
@@ -108,22 +109,18 @@ t('market-data solo llama a destinos inventariados', () => {
   assert(hosts.length >= 3, 'no se encontraron las llamadas');
   for (const h of hosts) assert(ALL_HOSTS.includes(h), `market-data llama a ${h} y no está en dataFlows`);
 });
-t('los clientes de IA solo apuntan a destinos inventariados', () => {
-  for (const f of fs.readdirSync(path.join(root, 'src/providers/llm/clients'))) {
-    const s = read(`src/providers/llm/clients/${f}`);
-    for (const m of s.matchAll(/https:\/\/([a-z0-9.-]+)/g)) assert(ALL_HOSTS.includes(m[1]), `${f} apunta a ${m[1]}`);
-  }
-});
 t('todo punto de red del código está auditado (una llamada nueva obliga a revisar la privacidad)', () => {
   const AUDITED = new Set([
     'public/sw.js', // solo mismo origen (caché de la app)
-    'src/providers/llm/relayFetch.ts', // IA propia → relevo/proveedor
+    'src/ai/agent/transport.ts', // agente de IA → tu función ai-agent
     'src/providers/market/relayMarketDataProvider.ts', // símbolos → market-data
     'src/providers/notifications/webPushNotificationProvider.ts', // suscripción push → push-notify
     'src/services/auth/deleteAccount.ts', // borrar cuenta
     'src/services/supabase/profileRepository.ts', // perfil → tu Supabase
     'supabase/functions/_shared/webpush.ts', // entrega a Apple/Google/Mozilla
-    'supabase/functions/ai-relay/index.ts',
+    'supabase/functions/ai-agent/index.ts',
+    'supabase/functions/_shared/aiProviders.ts', // ai-agent → proveedor de IA
+    'supabase/functions/_shared/aiAgentHandler.ts', // sesión y cuota (Supabase)
     'supabase/functions/delete-account/index.ts',
     'supabase/functions/market-data/index.ts',
     'supabase/functions/push-notify/index.ts',
@@ -167,28 +164,32 @@ t('«Exportar mis datos» incluye todas las entidades guardadas', () => {
     assert(new RegExp(`state\\.${k}\\b`).test(s), `la exportación omite ${k}`);
   }
 });
-t('«ocultar nombres a mi IA» oculta contraparte, comercio y personas; sin él, no cambia nada', () => {
-  const { buildFinancialContextSummary, buildActionContextSummary } = require('@/providers/llm/financialContext');
-  const c = {
-    ...ctx(),
-    profile: { primaryCurrency: 'MXN', budgetThresholds: { warn: 0.8, critical: 1 } },
-    budgets: [], transactions: [{ ...meta('t1'), type: 'expense', amount: 90, currency: 'MXN', categoryId: 'food', merchant: 'Tacos Doña Lupe', date: '2026-10-01T00:00:00.000Z', accountId: 'a-cash', status: 'posted' }],
+t('«ocultar nombres a mi IA» oculta personas y comercios en lo que consulta el agente; sin él, no cambia nada', () => {
+  const { runTool } = require('@/ai/agent/tools');
+  const { buildSystemPrompt } = require('@/ai/agent/agentLoop');
+  const data = (hideNames) => ({
+    today: '2026-10-05',
+    profile: { name: 'Ana', primaryCurrency: 'MXN', budgetThresholds: { attention: 0.7, warning: 0.85, exceeded: 1 } },
+    accounts: [{ ...meta('a-cash'), name: 'Efectivo', type: 'cash', currency: 'MXN', balance: 500 }],
+    transactions: [{ ...meta('t1'), type: 'expense', amount: 90, currency: 'MXN', categoryId: 'food', subcategoryId: 'food_restaurants', merchant: 'Tacos Doña Lupe', date: '2026-10-01T18:00:00.000Z', accountId: 'a-cash', status: 'posted', origin: 'manual', notes: 'SECRETO-NOTA' }],
+    forecasts: [], investments: [], goals: [], budgets: [], budgetTemplates: [], templateBudgetLines: [], budgetAssignments: [], periodBudgetOverrides: [], recurringRules: [], reminders: [], liveQuotes: {}, memory: [],
     liabilities: [
       { ...meta('l1'), institution: 'Juan Pérez', type: 'other', direction: 'owed_to_me', counterparty: 'Juan Pérez', balance: 800, currency: 'MXN' },
       { ...meta('l2'), institution: 'Coppel', type: 'personal_loan', balance: 3000, currency: 'MXN' },
     ],
-  };
-  const hidden = JSON.stringify(buildFinancialContextSummary(c, true)) + JSON.stringify(buildActionContextSummary(c, true));
+    hideNames,
+  });
+  const dump = (d) => JSON.stringify([runTool('buscar_movimientos', {}, d), runTool('ver_deudas', {}, d), runTool('ver_proximos', {}, d), runTool('resumen_financiero', {}, d)]) + buildSystemPrompt(d);
+  const hidden = dump(data(true));
   assert(!/Juan|Lupe/.test(hidden), 'se coló un nombre');
   assert(/Coppel/.test(hidden), 'las instituciones financieras no deben ocultarse');
-  const shown = JSON.stringify(buildFinancialContextSummary(c, false));
-  assert(/Juan Pérez/.test(shown) && /Tacos Doña Lupe/.test(shown));
+  const shown = dump(data(false));
+  assert(/Juan Pérez/.test(shown) && /Tacos Doña Lupe/.test(shown), shown.slice(0, 400));
+  assert(!/SECRETO-NOTA/.test(hidden + shown), 'las notas nunca viajan a la IA');
 });
-t('el resumen que ve la IA no incluye notas ni texto libre', () => {
-  const s = read('src/providers/llm/financialContext.ts');
-  assert(!/\.notes\b/.test(s), 'financialContext no debe leer notes');
+t('el agente no lee notas en ninguna herramienta', () => {
+  for (const f of ['src/ai/agent/tools.ts', 'src/ai/agent/agentLoop.ts']) assert(!/\.notes\b/.test(read(f)), `${f} no debe leer notes`);
 });
-
 t('dispositivo compartido: otra cuenta borra los datos locales; la misma o el modo local los conserva/adopta', () => {
   const { decideOwner } = require('@/services/auth/dataOwner');
   assert.strictEqual(decideOwner(null, 'u1'), 'adopt');

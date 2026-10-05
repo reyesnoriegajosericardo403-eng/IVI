@@ -40,9 +40,9 @@ cambiar la implementación sin tocar ninguna pantalla:
 
 | Proveedor | Interfaz | Implementación local (siempre disponible) | Implementación real |
 |---|---|---|---|
-| Interpretación de lenguaje (voz/texto → movimiento) | `AIInterpreterProvider` | `localAIInterpreter` → usa `src/ai/localParser.ts` (reglas, sin IA) | `LLMAIInterpreterProvider` si el usuario conecta su propia clave (Claude/ChatGPT/Gemini/Grok) |
-| Copiloto conversacional | `CopilotProvider` | `localCopilotProvider` (reglas sobre datos reales) | `LLMCopilotProvider` |
-| Acciones sobre datos del chat de IA (**nuevo**) | `ActionAgentProvider` | `localActionAgentProvider` → `src/ai/chatIntentParser.ts` + `actionCatalog.ts` | `LLMActionAgentProvider` (BYOK) |
+| Interpretación de lenguaje (voz/texto → movimiento) | `AIInterpreterProvider` | `localAIInterpreter` → usa `src/ai/localParser.ts` (reglas, sin IA) | `hybridInterpreterProvider`: el local primero; la IA solo si no entendió monto o categoría |
+| Copiloto conversacional | `CopilotProvider` | `localCopilotProvider` (reglas sobre datos reales) | (lo subsume el agente) |
+| Chat: preguntas y acciones sobre datos | `ActionAgentProvider` | `localActionAgentProvider` → `src/ai/chatIntentParser.ts` + `actionCatalog.ts` | `agentActionProvider`: agente de IA con herramientas (`src/ai/agent/`), respaldo local |
 | Voz a texto | `SpeechToTextProvider` | `webSpeechProvider` (Web Speech API del navegador — Chrome/Android, no Safari/iOS) | — (Fase 3: STT en la nube para iPhone) |
 | Precios de mercado | `MarketDataProvider` | `unavailableMarketDataProvider` (dice explícitamente "no disponible", nunca inventa) | Edge Function `market-data` (Yahoo Finance + CETES vía Banxico) |
 | Tipo de cambio | `ExchangeRateProvider` | `staticExchangeRateProvider` | — |
@@ -52,15 +52,11 @@ implementación está activa — el resto de la app siempre llama a
 `providers.ai`, `providers.speech`, etc., nunca a una implementación
 concreta directamente.
 
-## IA "trae tu propia cuenta" (BYOK)
+## Agente de IA (desde 2026-10-05; reemplaza al BYOK)
 
-VALU no paga ni intermedia el uso de IA: cada persona conecta su propia
-clave de Claude, ChatGPT, Gemini o Grok desde Ajustes → "Conectar tu IA".
-Las claves se guardan cifradas (`src/providers/llm/secureConfig.ts`). En
-la versión web, las llamadas pasan por una Edge Function de relevo
-(`ai-relay`) solo para esquivar CORS del navegador — el relevo no ve ni
-guarda el contenido, solo reenvía la petición con la clave que el usuario
-ya tiene guardada.
+El chat es un **agente**: la IA consulta los datos del dispositivo con herramientas y propone acciones que la persona
+confirma. Pasa por la Edge Function `ai-agent` (sesión obligatoria, cuota diaria por persona, clave del servidor en los
+secretos de Supabase o la clave propia de la persona). Detalle completo en [[13-agente-ia]].
 
 ## Autenticación
 
@@ -108,6 +104,6 @@ src/
   utils/              Cálculos puros (presupuesto, cuentas, fechas, formato)
 supabase/
   migrations/         SQL versionado — ver [[04-migraciones-supabase]]
-  functions/          Edge Functions (ai-relay, market-data)
+  functions/          Edge Functions (ai-agent, push-notify, market-data, delete-account)
 docs/memoria-proyecto/ Esta carpeta
 ```

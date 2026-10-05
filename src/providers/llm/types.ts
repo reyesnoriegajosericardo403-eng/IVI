@@ -1,14 +1,13 @@
-// BYOK (Bring Your Own Key): cada usuario conecta la IA que ya paga —
-// nunca la nuestra. Esto evita que el costo de uso de IA recaiga sobre
-// nosotros cuando la app tenga más de un usuario, y evita que un futuro
-// usuario dependa de una cuenta o suscripción nuestra.
+// Clave propia (opcional): la IA integrada de VALU usa la clave del servidor (secreto en Supabase, con cuota diaria por
+// persona). Quien quiera puede conectar SU clave; entonces la función ai-agent usa esa, sin cuota, y el costo lo cubre
+// su cuenta del proveedor. La clave solo vive en el dispositivo (secureConfig.ts).
 
 export type LLMProviderId = 'claude' | 'openai' | 'gemini' | 'grok';
 
 export interface LLMProviderConfig {
   provider: LLMProviderId;
   apiKey: string;
-  model: string;
+  model: string; // vacío = automático (el servidor elige el modelo vigente)
 }
 
 export interface LLMMessage {
@@ -29,16 +28,6 @@ export const LLM_PROVIDER_LABELS: Record<LLMProviderId, string> = {
   openai: 'ChatGPT (OpenAI)',
   gemini: 'Gemini (Google)',
   grok: 'Grok (xAI)',
-};
-
-// Modelo por defecto sugerido — el usuario siempre puede escribir otro.
-// Se favorece el modelo más pequeño/económico de cada familia, ya que el
-// copiloto financiero y el intérprete de captura son tareas simples.
-export const LLM_PROVIDER_DEFAULT_MODEL: Record<LLMProviderId, string> = {
-  claude: 'claude-haiku-4-5',
-  openai: 'gpt-4o-mini',
-  gemini: 'gemini-2.0-flash',
-  grok: 'grok-4-fast',
 };
 
 // Guía completa para conseguir la clave — pensada para alguien que nunca

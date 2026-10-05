@@ -137,6 +137,10 @@ export function budgetToRow(userId: string, b: Budget) {
     base_amount: b.baseAmount ?? null,
     target_account_id: b.targetAccountId ?? null,
     included_account_ids: b.includedAccountIds ?? [],
+    // Migración 0025: solo se mandan si tienen valor, así un presupuesto sigue sincronizando aunque la migración no se haya corrido.
+    ...(b.dayOfMonth !== undefined ? { day_of_month: b.dayOfMonth } : {}),
+    ...(b.dayOfWeek !== undefined ? { day_of_week: b.dayOfWeek } : {}),
+    ...(b.oneTimeDate !== undefined ? { one_time_date: b.oneTimeDate } : {}),
     created_at: b.createdAt,
     deleted_at: b.deletedAt ?? null,
   };
@@ -157,6 +161,9 @@ export function budgetFromRow(row: any): Budget {
     frequency: row.frequency ?? undefined,
     customDaysPerWeek: row.custom_days_per_week ?? undefined,
     baseAmount: row.base_amount != null ? Number(row.base_amount) : undefined,
+    dayOfMonth: row.day_of_month ?? undefined,
+    dayOfWeek: row.day_of_week ?? undefined,
+    oneTimeDate: row.one_time_date ?? undefined,
     targetAccountId: row.target_account_id ?? undefined,
     includedAccountIds: row.included_account_ids && row.included_account_ids.length > 0 ? row.included_account_ids : undefined,
     createdAt: row.created_at,

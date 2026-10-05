@@ -78,10 +78,10 @@ export default function Privacidad() {
         <GlassCard style={{ gap: spacing.sm }}>
           <Text style={[typography.headline, { color: colors.textPrimary }]}>Inteligencia artificial y datos de mercado</Text>
           <Text style={[typography.body, { color: colors.textSecondary }]}>
-            El copiloto de IA es opcional: solo se activa si tú conectas tu propia clave de Claude, ChatGPT, Gemini o
-            Grok, y solo entonces tus preguntas y un resumen de tus cifras (nunca tus notas) viajan al proveedor que elegiste. Los precios de mercado (acciones,
-            FIBRAs, tasa de CETES) se consultan de proveedores públicos únicamente para mostrarte ese precio — no se
-            les envía tu información personal ni financiera.
+            La IA de VALU (el agente del chat) solo trabaja cuando la usas y puedes apagarla en Ajustes → IA. Para
+            responder recibe tu mensaje y únicamente los datos que consulta (nunca tus notas), a través de tu propia función
+            de Supabase. Los precios de mercado (acciones, FIBRAs, tasa de CETES) se consultan de proveedores públicos
+            únicamente para mostrarte ese precio — no se les envía tu información personal ni financiera.
           </Text>
         </GlassCard>
 

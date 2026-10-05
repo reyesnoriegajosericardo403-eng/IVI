@@ -8,6 +8,26 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-05 — Agente de IA: la app ya tiene "cerebro"
+
+Pedido: «arregla la IA para que realmente funcione… que la app tenga un cerebro y sea un agente de IA de finanzas
+personales, no solo una conexión». Detalle en [[13-agente-ia]].
+
+- **Diagnóstico**: `ai-relay` nunca se desplegó (el flujo solo desplegó push-notify); el modelo `gemini-2.0-flash` lo
+  retiró Google el 1 de junio de 2026 y su 404 se mostraba como "no desplegada"; el diseño exigía clave por persona y
+  la IA solo veía un resumen fijo.
+- **Servidor**: nueva función `ai-agent` (reemplaza a `ai-relay`): sesión obligatoria, cuota diaria por persona (tabla
+  `ai_usage`, migración 0025), clave del servidor en el secreto `GEMINI_API_KEY` o la propia de la persona, lista opcional
+  de correos autorizados, traducción a Gemini/Claude/ChatGPT/Grok con herramientas, alias `gemini-flash-latest` y
+  respaldo automático cuando un modelo se retira o no tiene cuota, firmas de pensamiento de Gemini 3.
+- **App**: agente con 12 herramientas sobre los datos del dispositivo, propuestas validadas con el catálogo de 33
+  acciones (categoría por el motor local), memoria local, respaldo al motor local con aviso, captura por voz híbrida,
+  pantalla «IA de VALU» (estado, cuota, prueba, memoria, clave propia opcional). El agente se descarga al usarse: el
+  paquete inicial bajó a ≈850 KB.
+- **Presupuesto**: las fechas (`dayOfMonth`, `dayOfWeek`, `oneTimeDate`) ya viajan a Supabase (migración 0025).
+- **Pruebas**: `ai-agente.cjs` (26), `agente-app.cjs` (25), `smoke-agente.cjs` (10, punta a punta en Chromium) y la
+  auditoría de privacidad actualizada. Los tipos de las Edge Functions ahora también se revisan (`npm run typecheck`).
+
 ## 2026-10-05 — Avisos por defecto, P4 (ayuda y privacidad)
 
 Detalle de P4 en [[12-p4-ayuda-y-privacidad]].

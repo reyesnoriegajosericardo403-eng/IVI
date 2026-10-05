@@ -39,17 +39,18 @@ Nada de lo mostrado en la app es inventado: donde falta una fuente real (precios
 - **Autenticación real con Supabase Auth** (correo + contraseña, dentro de la propia app) con modo local automático si todavía no conectaste un proyecto de Supabase — la app nunca se rompe por falta de configuración.
 - Todo pensado para que agregar Android, una app de escritorio, u otro dispositivo en el futuro reutilice exactamente el mismo backend, sin reconstruir nada ni perder el historial financiero del usuario.
 
-### Incluido en la Fase 3 adelantada (IA propia del usuario — BYOK)
+### Agente de IA (el "cerebro" de VALU)
 
-- **Ajustes → Copiloto IA → Conectar tu IA**: elegir Claude, ChatGPT, Gemini o Grok, pegar tu propia API key, probar la conexión y guardar.
-- Tu clave **nunca sale de tu dispositivo ni se sincroniza** con Supabase ni con nadie — se guarda cifrada (Keychain/Keystore en iPhone/Android; localStorage en navegador, con esa salvedad indicada en la propia pantalla).
-- El copiloto y la interpretación de voz/texto usan automáticamente la IA conectada, con un prompt que solo le permite responder con tus datos reales — nunca inventa cifras. Si el usuario no conecta ninguna, la app sigue funcionando con el copiloto local basado en reglas (nunca se rompe).
-- **En la app nativa (iPhone/iPad)** la llamada va directo de tu teléfono al proveedor — cero intermediarios, cero costo para nosotros.
-- **En la versión web**, los navegadores bloquean por seguridad las llamadas directas a Claude/ChatGPT/Grok (Gemini si las permite, pero por simplicidad se usa el mismo camino para los cuatro). Por eso en web se necesita el pequeño relevo `supabase/functions/ai-relay` — reenvía la llamada sin verla, guardarla ni cobrarla; solo existe para saltar esa restricción del navegador. Ver `supabase/README.md`.
+- El chat es un **agente de finanzas personales**: consulta tus datos reales con herramientas (movimientos, presupuesto,
+  tarjetas, deudas, metas, inversiones, lo que viene), responde con tus números y propone acciones (registrar, programar,
+  pagar, recordar) que **tú confirmas**. Recuerda datos estables que le cuentes. Ver `docs/memoria-proyecto/13-agente-ia.md`.
+- La IA viene **integrada**: vive en la función `supabase/functions/ai-agent` con la clave del servidor (secreto
+  `GEMINI_API_KEY`), exige sesión y tiene una cuota diaria por persona. Opcionalmente cada persona puede usar su propia clave.
+- Sin IA (sin conexión, sin clave, sin cuota) la app sigue funcionando con su motor local y lo dice bajo la respuesta.
 
 ### Pendiente para fases siguientes
 
-- Conectar tu proyecto Supabase real (ver abajo) para activar sincronización en la nube, y desplegar `ai-relay` para que el BYOK funcione también en la versión web.
+- Conectar tu proyecto Supabase real (ver abajo) para activar sincronización en la nube, y desplegar `ai-agent` con el secreto `GEMINI_API_KEY` para activar la IA.
 - Reconocimiento de voz real en iPhone/iPad (hoy solo funciona en navegadores con Web Speech API, o por texto).
 - Precios de mercado en vivo para inversiones (hoy se guarda el monto invertido, no el valor de mercado).
 - Integración con brokers (GBM primero, solo lectura, APIs oficiales).
@@ -97,7 +98,7 @@ npx expo start          # muestra un código QR para abrir con la app "Expo Go" 
 - **Backend**: Supabase (Postgres con RLS, autenticación, funciones y triggers de auditoría) — ver `supabase/migrations/`.
 - **Sincronización**: `src/services/sync/` — cola de cambios pendientes + fusión por "más reciente gana".
 - **Capa de proveedores**: `src/providers/` — contratos intercambiables para IA, copiloto, tipo de cambio, precios de mercado y voz.
-- **IA "trae tu propia cuenta"**: `src/providers/llm/` — clientes para Claude, ChatGPT, Gemini y Grok detrás de un contrato común; clave guardada solo en el dispositivo (`expo-secure-store`); relevo sin estado para web en `supabase/functions/ai-relay`.
+- **Agente de IA**: `src/ai/agent/` (bucle, herramientas, memoria) + `supabase/functions/ai-agent` (sesión, cuota, Gemini/Claude/ChatGPT/Grok con respaldo de modelos); clave propia opcional guardada solo en el dispositivo (`src/providers/llm/secureConfig.ts`).
 - **Datos de mercado (Fase 4)**: API financiera legítima (precios) + API de tipo de cambio — nunca simulados.
 - **Estructura**: `app/` (pantallas y navegación), `src/data/` (tipos de dominio, categorías, catálogo), `src/store/` (estado local/caché), `src/services/` (Supabase, sincronización, autenticación), `src/providers/` (proveedores intercambiables), `src/ai/` (implementaciones locales de interpretación y copiloto), `src/theme/` (sistema de diseño), `src/components/` (UI reutilizable).
 

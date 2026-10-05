@@ -34,6 +34,7 @@ Esta carpeta nunca reemplaza eso ni lo toca — ver [[06-pendientes#Sobre Obsidi
 - [[10-p3-previsto-recurrentes-avisos-deudas|P3: previsto, pagos recurrentes, avisos, deudas y dividendos]] — qué es un movimiento previsto, cómo se generan solos y por qué nunca duplican, cómo funcionan los avisos que insisten, deudas con cuotas y las 15 acciones nuevas del chat.
 - [[11-tarjeta-de-credito|Tarjeta de crédito]] — fecha de corte y de pago, cuánto falta para no generar intereses y los avisos que no se pasan.
 - [[12-p4-ayuda-y-privacidad|P4: ayuda y privacidad]] — ayuda dentro de la app, inventario de lo que sale del teléfono y fallas de privacidad corregidas.
+- [[13-agente-ia|Agente de IA]] — por qué la IA nunca funcionó, el agente con herramientas y memoria, cómo activarlo y qué cuesta.
 - [[04-migraciones-supabase|Migraciones de Supabase]] — historial de la base de datos real y su estado actual.
 - [[05-bitacora-cambios|Bitácora de cambios]] — qué se construyó, en orden, y por qué.
 - [[06-pendientes|Pendientes y decisiones abiertas]] — lo que falta resolver o confirmar.

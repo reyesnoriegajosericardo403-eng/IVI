@@ -30,19 +30,19 @@ Las migraciones **0006 a 0022** están descritas una por una en `docs/memoria-pr
 
 No hace falta usar la terminal ni instalar nada para este paso — todo se hace desde el navegador.
 
-## Función `ai-relay` (necesaria solo para usar tu propia IA desde la versión web)
+## Función `ai-agent` (el agente de IA de la app)
 
-`functions/ai-relay/index.ts` es un relevo sin estado: reenvía la llamada del navegador al proveedor de IA que el usuario eligió (Claude, ChatGPT, Gemini o Grok), usando la clave que el propio usuario pegó en la app. **No guarda, ve ni factura nada** — solo existe porque los navegadores bloquean por seguridad las llamadas directas a esos proveedores. En la app nativa (iPhone/iPad) no hace falta: ahí la llamada va directo.
+`functions/ai-agent/index.ts` (lógica en `functions/_shared/aiAgentHandler.ts` y `aiProviders.ts`) recibe la conversación
+del agente con la sesión de la persona, la traduce al proveedor (Gemini por defecto; Claude, ChatGPT o Grok) y devuelve
+la respuesta. Exige sesión, aplica una cuota diaria por persona y nunca guarda el contenido. Detalle en
+`docs/memoria-proyecto/13-agente-ia.md`.
 
-Para desplegarla necesitas el CLI de Supabase (esta es la única parte de todo el proyecto que sí requiere terminal — te guío cuando llegue el momento):
+Secretos (Dashboard → Edge Functions → Secrets): **`GEMINI_API_KEY`** (obligatorio para la IA integrada); opcionales
+`AI_DAILY_LIMIT`, `AI_ALLOWED_EMAILS`, `AI_MODEL`, `AI_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `XAI_API_KEY`.
+Migración recomendada: `0025_ai_usage_and_budget_dates.sql`.
 
-```bash
-npx supabase login
-npx supabase link --project-ref <tu-project-ref>
-npx supabase functions deploy ai-relay
-```
-
-Sin desplegar esta función, la app sigue funcionando normal: en nativo tu IA funciona igual, y en web usa el copiloto local basado en reglas hasta que la despliegues.
+Se despliega sin terminal: GitHub → Actions → «Desplegar funciones de Supabase» → Run workflow → `ai-agent`
+(con `--no-verify-jwt`: la función valida la sesión ella misma).
 
 ## Función `push-notify` (notificaciones al celular)
 

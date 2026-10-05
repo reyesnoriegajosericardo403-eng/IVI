@@ -37,10 +37,17 @@ export interface ActionAgentContext extends CopilotContext {
 // verdad se validó una acción contra datos reales — nunca se aplican
 // solos, quien los recibe siempre debe pedir confirmación explícita antes
 // (ver ChatActionCard.tsx).
+export interface InterpretOptions {
+  pending?: PendingClarification;
+  history?: Array<{ role: 'user' | 'assistant'; text: string }>;
+  onProgress?: (label: string) => void;
+}
+
 export interface ActionAgentProvider {
   name: string;
   // `pending`: la pregunta de aclaración abierta de este chat, si la hay — el texto puede ser su respuesta.
-  interpretMessage(text: string, ctx: ActionAgentContext, opts?: { pending?: PendingClarification }): Promise<InterpretedMessage>;
+  // `history`: lo último de la conversación (el agente de IA lo usa como contexto). `onProgress`: qué está haciendo.
+  interpretMessage(text: string, ctx: ActionAgentContext, opts?: InterpretOptions): Promise<InterpretedMessage>;
 }
 
 export interface MarketQuote {
