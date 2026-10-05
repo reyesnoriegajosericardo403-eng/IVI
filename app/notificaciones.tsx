@@ -159,46 +159,31 @@ export default function Notificaciones() {
               </View>
             </View>
 
-            {subscribed ? (
-              <View style={styles.buttonRow}>
-                <Pressable
-                  accessibilityLabel="Enviar aviso de prueba"
-                  onPress={handleTest}
-                  disabled={busy !== null}
-                  style={[styles.primaryBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, opacity: busy ? 0.6 : 1 }]}
-                >
-                  {busy === 'test' ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.primaryText}>Enviar aviso de prueba</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  accessibilityLabel="Desactivar avisos"
-                  onPress={handleDisable}
-                  disabled={busy !== null}
-                  style={[styles.secondaryBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.pill }]}
-                >
-                  <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>
-                    {busy === 'disable' ? 'Desactivando…' : 'Desactivar'}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: subscribed }}
+              accessibilityLabel="Avisos en este dispositivo"
+              onPress={subscribed ? handleDisable : handleEnable}
+              disabled={busy === 'enable' || busy === 'disable' || (!subscribed && permission === 'denied')}
+              style={[styles.row, { justifyContent: 'space-between', opacity: busy === 'enable' || busy === 'disable' ? 0.6 : 1 }]}
+            >
+              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>Recibir avisos</Text>
+              {busy === 'enable' || busy === 'disable' ? (
+                <ActivityIndicator color={colors.accentFrom} />
+              ) : (
+                <View style={[styles.track, { backgroundColor: subscribed ? colors.accentFrom : colors.surfaceBorder }]}>
+                  <View style={[styles.thumb, { alignSelf: subscribed ? 'flex-end' : 'flex-start' }]} />
+                </View>
+              )}
+            </Pressable>
+            {subscribed && (
               <Pressable
-                accessibilityLabel="Activar avisos"
-                onPress={handleEnable}
-                disabled={busy !== null || permission === 'denied'}
-                style={[
-                  styles.primaryBtn,
-                  {
-                    backgroundColor: permission === 'denied' ? colors.surfaceBorder : colors.accentFrom,
-                    borderRadius: radius.pill,
-                    opacity: busy ? 0.6 : 1,
-                  },
-                ]}
+                accessibilityLabel="Enviar aviso de prueba"
+                onPress={handleTest}
+                disabled={busy !== null}
+                style={[styles.primaryBtn, { backgroundColor: colors.accentFrom, borderRadius: radius.pill, opacity: busy ? 0.6 : 1 }]}
               >
-                {busy === 'enable' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Activar avisos</Text>}
+                {busy === 'test' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Enviar aviso de prueba</Text>}
               </Pressable>
             )}
 

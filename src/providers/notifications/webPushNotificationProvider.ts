@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 
 import { isSupabaseConfigured, supabase, supabaseAnonPublicKey, supabaseProjectUrl } from '@/services/supabase/client';
 
+import { setPushOptedOut } from '@/services/notifications/pushPreference';
+
 import type { NotificationPermission, NotificationProvider, NotificationSupport } from '../types';
 
 // Web Push para la PWA. En iPhone solo funciona con VALU instalada en la
@@ -127,6 +129,7 @@ export const webPushNotificationProvider: NotificationProvider = {
         userAgent: navigator.userAgent,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
+      setPushOptedOut(false);
       return { ok: true as const };
     } catch (e) {
       return { ok: false as const, error: e instanceof Error ? e.message : 'No se pudieron activar los avisos.' };
@@ -134,6 +137,7 @@ export const webPushNotificationProvider: NotificationProvider = {
   },
 
   async disable() {
+    setPushOptedOut(true);
     if (!browserSupportsPush()) return;
     const reg = await navigator.serviceWorker.getRegistration();
     const sub = await reg?.pushManager.getSubscription();
@@ -144,12 +148,20 @@ export const webPushNotificationProvider: NotificationProvider = {
   },
 
   async sendTest() {
-    try {
-      const result = await callFunction('test');
-      if (!result?.ok) return { ok: false as const, error: 'El servidor no pudo entregar el aviso a ningún dispositivo.' };
-      return { ok: true as const, delivered: Number(result.delivered) || 0 };
-    } catch (e) {
-      return { ok: false as const, error: e instanceof Error ? e.message : 'No se pudo enviar el aviso de prueba.' };
+    // Un push recién suscrito a veces falla en el primer intento (el servicio
+    // de Apple/Google tarda en reconocer la suscripción): se reintenta solo.
+    let lastError = 'No se pudo enviar el aviso de prueba.';
+    for (let attempt = 0; attempt < 4; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const result = await callFunction('test');
+        if (result?.ok) return { ok: true as const, delivered: Number(result.delivered) || 0 };
+        lastError = 'El servidor no pudo entregar el aviso a ningún dispositivo.';
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : lastError;
+        if (/sesión|desplegada|llaves/i.test(lastError)) break;
+      }
     }
+    return { ok: false as const, error: lastError };
   },
 };

@@ -14,6 +14,7 @@ import { registerMarketDataProvider } from '@/providers/market/registerMarketDat
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { usePushProfileOnChange } from '@/services/auth/useProfileReconciliation';
 import { useMarketDataRefresh } from '@/services/market/useMarketDataRefresh';
+import { useAutoEnablePush } from '@/services/notifications/useAutoEnablePush';
 import { useMaterialization } from '@/services/p3/useMaterialization';
 import { useSyncEngine } from '@/services/sync/useSyncEngine';
 import { useAppStore } from '@/store/useAppStore';
@@ -36,6 +37,7 @@ function RootStack() {
   useSyncEngine();
   useMaterialization();
   usePushProfileOnChange(userId);
+  useAutoEnablePush(userId);
   useMarketDataRefresh();
   useRemoteVisualStyles(userId);
   const hasHydrated = useAppStore((s) => s.hasHydrated);

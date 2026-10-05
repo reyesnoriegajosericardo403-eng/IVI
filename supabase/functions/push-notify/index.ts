@@ -125,7 +125,12 @@ async function deliver(env: Env, subs: SubscriptionRow[], payload: PushPayload):
   let delivered = 0;
   for (const sub of subs) {
     try {
-      const result = await sendWebPush(sub, payload, env.vapid, { topic: payload.tag, urgency: 'normal' });
+      let result = await sendWebPush(sub, payload, env.vapid, { topic: payload.tag, urgency: 'normal' });
+      // Errores pasajeros del servicio de push (429/5xx): un reintento antes de contarlo como fallo.
+      if (!result.ok && !result.gone && (result.status === 429 || result.status >= 500 || result.status === 0)) {
+        await new Promise((r) => setTimeout(r, 1200));
+        result = await sendWebPush(sub, payload, env.vapid, { topic: payload.tag, urgency: 'normal' });
+      }
       if (result.ok) {
         delivered++;
         await rest(env, `push_subscriptions?id=eq.${sub.id}`, {
