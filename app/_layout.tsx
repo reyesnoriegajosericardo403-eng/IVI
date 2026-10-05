@@ -14,6 +14,7 @@ import { registerMarketDataProvider } from '@/providers/market/registerMarketDat
 import { useAuthSession } from '@/services/auth/useAuthSession';
 import { usePushProfileOnChange } from '@/services/auth/useProfileReconciliation';
 import { useMarketDataRefresh } from '@/services/market/useMarketDataRefresh';
+import { useDataOwnerGuard } from '@/services/auth/dataOwner';
 import { useAutoEnablePush } from '@/services/notifications/useAutoEnablePush';
 import { useMaterialization } from '@/services/p3/useMaterialization';
 import { useSyncEngine } from '@/services/sync/useSyncEngine';
@@ -34,6 +35,7 @@ const TRANSPARENT_NAVIGATION_THEME = {
 function RootStack() {
   const { colors, scheme } = useTheme();
   const { userId } = useAuthSession();
+  useDataOwnerGuard(userId);
   useSyncEngine();
   useMaterialization();
   usePushProfileOnChange(userId);

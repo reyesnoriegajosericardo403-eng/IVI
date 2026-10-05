@@ -1,3 +1,4 @@
+import { unsubscribeThisDevice } from '@/providers/notifications/webPushNotificationProvider';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/services/supabase/client';
@@ -48,6 +49,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
 
 export async function signOut(): Promise<void> {
   if (!supabase) return;
+  await unsubscribeThisDevice();
   await supabase.auth.signOut();
 }
 

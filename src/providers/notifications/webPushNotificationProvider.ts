@@ -69,6 +69,22 @@ async function getRegistration(): Promise<ServiceWorkerRegistration> {
   return navigator.serviceWorker.ready;
 }
 
+// Al cerrar sesión: este teléfono deja de recibir los avisos de esa cuenta (no cuenta como «apagarlos a propósito»,
+// así la próxima persona que entre sigue con los avisos activados por defecto). Debe llamarse con la sesión aún abierta.
+export async function unsubscribeThisDevice(): Promise<void> {
+  try {
+    if (!browserSupportsPush()) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = await reg?.pushManager.getSubscription();
+    if (!sub) return;
+    const endpoint = sub.endpoint;
+    await callFunction('unsubscribe', { endpoint }).catch(() => {});
+    await sub.unsubscribe().catch(() => {});
+  } catch {
+    // cerrar sesión nunca debe fallar por esto
+  }
+}
+
 export const webPushNotificationProvider: NotificationProvider = {
   name: 'web-push',
 

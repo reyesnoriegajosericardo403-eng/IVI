@@ -118,7 +118,7 @@ export default function Patrimonio() {
           maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null,
         ]}
       >
-        <ScreenHeader title="Patrimonio" subtitle="Tu panorama financiero" />
+        <ScreenHeader help="patrimonio" title="Patrimonio" subtitle="Tu panorama financiero" />
 
         <GlassCard style={{ gap: spacing.sm, zIndex: 20 }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>Resumen de hoy</Text>

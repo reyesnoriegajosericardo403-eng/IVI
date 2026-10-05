@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { BudgetActionPanel } from '@/components/BudgetActionPanel';
 import { BudgetCalendar, BudgetTemplateLegend } from '@/components/BudgetCalendar';
 import { BudgetChipRow } from '@/components/BudgetChipRow';
@@ -333,6 +334,7 @@ export default function Presupuesto() {
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text style={[typography.title, { color: colors.textPrimary, flex: 1 }]}>Plan de gastos</Text>
+        <View style={{ marginLeft: 6 }}><HelpButton topic="presupuesto" /></View>
         <Pressable accessibilityLabel="Ajustes" onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
         </Pressable>

@@ -4,6 +4,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { GlassCard } from '@/components/GlassCard';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -42,6 +43,7 @@ export default function Instalar() {
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text style={[typography.title, { color: colors.textPrimary }]}>Instalar VALU</Text>
+        <View style={{ marginLeft: 6 }}><HelpButton topic="instalar" /></View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 140 }}>

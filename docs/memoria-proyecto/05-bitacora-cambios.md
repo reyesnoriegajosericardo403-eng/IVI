@@ -8,6 +8,14 @@ Orden: **más reciente primero**. El detalle línea por línea vive en
 `git log` (trazable de verdad) y en el historial de tareas de la sesión de
 Claude Code.
 
+## 2026-10-05 — Avisos por defecto, P4 (ayuda y privacidad)
+
+Detalle de P4 en [[12-p4-ayuda-y-privacidad]].
+
+- Avisos: activados por defecto (permiso en el primer toque tras iniciar sesión), interruptor «Recibir avisos», «Enviar prueba» con 4 reintentos y un reintento en el servidor para errores pasajeros de Apple/Google. `push-notify` redesplegado desde GitHub Actions (token de acceso creado por el usuario).
+- Ayuda: 15 temas con botón ⓘ por pantalla, centro `/ayuda` con buscador; una prueba verifica pantallas y ejemplos de chat contra el código.
+- Privacidad: lista «Qué sale de tu dispositivo», prueba de destinos/puntos de red/tablas, interruptor «Ocultar nombres a mi IA». Dos fallas reales corregidas: datos de otra cuenta en un dispositivo compartido y avisos que seguían llegando tras cerrar sesión.
+
 ## 2026-10-04 — Tarjeta de crédito: corte, pago y avisos que no se pasan
 
 Pedido: «que las personas nunca se les pase sus fechas de pago ni de corte… debe funcionar al cien». Detalle en [[11-tarjeta-de-credito]].

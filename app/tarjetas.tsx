@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { GlassCard } from '@/components/GlassCard';
 import { SmallButton } from '@/components/p3/Chips';
 import { CardPanel } from '@/components/p3/CardPanel';
@@ -46,6 +47,7 @@ export default function Tarjetas() {
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text style={[typography.title, { color: colors.textPrimary }]}>Tarjetas de crédito</Text>
+        <View style={{ marginLeft: 6 }}><HelpButton topic="tarjetas" /></View>
       </View>
       <ScrollView contentContainerStyle={[{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 140 }, maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null]} keyboardShouldPersistTaps="handled">
         <Text style={[typography.body, { color: colors.textSecondary }]}>

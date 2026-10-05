@@ -83,7 +83,7 @@ export default function Metas() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
-        <ScreenHeader title="Metas" subtitle="Lo que estás construyendo" />
+        <ScreenHeader help="metas" title="Metas" subtitle="Lo que estás construyendo" />
 
         {goals.length === 0 && !showForm && (
           <Text style={[typography.caption, { color: colors.textTertiary }]}>Aún no tienes metas. Crea la primera.</Text>

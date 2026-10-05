@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { GlassCard } from '@/components/GlassCard';
 import { webPushNotificationProvider as provider } from '@/providers/notifications/webPushNotificationProvider';
 import type { NotificationSupport } from '@/providers/types';
@@ -114,6 +115,7 @@ export default function Notificaciones() {
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text style={[typography.title, { color: colors.textPrimary }]}>Notificaciones</Text>
+        <View style={{ marginLeft: 6 }}><HelpButton topic="notificaciones" /></View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 80 }}>
@@ -246,7 +248,7 @@ export default function Notificaciones() {
               )}
             </GlassCard>
             <Text style={[typography.caption, { color: colors.textTertiary }]}>
-              Por privacidad, los avisos nunca muestran montos ni saldos: se ven en tu pantalla bloqueada. Zona horaria:{' '}
+              Por privacidad, los avisos nunca muestran montos ni saldos. Sí muestran el título que tú escribiste, y se ve en tu pantalla bloqueada. Zona horaria:{' '}
               {settings.timezone}.
             </Text>
           </View>

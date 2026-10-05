@@ -3,18 +3,22 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 
+import type { HelpTopicId } from '@/help/helpTopics';
+
 import { AccountDropdown } from './AccountDropdown';
+import { HelpButton } from './HelpButton';
 
 interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
+  help?: HelpTopicId;
 }
 
 // Cabecera reutilizable — antes traía dos íconos sueltos (Ajustes + IA);
 // ahora ambos, y algunas cosas más, viven dentro del AccountDropdown para
 // no repetir el mismo par de botones en cada pantalla (spec: "esos van a
 // ser sustituidos por el Account Dropdown").
-export function ScreenHeader({ title, subtitle }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, help }: ScreenHeaderProps) {
   const { colors, typography, spacing } = useTheme();
 
   return (
@@ -25,6 +29,7 @@ export function ScreenHeader({ title, subtitle }: ScreenHeaderProps) {
           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>{subtitle}</Text>
         )}
       </View>
+      {help && <HelpButton topic={help} />}
       <AccountDropdown />
     </View>
   );

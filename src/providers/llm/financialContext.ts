@@ -1,6 +1,7 @@
 import type { CopilotContext } from '@/ai/localCopilot';
 import { buildBudgetLines, computeNetWorth, spendByCategory, spendInPeriod } from '@/utils/finance';
 
+import { hideNamesFromAi, redactName } from '@/services/privacy/aiPrivacy';
 import { toISODate } from '@/utils/date';
 
 import type { ActionAgentContext } from '../types';
@@ -10,7 +11,7 @@ import type { ActionAgentContext } from '../types';
 // y podría filtrar más de lo necesario). Las mismas funciones que usa el
 // copiloto local calculan estos números, así que un proveedor LLM nunca
 // puede "ver" ni inventar una cifra que la app misma no haya calculado.
-export function buildFinancialContextSummary(ctx: CopilotContext) {
+export function buildFinancialContextSummary(ctx: CopilotContext, hideNames: boolean = hideNamesFromAi()) {
   const netWorth = computeNetWorth(ctx.accounts, ctx.investments, ctx.liabilities, ctx.profile.primaryCurrency);
   const spendThisMonth = spendInPeriod(ctx.transactions);
   const spendByCat = spendByCategory(ctx.transactions);
@@ -34,13 +35,13 @@ export function buildFinancialContextSummary(ctx: CopilotContext) {
     })),
     cuentas: ctx.accounts.map((a) => ({ nombre: a.name, tipo: a.type, saldo: a.balance, moneda: a.currency })),
     deudas: ctx.liabilities.map((l) => ({
-      institucion: l.institution,
+      institucion: l.direction === 'owed_to_me' ? redactName(l.institution, hideNames) : l.institution,
       tipo: l.type,
       saldo: l.balance,
       tasa_interes: l.interestRate,
       moneda: l.currency,
       sentido: l.direction === 'owed_to_me' ? 'me_deben' : 'yo_debo',
-      contraparte: l.counterparty,
+      contraparte: redactName(l.counterparty, hideNames),
       estado: l.status === 'settled' ? 'saldada' : 'activa',
     })),
     inversiones: ctx.investments.map((i) => ({
@@ -56,7 +57,7 @@ export function buildFinancialContextSummary(ctx: CopilotContext) {
       monto: t.amount,
       moneda: t.currency,
       categoria: t.categoryId,
-      comercio: t.merchant,
+      comercio: redactName(t.merchant, hideNames),
       fecha: t.date,
     })),
   };
@@ -70,14 +71,14 @@ export function buildFinancialContextSummary(ctx: CopilotContext) {
 // acción), pero sigue excluyendo `notes`/texto libre — reduce la
 // superficie de inyección de instrucciones vía un comercio o nota con
 // texto adversario.
-export function buildActionContextSummary(ctx: ActionAgentContext) {
+export function buildActionContextSummary(ctx: ActionAgentContext, hideNames: boolean = hideNamesFromAi()) {
   return {
     // para que el modelo pueda traducir "ayer" o "el viernes" a una fecha exacta
     fecha_de_hoy: toISODate(new Date()),
     moneda_principal: ctx.profile.primaryCurrency,
     cuentas: ctx.accounts.map((a) => ({ id: a.id, nombre: a.name, tipo: a.type, saldo: a.balance, moneda: a.currency })),
     metas: ctx.goals.map((g) => ({ id: g.id, nombre: g.name, actual: g.currentAmount, objetivo: g.targetAmount, fecha_objetivo: g.targetDate, moneda: g.currency })),
-    deudas: ctx.liabilities.filter((l) => !l.deletedAt && l.status !== 'settled').map((l) => ({ id: l.id, institucion: l.institution, tipo: l.type, saldo: l.balance, vencimiento: l.dueDate, moneda: l.currency, sentido: l.direction === 'owed_to_me' ? 'me_deben' : 'yo_debo' })),
+    deudas: ctx.liabilities.filter((l) => !l.deletedAt && l.status !== 'settled').map((l) => ({ id: l.id, institucion: l.direction === 'owed_to_me' ? redactName(l.institution, hideNames) : l.institution, tipo: l.type, saldo: l.balance, vencimiento: l.dueDate, moneda: l.currency, sentido: l.direction === 'owed_to_me' ? 'me_deben' : 'yo_debo' })),
     // P3: lo que el modelo necesita para referirse a un previsto, un pago recurrente, un aviso o una inversión por su nombre
     previstos: (ctx.forecasts ?? []).filter((t) => !t.deletedAt && t.status === 'forecast').slice(0, 30).map((t) => ({ id: t.id, nombre: t.merchant ?? t.subcategoryId, tipo: t.type, monto: t.amount, moneda: t.currency, fecha: t.date.slice(0, 10) })),
     pagos_recurrentes: (ctx.recurringRules ?? []).filter((r) => !r.deletedAt && r.status !== 'ended').slice(0, 30).map((r) => ({ id: r.id, nombre: r.name, estado: r.status, monto: r.amount, moneda: r.currency })),

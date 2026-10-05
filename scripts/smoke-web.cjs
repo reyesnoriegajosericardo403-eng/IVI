@@ -40,7 +40,7 @@ const state = {
   reminderOccurrences: [{ ...meta, id: '99999999-9999-4999-8999-999999999991', reminderId: '88888888-8888-4888-8888-888888888881', eventDate: new Date(Date.now() - 3600000).toISOString().slice(0, 10), offsetDays: 0, scheduledFor: new Date(Date.now() - 3600000).toISOString(), status: 'pending', attemptsMade: 0, maxAttempts: 2, attemptIntervalMinutes: 120, title: 'Pagar la luz', push: true }],
   liabilities: [{ ...meta, id: '55555555-5555-4555-8555-555555555555', institution: 'Banorte', type: 'credit_card', balance: 8000, currency: 'MXN', dueDate: '2026-10-20' }],
 };
-const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inversiones', '/metas', '/ia', '/capture', '/transaction/new', '/settings', '/appearance', '/salud-financiera', '/privacidad', '/perfil', '/notificaciones', '/avisos', '/recurrentes', '/tarjetas', '/ai-settings', '/terminos', '/instalar', '/auth', '/onboarding'];
+const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inversiones', '/metas', '/ia', '/capture', '/transaction/new', '/settings', '/appearance', '/salud-financiera', '/privacidad', '/perfil', '/notificaciones', '/avisos', '/recurrentes', '/tarjetas', '/ai-settings', '/terminos', '/instalar', '/ayuda', '/auth', '/onboarding'];
 
 (async () => {
   const browser = await playwright.chromium.launch();
@@ -133,6 +133,28 @@ const routes = ['/(tabs)', '/movimientos', '/presupuesto', '/patrimonio', '/inve
     const bbva = saved.accounts.find((a) => a.name === 'BBVA');
     const okPay = oro2.balance < 3000 && bbva.balance < 5000;
     if (errors.length || !okDates || !okText || !okPay) { bad++; console.log('✗ tarjeta de crédito', { errors, okDates, okText, okPay, oro: oro2.balance, bbva: bbva.balance }); } else console.log('✓ tarjeta de crédito: fechas → avisos de corte y pago; pagar baja la deuda');
+    await page.close();
+  }
+  // P4: el botón ⓘ de una pantalla abre su ayuda; la búsqueda de /ayuda filtra; Privacidad lista lo que sale del dispositivo.
+  {
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message.slice(0, 160)));
+    await page.goto(`http://localhost:${port}/movimientos`, { waitUntil: 'load' }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await page.getByRole('button', { name: 'Ayuda: Movimientos' }).first().click();
+    await page.waitForTimeout(400);
+    const okSheet = /Registrados/.test(await page.locator('body').innerText());
+    await page.goto(`http://localhost:${port}/ayuda`, { waitUntil: 'load' }).catch(() => {});
+    await page.waitForTimeout(1200);
+    await page.getByLabel('Buscar en la ayuda').fill('tarjeta');
+    await page.waitForTimeout(300);
+    const txt = await page.locator('body').innerText();
+    const okSearch = /Tarjetas de crédito/.test(txt) && !/Instalar VALU/.test(txt);
+    await page.goto(`http://localhost:${port}/privacidad`, { waitUntil: 'load' }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const okPriv = /Qué sale de tu dispositivo/.test(await page.locator('body').innerText());
+    if (errors.length || !okSheet || !okSearch || !okPriv) { bad++; console.log('✗ ayuda y privacidad', { errors, okSheet, okSearch, okPriv }); } else console.log('✓ ayuda contextual, búsqueda y lista de privacidad');
     await page.close();
   }
   // Gesto: deslizar de lado entre secciones con eventos TÁCTILES reales (PanResponder de React Native).

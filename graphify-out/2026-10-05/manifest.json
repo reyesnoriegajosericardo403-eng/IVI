@@ -48,15 +48,15 @@
     "semantic_hash": ""
   },
   "app/(tabs)/patrimonio.tsx": {
-    "mtime": 1791112422.822343,
-    "seen": 1791112814.2361202,
-    "ast_hash": "50aeb7e8b706860691e9b20a9c357114",
+    "mtime": 1791112839.495661,
+    "seen": 1791183010.307257,
+    "ast_hash": "38126ab721a653e4fe9337c6d2d874a2",
     "semantic_hash": ""
   },
   "app/_layout.tsx": {
-    "mtime": 1791109853.1553013,
-    "seen": 1791111936.7356424,
-    "ast_hash": "5b9868cafdeebc3b8b47944b3a564e5b",
+    "mtime": 1791182856.1661108,
+    "seen": 1791183010.3072603,
+    "ast_hash": "c7f37628545d11bf63c7c0d04074a82c",
     "semantic_hash": ""
   },
   "app/ai-settings.tsx": {
@@ -1188,9 +1188,9 @@
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/06-pendientes.md": {
-    "mtime": 1791112807.1134934,
-    "seen": 1791112814.2366085,
-    "ast_hash": "7a2f67cb2d949b9afbd5e824097de49e",
+    "mtime": 1791183001.718031,
+    "seen": 1791183010.3077185,
+    "ast_hash": "1d54b5bcafa27b3800c9e3a379580053",
     "semantic_hash": ""
   },
   "docs/memoria-proyecto/README.md": {
@@ -1254,9 +1254,9 @@
     "semantic_hash": ""
   },
   "app/notificaciones.tsx": {
-    "mtime": 1790588276.950293,
-    "seen": 1790589505.0175316,
-    "ast_hash": "0c01380809a2f1d8ca980fe43684bd59",
+    "mtime": 1791182862.451173,
+    "seen": 1791183010.307291,
+    "ast_hash": "9572d6b9bc269e631db62e52ecbc7b57",
     "semantic_hash": ""
   },
   "src/components/investments/FormBits.tsx": {
@@ -1296,9 +1296,9 @@
     "semantic_hash": ""
   },
   "src/providers/notifications/webPushNotificationProvider.ts": {
-    "mtime": 1790588220.8622942,
-    "seen": 1790589505.0176847,
-    "ast_hash": "0afa34ec43b6a9f96947cba96567e22f",
+    "mtime": 1791182932.6031458,
+    "seen": 1791183010.3076048,
+    "ast_hash": "eda5dfe285d7542fb7d753056e5464ef",
     "semantic_hash": ""
   },
   "src/services/investments/usePortfolio.ts": {
@@ -1332,9 +1332,9 @@
     "semantic_hash": ""
   },
   "supabase/functions/push-notify/index.ts": {
-    "mtime": 1791110704.641318,
-    "seen": 1791111936.735982,
-    "ast_hash": "23dc0d8e877d90f92d99fa199bf72995",
+    "mtime": 1791182856.1681068,
+    "seen": 1791183010.3076746,
+    "ast_hash": "beea15aba0908047016cf00577404379",
     "semantic_hash": ""
   },
   "supabase/migrations/0020_push_notifications.sql": {
@@ -2073,6 +2073,18 @@
     "mtime": 1791112807.095995,
     "seen": 1791112814.236615,
     "ast_hash": "a586f28e32e1fcbb717a49593a0efa3f",
+    "semantic_hash": ""
+  },
+  "src/services/notifications/pushPreference.ts": {
+    "mtime": 1791182856.1349256,
+    "seen": 1791183010.3076165,
+    "ast_hash": "6290389655a43213aac77ef0c6646f39",
+    "semantic_hash": ""
+  },
+  "src/services/notifications/useAutoEnablePush.ts": {
+    "mtime": 1791182856.1367164,
+    "seen": 1791183010.307618,
+    "ast_hash": "aa12455f449a7197f9f776380bd87427",
     "semantic_hash": ""
   }
 }

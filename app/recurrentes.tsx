@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { parseCaptureText } from '@/ai/localParser';
 import { GlassCard } from '@/components/GlassCard';
 import { ChipRow, SmallButton } from '@/components/p3/Chips';
@@ -131,6 +132,7 @@ export default function Recurrentes() {
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text style={[typography.title, { color: colors.textPrimary }]}>Pagos recurrentes</Text>
+        <View style={{ marginLeft: 6 }}><HelpButton topic="recurrentes" /></View>
       </View>
 
       <ScrollView

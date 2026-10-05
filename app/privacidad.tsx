@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { GlassCard } from '@/components/GlassCard';
 import { signOut } from '@/services/auth/actions';
 import { deleteAccountPermanently } from '@/services/auth/deleteAccount';
@@ -11,6 +12,8 @@ import { useAuthSession } from '@/services/auth/useAuthSession';
 import { isSupabaseConfigured } from '@/services/supabase/client';
 import { useAppStore } from '@/store/useAppStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { DATA_FLOWS } from '@/help/dataFlows';
+import { hideNamesFromAi, setHideNamesFromAi } from '@/services/privacy/aiPrivacy';
 import { exportAllDataAsJson } from '@/utils/exportData';
 
 export default function Privacidad() {
@@ -20,6 +23,7 @@ export default function Privacidad() {
   const customCategoryMappings = useAppStore((s) => s.customCategoryMappings);
   const clearCustomCategoryMappings = useAppStore((s) => s.clearCustomCategoryMappings);
   const learnedCount = Object.keys(customCategoryMappings).length;
+  const [hideNames, setHideNames] = useState(hideNamesFromAi());
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -56,6 +60,7 @@ export default function Privacidad() {
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text style={[typography.title, { color: colors.textPrimary }]}>Privacidad y datos</Text>
+        <View style={{ marginLeft: 6 }}><HelpButton topic="privacidad" /></View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: 140 }}>
@@ -74,10 +79,48 @@ export default function Privacidad() {
           <Text style={[typography.headline, { color: colors.textPrimary }]}>Inteligencia artificial y datos de mercado</Text>
           <Text style={[typography.body, { color: colors.textSecondary }]}>
             El copiloto de IA es opcional: solo se activa si tú conectas tu propia clave de Claude, ChatGPT, Gemini o
-            Grok, y solo entonces tus preguntas viajan al proveedor que elegiste. Los precios de mercado (acciones,
+            Grok, y solo entonces tus preguntas y un resumen de tus cifras (nunca tus notas) viajan al proveedor que elegiste. Los precios de mercado (acciones,
             FIBRAs, tasa de CETES) se consultan de proveedores públicos únicamente para mostrarte ese precio — no se
             les envía tu información personal ni financiera.
           </Text>
+        </GlassCard>
+
+        <GlassCard style={{ gap: spacing.md }}>
+          <Text style={[typography.headline, { color: colors.textPrimary }]}>Qué sale de tu dispositivo</Text>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            Esta lista es completa: no hay otros envíos. Se revisa automáticamente contra el código de la app.
+          </Text>
+          {DATA_FLOWS.map((f) => (
+            <View key={f.id} style={{ gap: 2, borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: spacing.sm }}>
+              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '700' }]}>
+                {f.title}
+                {f.trigger === 'si_lo_activas' ? ' · solo si lo activas' : f.trigger === 'al_usarlo' ? ' · solo al usarlo' : ''}
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>Viaja: {f.what}</Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>No viaja: {f.notWhat}</Text>
+              <Text style={[typography.caption, { color: colors.textTertiary }]}>A dónde: {f.where}</Text>
+            </View>
+          ))}
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: hideNames }}
+            accessibilityLabel="Ocultar nombres a mi IA"
+            onPress={() => {
+              setHideNamesFromAi(!hideNames);
+              setHideNames(!hideNames);
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: spacing.md }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.body, { color: colors.textPrimary, fontWeight: '600' }]}>Ocultar nombres a mi IA</Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                Tu IA no verá nombres de personas (quien te debe) ni comercios; verá «(oculto)». Solo aplica si conectaste una IA; en este dispositivo.
+              </Text>
+            </View>
+            <View style={{ width: 44, height: 26, borderRadius: 13, padding: 3, justifyContent: 'center', backgroundColor: hideNames ? colors.accentFrom : colors.surfaceBorder }}>
+              <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFFFFF', alignSelf: hideNames ? 'flex-end' : 'flex-start' }} />
+            </View>
+          </Pressable>
         </GlassCard>
 
         <GlassCard style={{ gap: spacing.sm }}>
@@ -137,8 +180,8 @@ export default function Privacidad() {
           ) : (
             <View style={{ gap: spacing.sm }}>
               <Text style={[typography.body, { color: colors.danger, fontWeight: '600' }]}>
-                Esto elimina para siempre tus cuentas, movimientos, presupuestos, metas, inversiones y deudas — no se
-                puede deshacer.
+                Esto elimina para siempre tus cuentas, movimientos, presupuestos, metas, inversiones, deudas, pagos recurrentes,
+                avisos y dispositivos de notificación — no se puede deshacer.
               </Text>
               {deleteError && (
                 <Text style={[typography.caption, { color: colors.danger }]}>{deleteError}</Text>

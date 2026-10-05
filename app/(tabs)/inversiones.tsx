@@ -68,7 +68,7 @@ export default function Inversiones() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140, gap: spacing.lg }}>
-        <ScreenHeader title="Inversiones" subtitle="Tus instituciones y lo que tienes en cada una" />
+        <ScreenHeader help="inversiones" title="Inversiones" subtitle="Tus instituciones y lo que tienes en cada una" />
 
         <GlassCard style={{ gap: 4 }}>
           <Text style={[typography.caption, { color: colors.textSecondary }]}>Valor de tu portafolio</Text>

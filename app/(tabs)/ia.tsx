@@ -9,6 +9,7 @@ import Svg, { Circle, Defs, FeGaussianBlur, Filter, LinearGradient, Stop, Text a
 
 import { topFrequentQuestions, type ActionPlan, type AIActionProposal, type ChatMessage } from '@/ai/chatTypes';
 import { AiOrb } from '@/components/AiOrb';
+import { HelpButton } from '@/components/HelpButton';
 import { ChatActionCard } from '@/components/ChatActionCard';
 import { ChatPlanCard } from '@/components/ChatPlanCard';
 import { ChatComposer } from '@/components/ChatComposer';
@@ -261,6 +262,9 @@ export default function Ia() {
                 </Text>
                 <Ionicons name="chevron-down" size={14} color={CHAT_PALETTE.textTertiary} />
               </Pressable>
+              <View style={{ marginLeft: 'auto' }}>
+                <HelpButton topic="chat" />
+              </View>
             </View>
 
             {messages.length === 0 ? (

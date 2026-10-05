@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { DateField } from '@/components/DateField';
 import { GlassCard } from '@/components/GlassCard';
 import { ChipRow, SmallButton } from '@/components/p3/Chips';
@@ -96,6 +97,7 @@ export default function Avisos() {
           <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </Pressable>
         <Text style={[typography.title, { color: colors.textPrimary }]}>Avisos</Text>
+        <View style={{ marginLeft: 6 }}><HelpButton topic="avisos" /></View>
       </View>
 
       <ScrollView

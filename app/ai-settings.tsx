@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/HelpButton';
 import { GlassCard } from '@/components/GlassCard';
 import { createLLMClient } from '@/providers/llm/createClient';
 import { clearLLMProviderConfig, getLLMProviderConfig, isSecureStorageNative, setLLMProviderConfig } from '@/providers/llm/secureConfig';
@@ -97,6 +98,7 @@ export default function AiSettings() {
             Usa tu propia cuenta — nunca la nuestra
           </Text>
         </View>
+        <HelpButton topic="ia-propia" />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>

@@ -79,6 +79,7 @@ export function AccountDropdown() {
     { key: 'reminders', label: 'Avisos', icon: 'notifications-outline', onPress: () => go('/avisos') },
     { key: 'cards', label: 'Tarjetas de crédito', icon: 'card-outline', onPress: () => go('/tarjetas') },
     { key: 'recurring', label: 'Pagos recurrentes', icon: 'repeat-outline', onPress: () => go('/recurrentes') },
+    { key: 'help', label: 'Ayuda', icon: 'help-circle-outline', onPress: () => go('/ayuda') },
     { key: 'privacy', label: 'Privacidad y datos', icon: 'shield-checkmark-outline', onPress: () => go('/privacidad') },
     { key: 'install', label: 'Instalar VALU', icon: 'download-outline', onPress: () => go('/instalar') },
   ];

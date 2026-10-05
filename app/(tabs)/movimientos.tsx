@@ -91,7 +91,7 @@ export default function Movimientos() {
       <View style={[{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }, maxWidth ? { maxWidth, width: '100%', alignSelf: 'center' } : null]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <ScreenHeader title="Movimientos" subtitle={view === 'real' ? `${visibleTransactions.length} registrados` : `${forecastCount} previstos`} />
+            <ScreenHeader help="movimientos" title="Movimientos" subtitle={view === 'real' ? `${visibleTransactions.length} registrados` : `${forecastCount} previstos`} />
           </View>
           <Pressable
             accessibilityLabel={showCalendar ? 'Ocultar calendario' : 'Ver calendario'}
